@@ -1,0 +1,23 @@
+<menu xmlns="urn:remedy:schemas:ars" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" arDocVersion="11" xsi:schemaLocation="urn:remedy:schemas:ars ars.xsd" xsi:type="sqlMenu">
+        <menuName>AR System Server Group Operation Names</menuName>
+        <menuGuid>9beb1755a1c0fac4cd966f8f8bd4bf3d</menuGuid>
+        <owner>ARSERVER</owner>
+        <lastModifiedBy>ARSERVER</lastModifiedBy>
+        <modifiedDate>2023-12-02T14:54:01+00:00</modifiedDate>
+        <helpText>This menu retrieves a list of server group operation names from the operation master data dictionary table in the AR System database.</helpText>
+        <objectProperties>
+            <property>
+                <value>
+                    <characterValue>AR System Administration</characterValue>
+                </value>
+                <tag>90002</tag>
+            </property>
+        </objectProperties>
+        <menuRefresh>
+            <refreshType>onFormConnect</refreshType>
+        </menuRefresh>
+        <serverName>@</serverName>
+        <menuLabelDBColumnIndexLv1>1</menuLabelDBColumnIndexLv1>
+        <menuValueDBColIndex>1</menuValueDBColIndex>
+        <sqlCommand>SELECT operation FROM servgrp_op_mstr where operation != 'E-Mail Engine' ORDER BY 1</sqlCommand>
+    </menu>

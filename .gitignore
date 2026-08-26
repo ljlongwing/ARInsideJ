@@ -1,0 +1,29 @@
+target/
+cp.txt
+*.reg
+.idea/
+*.iml
+.vscode/
+test-output/
+spike-output/
+Release/
+dependency-reduced-pom.xml
+
+# Dev-session scratch: verification/pipeline run logs, pid files, and comparison snapshots
+# accumulated while iterating - not project deliverables. See java-port/README.md and the
+# in-repo javadoc for the reviewed, current-state documentation instead.
+*.log
+*.pid
+compare-round*.txt
+*.sync-conflict-*
+
+# Dev-session test fixtures/configs pointing at a private test server or huge local export
+# files outside the repo (see settings.ini for the checked-in, portable example instead).
+test-settings*.ini
+test-filemode-settings.ini
+test-deffile-settings.ini
+scope-test-settings*.ini
+spike-export.xml
+test-file-mode-export.xml
+xmltest/test-xmlmode*.ini
+xmltest/pipeline*

@@ -1,0 +1,46 @@
+<filter xmlns="urn:remedy:schemas:ars" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" arDocVersion="11" xsi:schemaLocation="urn:remedy:schemas:ars ars.xsd">
+        <filterName>AR System Configuration Component Setting Mapping: Delete Setting</filterName>
+        <filterGuid>73cbf5650d772abfc2621edb9432a4e2</filterGuid>
+        <owner>ARSERVER</owner>
+        <lastModifiedBy>ARSERVER</lastModifiedBy>
+        <modifiedDate>2020-04-22T15:34:46+00:00</modifiedDate>
+        <objectProperties>
+            <property>
+                <value>
+                    <characterValue>AR System Administration</characterValue>
+                </value>
+                <tag>90002</tag>
+            </property>
+        </objectProperties>
+        <executionOrder>700</executionOrder>
+        <workflowConnect>
+            <formNameList>
+                <formName>AR System Configuration Component-Setting Mapping</formName>
+            </formNameList>
+        </workflowConnect>
+        <executeOn>delete</executeOn>
+        <enabled>true</enabled>
+        <runIfQualification>
+            <relationalOperation>
+                <operation>lessEqual</operation>
+                <left>
+                    <value>
+                        <keywordValue>14</keywordValue>
+                    </value>
+                </left>
+                <right>
+                    <value>
+                        <integerValue>1</integerValue>
+                    </value>
+                </right>
+            </relationalOperation>
+        </runIfQualification>
+        <ifActions>
+            <action>
+                <runProcess>
+                    <command>Application-Query-Delete-Entry "AR System Configuration Setting" '179' = "$3206$"</command>
+                </runProcess>
+            </action>
+        </ifActions>
+        <errorHandlerOptions>0</errorHandlerOptions>
+    </filter>

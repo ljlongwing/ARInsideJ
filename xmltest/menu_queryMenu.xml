@@ -1,0 +1,36 @@
+<menu xmlns="urn:remedy:schemas:ars" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" arDocVersion="11" xsi:schemaLocation="urn:remedy:schemas:ars ars.xsd" xsi:type="queryMenu">
+        <menuName>ParentOverlayGroups</menuName>
+        <menuGuid>55aaac9c899ae2ee6dd52d6e344f8c15</menuGuid>
+        <owner>ARSERVER</owner>
+        <lastModifiedBy>ARSERVER</lastModifiedBy>
+        <modifiedDate>2020-04-22T15:34:44+00:00</modifiedDate>
+        <objectProperties>
+            <property>
+                <value>
+                    <characterValue>AR System Administration</characterValue>
+                </value>
+                <tag>90002</tag>
+            </property>
+        </objectProperties>
+        <menuRefresh>
+            <refreshType>onFormOpen</refreshType>
+        </menuRefresh>
+        <serverName>@</serverName>
+        <formName>AR System Overlay Groups</formName>
+        <menuLabelFieldIDLv1>1400</menuLabelFieldIDLv1>
+        <menuValueFieldID>1401</menuValueFieldID>
+        <sortOnLabel>true</sortOnLabel>
+        <qualifier>
+            <relationalOperation>
+                <operation>notEqual</operation>
+                <left>
+                    <fieldID>1401</fieldID>
+                </left>
+                <right>
+                    <currentValueFieldID>1401</currentValueFieldID>
+                </right>
+            </relationalOperation>
+        </qualifier>
+        <sampleServer/>
+        <sampleForm/>
+    </menu>

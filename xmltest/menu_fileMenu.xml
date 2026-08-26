@@ -1,0 +1,19 @@
+<menu xmlns="urn:remedy:schemas:ars" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" arDocVersion="11" xsi:schemaLocation="urn:remedy:schemas:ars ars.xsd" xsi:type="fileMenu">
+        <menuName>ARC:DynamicCategoryMenu</menuName>
+        <menuGuid>56e17985f4d7f985df993ed1d99725c8</menuGuid>
+        <owner>ARSERVER</owner>
+        <lastModifiedBy>Action Request Installer Account</lastModifiedBy>
+        <modifiedDate>2020-04-22T15:35:48+00:00</modifiedDate>
+        <objectProperties>
+            <property>
+                <value>
+                    <characterValue>AR System Administration</characterValue>
+                </value>
+                <tag>90002</tag>
+            </property>
+        </objectProperties>
+        <menuRefresh>
+            <refreshType>onFormOpen</refreshType>
+        </menuRefresh>
+        <fileName fileLocation="client">arfield://93320</fileName>
+    </menu>

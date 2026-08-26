@@ -1,0 +1,77 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>arinsidej</groupId>
+  <artifactId>arinsidej</artifactId>
+  <version>4.0</version>
+  <packaging>jar</packaging>
+  <name>ARInsideJ</name>
+  <description>Java port of ARInside (BMC AR System documentation generator) using the AR System Java API.</description>
+
+  <properties>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <dependencies>
+    <!--
+      AR System Java API. Not available on any public repository (same as the C API used
+      by the existing C++ tool) - install it into your local repo first:
+
+        mvn install:install-file -Dfile="B:\TeamSync\LJ's Files\ForJason\arapi233_build002.jar" ^
+          -DgroupId=com.bmc.arsys -DartifactId=arapi -Dversion=23.3.002 -Dpackaging=jar
+    -->
+    <dependency>
+      <groupId>com.bmc.arsys</groupId>
+      <artifactId>arapi</artifactId>
+      <version>23.3.002</version>
+    </dependency>
+    <!--
+      Runtime companion required by ARServerUser's static initializer (com.bmc.arsys.logger.ARLogger).
+      Not bundled inside arapi*.jar; sourced from a local ARSystem install:
+        C:\Program Files\BMC Software\ARSystem\diserver\data-integration\lib\arlogger233_build000.jar
+      Install with:
+        mvn install:install-file -Dfile="<path above>" -DgroupId=com.bmc.arsys -DartifactId=arlogger -Dversion=23.3.000 -Dpackaging=jar
+    -->
+    <dependency>
+      <groupId>com.bmc.arsys</groupId>
+      <artifactId>arlogger</artifactId>
+      <version>23.3.000</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>${project.artifactId}</finalName>
+    <plugins>
+      <!--
+        Produces target/arinsidej.jar as a single self-contained executable jar (all dependencies,
+        including arapi/arlogger, merged in) - run with `java -jar arinsidej.jar -i settings.ini ...`,
+        no classpath setup needed. The plain (non-shaded) jar is kept alongside as
+        target/original-arinsidej.jar by the plugin's default behavior.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.6.2</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>arinside.Main</mainClass>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

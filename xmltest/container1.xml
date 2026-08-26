@@ -1,0 +1,791 @@
+<container xmlns="urn:remedy:schemas:ars" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" arDocVersion="11" xsi:schemaLocation="urn:remedy:schemas:ars ars.xsd">
+        <containerName>Roles</containerName>
+        <owner>ARSERVER</owner>
+        <lastModifiedBy>ARSERVER</lastModifiedBy>
+        <modifiedDate>2020-04-22T15:34:43+00:00</modifiedDate>
+        <objectProperties>
+            <property>
+                <value>
+                    <characterValue/>
+                </value>
+                <tag>60020</tag>
+            </property>
+            <property>
+                <value>
+                    <characterValue>AR System Administration</characterValue>
+                </value>
+                <tag>90002</tag>
+            </property>
+        </objectProperties>
+        <viewPermissionList>
+            <viewPermission>
+                <groupID>0</groupID>
+                <viewRights>visible</viewRights>
+            </viewPermission>
+        </viewPermissionList>
+        <ownerObjectList>
+            <ownerObject>
+                <ownerType>form</ownerType>
+                <ownerName>Roles</ownerName>
+            </ownerObject>
+        </ownerObjectList>
+        <containerType>webService</containerType>
+        <referenceList>
+            <reference>
+                <externalReference>
+                    <label/>
+                    <description/>
+                    <referenceType>32797</referenceType>
+                    <accessList>
+                        <groupID>0</groupID>
+                    </accessList>
+                    <referenceValue>
+                        <characterValue>	&lt;portProperties&gt;&#13;
+		&lt;portType name=""/&gt;&#13;
+		&lt;xmlSchemaSource name="embedded"/&gt;&#13;
+	&lt;/portProperties&gt;&#13;
+</characterValue>
+                    </referenceValue>
+                </externalReference>
+            </reference>
+            <reference>
+                <externalReference>
+                    <label/>
+                    <description/>
+                    <referenceType>32798</referenceType>
+                    <accessList>
+                        <groupID>0</groupID>
+                    </accessList>
+                    <referenceValue>
+                        <characterValue>&lt;?xml version="1.0" encoding="windows-1252"?&gt;                             
+	&lt;operation name="OpGet" type="get" qualification="&amp;apos;Request ID&amp;apos; = XPATH(/ROOT/Request_ID)"&gt;&#13;
+		&lt;inputMapping name="GetInputMap" topLevelElement="OpGet"/&gt;&#13;
+		&lt;outputMapping name="GetOutputMap" topLevelElement="OpGetResponse"/&gt;&#13;
+	&lt;/operation&gt;&#13;
+</characterValue>
+                    </referenceValue>
+                </externalReference>
+            </reference>
+            <reference>
+                <externalReference>
+                    <label/>
+                    <description/>
+                    <referenceType>32798</referenceType>
+                    <accessList>
+                        <groupID>0</groupID>
+                    </accessList>
+                    <referenceValue>
+                        <characterValue>&lt;?xml version="1.0" encoding="windows-1252"?&gt;                             
+	&lt;operation name="OpCreate" type="create"&gt;&#13;
+		&lt;inputMapping name="CreateInputMap" topLevelElement="OpCreate"/&gt;&#13;
+		&lt;outputMapping name="CreateOutputMap" topLevelElement="OpCreateResponse"/&gt;&#13;
+	&lt;/operation&gt;&#13;
+</characterValue>
+                    </referenceValue>
+                </externalReference>
+            </reference>
+            <reference>
+                <externalReference>
+                    <label/>
+                    <description/>
+                    <referenceType>32798</referenceType>
+                    <accessList>
+                        <groupID>0</groupID>
+                    </accessList>
+                    <referenceValue>
+                        <characterValue>&lt;?xml version="1.0" encoding="windows-1252"?&gt;                             
+	&lt;operation name="OpGetList" type="get" maxLimit="XPATH(/ROOT/maxLimit)" startRecord="XPATH(/ROOT/startRecord)" qualification="XPATH(/ROOT/Qualification)"&gt;&#13;
+		&lt;inputMapping name="GetListInputMap" topLevelElement="OpGetList"/&gt;&#13;
+		&lt;outputMapping name="GetListOutputMap" topLevelElement="OpGetListResponse"/&gt;&#13;
+	&lt;/operation&gt;&#13;
+</characterValue>
+                    </referenceValue>
+                </externalReference>
+            </reference>
+            <reference>
+                <externalReference>
+                    <label/>
+                    <description/>
+                    <referenceType>32798</referenceType>
+                    <accessList>
+                        <groupID>0</groupID>
+                    </accessList>
+                    <referenceValue>
+                        <characterValue>&lt;?xml version="1.0" encoding="windows-1252"?&gt;                             
+	&lt;operation name="OpSet" type="set" qualification="&amp;apos;Request ID&amp;apos; = XPATH(/ROOT/Request_ID)"&gt;&#13;
+		&lt;arOptions&gt;&#13;
+			&lt;setOptions&gt;&#13;
+				&lt;type&gt;setAll&lt;/type&gt;&#13;
+				&lt;documentType&gt;full&lt;/documentType&gt;&#13;
+			&lt;/setOptions&gt;&#13;
+		&lt;/arOptions&gt;&#13;
+		&lt;inputMapping name="SetInputMap" topLevelElement="OpSet"/&gt;&#13;
+		&lt;outputMapping name="SetOutputMap" topLevelElement="OpSetResponse"/&gt;&#13;
+	&lt;/operation&gt;&#13;
+</characterValue>
+                    </referenceValue>
+                </externalReference>
+            </reference>
+            <reference>
+                <externalReference>
+                    <label/>
+                    <description/>
+                    <referenceType>32828</referenceType>
+                    <accessList>
+                        <groupID>0</groupID>
+                    </accessList>
+                    <referenceValue>
+                        <nullValue/>
+                    </referenceValue>
+                </externalReference>
+            </reference>
+            <reference>
+                <externalReference>
+                    <label/>
+                    <description/>
+                    <referenceType>32799</referenceType>
+                    <accessList>
+                        <groupID>0</groupID>
+                    </accessList>
+                    <referenceValue>
+                        <characterValue>&lt;?xml version="1.0" encoding="windows-1252"?&gt;                             
+	&lt;arDocMapping name="SetOutputMap" arDocVersion="10"/&gt;&#13;
+</characterValue>
+                    </referenceValue>
+                </externalReference>
+            </reference>
+            <reference>
+                <externalReference>
+                    <label/>
+                    <description/>
+                    <referenceType>32799</referenceType>
+                    <accessList>
+                        <groupID>0</groupID>
+                    </accessList>
+                    <referenceValue>
+                        <characterValue>&lt;?xml version="1.0" encoding="windows-1252"?&gt;                             
+	&lt;arDocMapping name="CreateInputMap" arDocVersion="10" schemaSource="generated"&gt;&#13;
+		&lt;formMapping&gt;&#13;
+			&lt;form formName="Roles" foreignKeyId="1" primaryKeyId="1" distinguishingKeyId="1"/&gt;&#13;
+			&lt;element name="ROOT" nillable="true" targetNamespace="urn:Roles"&gt;&#13;
+				&lt;element name="Application_Name" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="1700"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Assigned_To" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="4"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Production" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="2002"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Role_ID" dataType="int"&gt;&#13;
+					&lt;fieldMapping arFieldId="1702"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Role_Name" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="1701"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Short_Description" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="8"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Status" dataType="string" enumValues="New,Assigned,Fixed,Rejected,Closed"&gt;&#13;
+					&lt;fieldMapping arFieldId="7"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Submitter" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="2"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Test" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="2001"/&gt;&#13;
+				&lt;/element&gt;&#13;
+			&lt;/element&gt;&#13;
+		&lt;/formMapping&gt;&#13;
+	&lt;/arDocMapping&gt;&#13;
+</characterValue>
+                    </referenceValue>
+                </externalReference>
+            </reference>
+            <reference>
+                <externalReference>
+                    <label/>
+                    <description/>
+                    <referenceType>32799</referenceType>
+                    <accessList>
+                        <groupID>0</groupID>
+                    </accessList>
+                    <referenceValue>
+                        <characterValue>&lt;?xml version="1.0" encoding="windows-1252"?&gt;                             
+	&lt;arDocMapping name="GetListInputMap" arDocVersion="10" schemaSource="generated"&gt;&#13;
+		&lt;element name="ROOT" dataType="ROOT" nillable="true" targetNamespace="urn:Roles"&gt;&#13;
+			&lt;element name="Qualification" dataType="string"/&gt;&#13;
+			&lt;element name="startRecord" dataType="string"/&gt;&#13;
+			&lt;element name="maxLimit" dataType="string"/&gt;&#13;
+		&lt;/element&gt;&#13;
+	&lt;/arDocMapping&gt;&#13;
+</characterValue>
+                    </referenceValue>
+                </externalReference>
+            </reference>
+            <reference>
+                <externalReference>
+                    <label/>
+                    <description/>
+                    <referenceType>32799</referenceType>
+                    <accessList>
+                        <groupID>0</groupID>
+                    </accessList>
+                    <referenceValue>
+                        <characterValue>&lt;?xml version="1.0" encoding="windows-1252"?&gt;                             
+	&lt;arDocMapping name="GetInputMap" arDocVersion="10" schemaSource="generated"&gt;&#13;
+		&lt;element name="ROOT" dataType="ROOT" nillable="true" targetNamespace="urn:Roles"&gt;&#13;
+			&lt;element name="Request_ID" dataType="string"/&gt;&#13;
+		&lt;/element&gt;&#13;
+	&lt;/arDocMapping&gt;&#13;
+</characterValue>
+                    </referenceValue>
+                </externalReference>
+            </reference>
+            <reference>
+                <externalReference>
+                    <label/>
+                    <description/>
+                    <referenceType>32799</referenceType>
+                    <accessList>
+                        <groupID>0</groupID>
+                    </accessList>
+                    <referenceValue>
+                        <characterValue>&lt;?xml version="1.0" encoding="windows-1252"?&gt;                             
+	&lt;arDocMapping name="SetInputMap" arDocVersion="10" schemaSource="generated"&gt;&#13;
+		&lt;formMapping&gt;&#13;
+			&lt;form formName="Roles" foreignKeyId="1" primaryKeyId="1" distinguishingKeyId="1"/&gt;&#13;
+			&lt;element name="ROOT" nillable="true" targetNamespace="urn:Roles"&gt;&#13;
+				&lt;element name="Application_Name" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="1700"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Assigned_To" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="4"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Production" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="2002"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Role_ID" dataType="int"&gt;&#13;
+					&lt;fieldMapping arFieldId="1702"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Role_Name" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="1701"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Short_Description" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="8"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Status" dataType="string" enumValues="New,Assigned,Fixed,Rejected,Closed"&gt;&#13;
+					&lt;fieldMapping arFieldId="7"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Submitter" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="2"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Test" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="2001"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Request_ID" dataType="string"/&gt;&#13;
+			&lt;/element&gt;&#13;
+		&lt;/formMapping&gt;&#13;
+	&lt;/arDocMapping&gt;&#13;
+</characterValue>
+                    </referenceValue>
+                </externalReference>
+            </reference>
+            <reference>
+                <externalReference>
+                    <label/>
+                    <description/>
+                    <referenceType>32799</referenceType>
+                    <accessList>
+                        <groupID>0</groupID>
+                    </accessList>
+                    <referenceValue>
+                        <characterValue>&lt;?xml version="1.0" encoding="windows-1252"?&gt;                             
+	&lt;arDocMapping name="GetListOutputMap" arDocVersion="10" schemaSource="generated"&gt;&#13;
+		&lt;element name="ROOT" dataType="ROOT" nillable="true" targetNamespace="urn:Roles"&gt;&#13;
+			&lt;formMapping&gt;&#13;
+				&lt;form formName="Roles" foreignKeyId="1" primaryKeyId="1" distinguishingKeyId="1"/&gt;&#13;
+				&lt;element name="getListValues" maxOccurs="unbounded"&gt;&#13;
+					&lt;element name="Application_Name" dataType="string"&gt;&#13;
+						&lt;fieldMapping arFieldId="1700"/&gt;&#13;
+					&lt;/element&gt;&#13;
+					&lt;element name="Assigned_To" dataType="string"&gt;&#13;
+						&lt;fieldMapping arFieldId="4"/&gt;&#13;
+					&lt;/element&gt;&#13;
+					&lt;element name="Create_Date" dataType="dateTime"&gt;&#13;
+						&lt;fieldMapping arFieldId="3"/&gt;&#13;
+					&lt;/element&gt;&#13;
+					&lt;element name="Last_Modified_By" dataType="string"&gt;&#13;
+						&lt;fieldMapping arFieldId="5"/&gt;&#13;
+					&lt;/element&gt;&#13;
+					&lt;element name="Modified_Date" dataType="dateTime"&gt;&#13;
+						&lt;fieldMapping arFieldId="6"/&gt;&#13;
+					&lt;/element&gt;&#13;
+					&lt;element name="Production" dataType="string"&gt;&#13;
+						&lt;fieldMapping arFieldId="2002"/&gt;&#13;
+					&lt;/element&gt;&#13;
+					&lt;element name="Request_ID" dataType="string"&gt;&#13;
+						&lt;fieldMapping arFieldId="1"/&gt;&#13;
+					&lt;/element&gt;&#13;
+					&lt;element name="Role_ID" dataType="int"&gt;&#13;
+						&lt;fieldMapping arFieldId="1702"/&gt;&#13;
+					&lt;/element&gt;&#13;
+					&lt;element name="Role_Name" dataType="string"&gt;&#13;
+						&lt;fieldMapping arFieldId="1701"/&gt;&#13;
+					&lt;/element&gt;&#13;
+					&lt;element name="Short_Description" dataType="string"&gt;&#13;
+						&lt;fieldMapping arFieldId="8"/&gt;&#13;
+					&lt;/element&gt;&#13;
+					&lt;element name="Status" dataType="string" enumValues="New,Assigned,Fixed,Rejected,Closed"&gt;&#13;
+						&lt;fieldMapping arFieldId="7"/&gt;&#13;
+					&lt;/element&gt;&#13;
+					&lt;element name="Status_History" dataType="string"&gt;&#13;
+						&lt;fieldMapping arFieldId="15"/&gt;&#13;
+					&lt;/element&gt;&#13;
+					&lt;element name="Submitter" dataType="string"&gt;&#13;
+						&lt;fieldMapping arFieldId="2"/&gt;&#13;
+					&lt;/element&gt;&#13;
+					&lt;element name="Test" dataType="string"&gt;&#13;
+						&lt;fieldMapping arFieldId="2001"/&gt;&#13;
+					&lt;/element&gt;&#13;
+				&lt;/element&gt;&#13;
+			&lt;/formMapping&gt;&#13;
+		&lt;/element&gt;&#13;
+	&lt;/arDocMapping&gt;&#13;
+</characterValue>
+                    </referenceValue>
+                </externalReference>
+            </reference>
+            <reference>
+                <externalReference>
+                    <label/>
+                    <description/>
+                    <referenceType>32799</referenceType>
+                    <accessList>
+                        <groupID>0</groupID>
+                    </accessList>
+                    <referenceValue>
+                        <characterValue>&lt;?xml version="1.0" encoding="windows-1252"?&gt;                             
+	&lt;arDocMapping name="GetOutputMap" arDocVersion="10" schemaSource="generated"&gt;&#13;
+		&lt;formMapping&gt;&#13;
+			&lt;form formName="Roles" foreignKeyId="1" primaryKeyId="1" distinguishingKeyId="1"/&gt;&#13;
+			&lt;element name="ROOT" nillable="true" targetNamespace="urn:Roles"&gt;&#13;
+				&lt;element name="Application_Name" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="1700"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Assigned_To" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="4"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Create_Date" dataType="dateTime"&gt;&#13;
+					&lt;fieldMapping arFieldId="3"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Last_Modified_By" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="5"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Modified_Date" dataType="dateTime"&gt;&#13;
+					&lt;fieldMapping arFieldId="6"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Production" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="2002"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Request_ID" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="1"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Role_ID" dataType="int"&gt;&#13;
+					&lt;fieldMapping arFieldId="1702"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Role_Name" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="1701"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Short_Description" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="8"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Status" dataType="string" enumValues="New,Assigned,Fixed,Rejected,Closed"&gt;&#13;
+					&lt;fieldMapping arFieldId="7"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Status_History" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="15"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Submitter" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="2"/&gt;&#13;
+				&lt;/element&gt;&#13;
+				&lt;element name="Test" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="2001"/&gt;&#13;
+				&lt;/element&gt;&#13;
+			&lt;/element&gt;&#13;
+		&lt;/formMapping&gt;&#13;
+	&lt;/arDocMapping&gt;&#13;
+</characterValue>
+                    </referenceValue>
+                </externalReference>
+            </reference>
+            <reference>
+                <externalReference>
+                    <label/>
+                    <description/>
+                    <referenceType>32799</referenceType>
+                    <accessList>
+                        <groupID>0</groupID>
+                    </accessList>
+                    <referenceValue>
+                        <characterValue>&lt;?xml version="1.0" encoding="windows-1252"?&gt;                             
+	&lt;arDocMapping name="CreateOutputMap" arDocVersion="10" schemaSource="generated"&gt;&#13;
+		&lt;formMapping&gt;&#13;
+			&lt;form formName="Roles" foreignKeyId="1" primaryKeyId="1" distinguishingKeyId="1"/&gt;&#13;
+			&lt;element name="ROOT" nillable="true" targetNamespace="urn:Roles"&gt;&#13;
+				&lt;element name="Request_ID" dataType="string"&gt;&#13;
+					&lt;fieldMapping arFieldId="1"/&gt;&#13;
+				&lt;/element&gt;&#13;
+			&lt;/element&gt;&#13;
+		&lt;/formMapping&gt;&#13;
+	&lt;/arDocMapping&gt;&#13;
+</characterValue>
+                    </referenceValue>
+                </externalReference>
+            </reference>
+            <reference>
+                <externalReference>
+                    <label/>
+                    <description/>
+                    <referenceType>32800</referenceType>
+                    <accessList>
+                        <groupID>0</groupID>
+                    </accessList>
+                    <referenceValue>
+                        <characterValue>&lt;?xml version="1.0" encoding="UTF-8"?&gt;&#13;
+&lt;wsdl:definitions targetNamespace="urn:Roles" xmlns:s0="urn:Roles" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;&#13;
+ &lt;wsdl:types&gt;&#13;
+  &lt;xsd:schema elementFormDefault="qualified" targetNamespace="urn:Roles"&gt;&#13;
+   &lt;xsd:element name="OpGet" type="s0:GetInputMap"/&gt;&#13;
+   &lt;xsd:complexType name="GetInputMap"&gt;&#13;
+    &lt;xsd:sequence&gt;&#13;
+     &lt;xsd:element name="Request_ID" type="xsd:string"/&gt;&#13;
+    &lt;/xsd:sequence&gt;&#13;
+   &lt;/xsd:complexType&gt;&#13;
+   &lt;xsd:element name="OpGetResponse" type="s0:GetOutputMap"/&gt;&#13;
+   &lt;xsd:complexType name="GetOutputMap"&gt;&#13;
+    &lt;xsd:sequence&gt;&#13;
+     &lt;xsd:element name="Application_Name" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Assigned_To" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Create_Date" type="xsd:dateTime"/&gt;&#13;
+     &lt;xsd:element name="Last_Modified_By" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Modified_Date" type="xsd:dateTime"/&gt;&#13;
+     &lt;xsd:element name="Production" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Request_ID" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Role_ID" type="xsd:int"/&gt;&#13;
+     &lt;xsd:element name="Role_Name" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Short_Description" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Status" type="s0:StatusType"/&gt;&#13;
+     &lt;xsd:element name="Status_History" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Submitter" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Test" type="xsd:string"/&gt;&#13;
+    &lt;/xsd:sequence&gt;&#13;
+   &lt;/xsd:complexType&gt;&#13;
+   &lt;xsd:simpleType name="StatusType"&gt;&#13;
+    &lt;xsd:restriction base="xsd:string"&gt;&#13;
+     &lt;xsd:enumeration value="New"/&gt;&#13;
+     &lt;xsd:enumeration value="Assigned"/&gt;&#13;
+     &lt;xsd:enumeration value="Fixed"/&gt;&#13;
+     &lt;xsd:enumeration value="Rejected"/&gt;&#13;
+     &lt;xsd:enumeration value="Closed"/&gt;&#13;
+    &lt;/xsd:restriction&gt;&#13;
+   &lt;/xsd:simpleType&gt;&#13;
+   &lt;xsd:element name="OpCreate" type="s0:CreateInputMap"/&gt;&#13;
+   &lt;xsd:complexType name="CreateInputMap"&gt;&#13;
+    &lt;xsd:sequence&gt;&#13;
+     &lt;xsd:element name="Application_Name" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Assigned_To" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Production" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Role_ID" type="xsd:int"/&gt;&#13;
+     &lt;xsd:element name="Role_Name" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Short_Description" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Status" type="s0:StatusType"/&gt;&#13;
+     &lt;xsd:element name="Submitter" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Test" type="xsd:string"/&gt;&#13;
+    &lt;/xsd:sequence&gt;&#13;
+   &lt;/xsd:complexType&gt;&#13;
+   &lt;xsd:element name="OpCreateResponse" type="s0:CreateOutputMap"/&gt;&#13;
+   &lt;xsd:complexType name="CreateOutputMap"&gt;&#13;
+    &lt;xsd:sequence&gt;&#13;
+     &lt;xsd:element name="Request_ID" type="xsd:string"/&gt;&#13;
+    &lt;/xsd:sequence&gt;&#13;
+   &lt;/xsd:complexType&gt;&#13;
+   &lt;xsd:element name="OpGetList" type="s0:GetListInputMap"/&gt;&#13;
+   &lt;xsd:complexType name="GetListInputMap"&gt;&#13;
+    &lt;xsd:sequence&gt;&#13;
+     &lt;xsd:element name="Qualification" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="startRecord" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="maxLimit" type="xsd:string"/&gt;&#13;
+    &lt;/xsd:sequence&gt;&#13;
+   &lt;/xsd:complexType&gt;&#13;
+   &lt;xsd:element name="OpGetListResponse" type="s0:GetListOutputMap"/&gt;&#13;
+   &lt;xsd:complexType name="GetListOutputMap"&gt;&#13;
+    &lt;xsd:sequence&gt;&#13;
+     &lt;xsd:element maxOccurs="unbounded" name="getListValues"&gt;&#13;
+      &lt;xsd:complexType&gt;&#13;
+       &lt;xsd:sequence&gt;&#13;
+        &lt;xsd:element name="Application_Name" type="xsd:string"/&gt;&#13;
+        &lt;xsd:element name="Assigned_To" type="xsd:string"/&gt;&#13;
+        &lt;xsd:element name="Create_Date" type="xsd:dateTime"/&gt;&#13;
+        &lt;xsd:element name="Last_Modified_By" type="xsd:string"/&gt;&#13;
+        &lt;xsd:element name="Modified_Date" type="xsd:dateTime"/&gt;&#13;
+        &lt;xsd:element name="Production" type="xsd:string"/&gt;&#13;
+        &lt;xsd:element name="Request_ID" type="xsd:string"/&gt;&#13;
+        &lt;xsd:element name="Role_ID" type="xsd:int"/&gt;&#13;
+        &lt;xsd:element name="Role_Name" type="xsd:string"/&gt;&#13;
+        &lt;xsd:element name="Short_Description" type="xsd:string"/&gt;&#13;
+        &lt;xsd:element name="Status" type="s0:StatusType"/&gt;&#13;
+        &lt;xsd:element name="Status_History" type="xsd:string"/&gt;&#13;
+        &lt;xsd:element name="Submitter" type="xsd:string"/&gt;&#13;
+        &lt;xsd:element name="Test" type="xsd:string"/&gt;&#13;
+       &lt;/xsd:sequence&gt;&#13;
+      &lt;/xsd:complexType&gt;&#13;
+     &lt;/xsd:element&gt;&#13;
+    &lt;/xsd:sequence&gt;&#13;
+   &lt;/xsd:complexType&gt;&#13;
+   &lt;xsd:element name="OpSet" type="s0:SetInputMap"/&gt;&#13;
+   &lt;xsd:complexType name="SetInputMap"&gt;&#13;
+    &lt;xsd:sequence&gt;&#13;
+     &lt;xsd:element name="Application_Name" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Assigned_To" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Production" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Role_ID" type="xsd:int"/&gt;&#13;
+     &lt;xsd:element name="Role_Name" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Short_Description" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Status" type="s0:StatusType"/&gt;&#13;
+     &lt;xsd:element name="Submitter" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Test" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="Request_ID" type="xsd:string"/&gt;&#13;
+    &lt;/xsd:sequence&gt;&#13;
+   &lt;/xsd:complexType&gt;&#13;
+   &lt;xsd:element name="OpSetResponse" type="s0:SetOutputMap"/&gt;&#13;
+   &lt;xsd:complexType name="SetOutputMap"&gt;&#13;
+    &lt;xsd:sequence/&gt;&#13;
+   &lt;/xsd:complexType&gt;&#13;
+   &lt;xsd:element name="AuthenticationInfo" type="s0:AuthenticationInfo"/&gt;&#13;
+   &lt;xsd:complexType name="AuthenticationInfo"&gt;&#13;
+    &lt;xsd:sequence&gt;&#13;
+     &lt;xsd:element name="userName" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element name="password" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element minOccurs="0" name="authentication" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element minOccurs="0" name="locale" type="xsd:string"/&gt;&#13;
+     &lt;xsd:element minOccurs="0" name="timeZone" type="xsd:string"/&gt;&#13;
+    &lt;/xsd:sequence&gt;&#13;
+   &lt;/xsd:complexType&gt;&#13;
+  &lt;/xsd:schema&gt;&#13;
+ &lt;/wsdl:types&gt;&#13;
+
+   &lt;wsdl:message name="OpSetSoapOut"&gt;&#13;
+
+      &lt;wsdl:part element="s0:OpSetResponse" name="parameters"/&gt;&#13;
+
+   &lt;/wsdl:message&gt;&#13;
+
+   &lt;wsdl:message name="OpGetSoapOut"&gt;&#13;
+
+      &lt;wsdl:part element="s0:OpGetResponse" name="parameters"/&gt;&#13;
+
+   &lt;/wsdl:message&gt;&#13;
+
+   &lt;wsdl:message name="OpCreateSoapIn"&gt;&#13;
+
+      &lt;wsdl:part element="s0:OpCreate" name="parameters"/&gt;&#13;
+
+   &lt;/wsdl:message&gt;&#13;
+
+   &lt;wsdl:message name="ARAuthenticate"&gt;&#13;
+
+      &lt;wsdl:part element="s0:AuthenticationInfo" name="parameters"/&gt;&#13;
+
+   &lt;/wsdl:message&gt;&#13;
+
+   &lt;wsdl:message name="OpCreateSoapOut"&gt;&#13;
+
+      &lt;wsdl:part element="s0:OpCreateResponse" name="parameters"/&gt;&#13;
+
+   &lt;/wsdl:message&gt;&#13;
+
+   &lt;wsdl:message name="OpSetSoapIn"&gt;&#13;
+
+      &lt;wsdl:part element="s0:OpSet" name="parameters"/&gt;&#13;
+
+   &lt;/wsdl:message&gt;&#13;
+
+   &lt;wsdl:message name="OpGetListSoapOut"&gt;&#13;
+
+      &lt;wsdl:part element="s0:OpGetListResponse" name="parameters"/&gt;&#13;
+
+   &lt;/wsdl:message&gt;&#13;
+
+   &lt;wsdl:message name="OpGetListSoapIn"&gt;&#13;
+
+      &lt;wsdl:part element="s0:OpGetList" name="parameters"/&gt;&#13;
+
+   &lt;/wsdl:message&gt;&#13;
+
+   &lt;wsdl:message name="OpGetSoapIn"&gt;&#13;
+
+      &lt;wsdl:part element="s0:OpGet" name="parameters"/&gt;&#13;
+
+   &lt;/wsdl:message&gt;&#13;
+
+   &lt;wsdl:portType name="PortPortType"&gt;&#13;
+
+      &lt;wsdl:operation name="OpGet"&gt;&#13;
+
+         &lt;wsdl:input message="s0:OpGetSoapIn"/&gt;&#13;
+
+         &lt;wsdl:output message="s0:OpGetSoapOut"/&gt;&#13;
+
+      &lt;/wsdl:operation&gt;&#13;
+
+      &lt;wsdl:operation name="OpCreate"&gt;&#13;
+
+         &lt;wsdl:input message="s0:OpCreateSoapIn"/&gt;&#13;
+
+         &lt;wsdl:output message="s0:OpCreateSoapOut"/&gt;&#13;
+
+      &lt;/wsdl:operation&gt;&#13;
+
+      &lt;wsdl:operation name="OpGetList"&gt;&#13;
+
+         &lt;wsdl:input message="s0:OpGetListSoapIn"/&gt;&#13;
+
+         &lt;wsdl:output message="s0:OpGetListSoapOut"/&gt;&#13;
+
+      &lt;/wsdl:operation&gt;&#13;
+
+      &lt;wsdl:operation name="OpSet"&gt;&#13;
+
+         &lt;wsdl:input message="s0:OpSetSoapIn"/&gt;&#13;
+
+         &lt;wsdl:output message="s0:OpSetSoapOut"/&gt;&#13;
+
+      &lt;/wsdl:operation&gt;&#13;
+
+   &lt;/wsdl:portType&gt;&#13;
+
+   &lt;wsdl:binding name="PortSoapBinding" type="s0:PortPortType"&gt;&#13;
+
+      &lt;soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/&gt;&#13;
+
+      &lt;wsdl:operation name="OpGet"&gt;&#13;
+
+         &lt;soap:operation soapAction="urn:Roles/OpGet" style="document"/&gt;&#13;
+
+         &lt;wsdl:input&gt;&#13;
+
+            &lt;soap:header message="s0:ARAuthenticate" part="parameters" use="literal"&gt;&#13;
+
+            &lt;/soap:header&gt;&#13;
+
+            &lt;soap:body use="literal"/&gt;&#13;
+
+         &lt;/wsdl:input&gt;&#13;
+
+         &lt;wsdl:output&gt;&#13;
+
+            &lt;soap:body use="literal"/&gt;&#13;
+
+         &lt;/wsdl:output&gt;&#13;
+
+      &lt;/wsdl:operation&gt;&#13;
+
+      &lt;wsdl:operation name="OpCreate"&gt;&#13;
+
+         &lt;soap:operation soapAction="urn:Roles/OpCreate" style="document"/&gt;&#13;
+
+         &lt;wsdl:input&gt;&#13;
+
+            &lt;soap:header message="s0:ARAuthenticate" part="parameters" use="literal"&gt;&#13;
+
+            &lt;/soap:header&gt;&#13;
+
+            &lt;soap:body use="literal"/&gt;&#13;
+
+         &lt;/wsdl:input&gt;&#13;
+
+         &lt;wsdl:output&gt;&#13;
+
+            &lt;soap:body use="literal"/&gt;&#13;
+
+         &lt;/wsdl:output&gt;&#13;
+
+      &lt;/wsdl:operation&gt;&#13;
+
+      &lt;wsdl:operation name="OpGetList"&gt;&#13;
+
+         &lt;soap:operation soapAction="urn:Roles/OpGetList" style="document"/&gt;&#13;
+
+         &lt;wsdl:input&gt;&#13;
+
+            &lt;soap:header message="s0:ARAuthenticate" part="parameters" use="literal"&gt;&#13;
+
+            &lt;/soap:header&gt;&#13;
+
+            &lt;soap:body use="literal"/&gt;&#13;
+
+         &lt;/wsdl:input&gt;&#13;
+
+         &lt;wsdl:output&gt;&#13;
+
+            &lt;soap:body use="literal"/&gt;&#13;
+
+         &lt;/wsdl:output&gt;&#13;
+
+      &lt;/wsdl:operation&gt;&#13;
+
+      &lt;wsdl:operation name="OpSet"&gt;&#13;
+
+         &lt;soap:operation soapAction="urn:Roles/OpSet" style="document"/&gt;&#13;
+
+         &lt;wsdl:input&gt;&#13;
+
+            &lt;soap:header message="s0:ARAuthenticate" part="parameters" use="literal"&gt;&#13;
+
+            &lt;/soap:header&gt;&#13;
+
+            &lt;soap:body use="literal"/&gt;&#13;
+
+         &lt;/wsdl:input&gt;&#13;
+
+         &lt;wsdl:output&gt;&#13;
+
+            &lt;soap:body use="literal"/&gt;&#13;
+
+         &lt;/wsdl:output&gt;&#13;
+
+      &lt;/wsdl:operation&gt;&#13;
+
+   &lt;/wsdl:binding&gt;&#13;
+
+   &lt;wsdl:service name="RolesService"&gt;&#13;
+
+      &lt;wsdl:port binding="s0:PortSoapBinding" name="PortSoap"&gt;&#13;
+
+         &lt;soap:address location="@LOCATION@"/&gt;&#13;
+
+      &lt;/wsdl:port&gt;&#13;
+
+   &lt;/wsdl:service&gt;&#13;
+
+&lt;/wsdl:definitions&gt;&#13;
+</characterValue>
+                    </referenceValue>
+                </externalReference>
+            </reference>
+            <reference>
+                <externalReference>
+                    <label/>
+                    <description/>
+                    <referenceType>32802</referenceType>
+                    <accessList>
+                        <groupID>0</groupID>
+                    </accessList>
+                    <referenceValue>
+                        <characterValue>http://&lt;midtier_server&gt;/arsys/WSDL/public/&lt;servername&gt;/Roles</characterValue>
+                    </referenceValue>
+                </externalReference>
+            </reference>
+        </referenceList>
+    </container>
