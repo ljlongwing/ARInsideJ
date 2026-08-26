@@ -90,6 +90,7 @@ final class DefFormBuilder {
             case NAME -> form.setName(raw);
             case OWNER -> form.setOwner(raw);
             case LAST_CHANGED -> form.setLastChangedBy(raw);
+            case TIMESTAMP -> arinside.ar.ObjectTimestamp.set(form, ParseUtil.longValue(raw));
             case DEFAULT_VUI -> form.setDefaultVUI(raw);
             case HELP -> form.setHelpText(raw);
             case OBJECT_PROP, SMOPROP_LIST -> {
@@ -172,6 +173,10 @@ final class DefFormBuilder {
             form.setHelpText(old.getHelpText());
             form.setDefaultVUI(old.getDefaultVUI());
             form.setProperties(old.getProperties());
+            // TIMESTAMP always arrives before SCHEMA_TYPE in real .def data (confirmed - see the
+            // real data cited in ObjectTimestamp's own javadoc), so `old` may already carry one that
+            // needs copying over to the freshly-swapped-in JoinForm/ViewForm/DisplayOnlyForm/VendorForm.
+            if (old.getLastUpdateTime() != null) arinside.ar.ObjectTimestamp.set(form, old.getLastUpdateTime().getValue());
         }
     }
 

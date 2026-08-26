@@ -21,13 +21,13 @@ import java.util.Set;
  * it (they extract known properties into typed sections instead, a different C++ mechanism -
  * GetAndUseValue+UnusedPropertiesToHTML - not this one, and not ported here).
  *
- * <p>Deliberately NOT ported: CAREnum::FieldPropertiesValue, a 111+-case nested switch giving
- * per-property enum/bitmask value labels (e.g. property X's value 0 means "Do Not Fire Workflow").
- * This always falls through to the raw numeric/string value instead - the exact same fallback path
- * the C++ itself takes whenever a specific property/value pair isn't in that table, just taken
- * unconditionally rather than attempting the lookup first. A real, bounded scope cut: less
- * information than the C++ for properties whose value happens to be an enum/bitmask, but never
- * wrong (the underlying value is always shown, just not decoded to its label).
+ * <p>{@code CAREnum::FieldPropertiesValue}, the per-property enum/bitmask value-label table, is now
+ * fully ported - see {@link arinside.ar.AREnumLabels#fieldPropertiesValue} for the table itself and
+ * {@link #decodedValue} for how it's wired in here. One property ({@code AR_DPROP_AUTO_FIELD_TYPE})
+ * is a deliberate, documented exception (a confirmed C-header-vs-Java-jar value mismatch, not a
+ * scope cut - see that method's own javadoc); everything else falls back to the raw numeric/string
+ * value only when the property/value pair genuinely isn't in the table, matching the C++'s own
+ * fallback exactly rather than skipping the lookup unconditionally the way this port previously did.
  *
  * <p>Active Link's C++ call site (DocAlDetails.cpp) doesn't actually call GetList at all (it's
  * commented out there) - it uses the OTHER, instance-based CARProplistHelper::GetAndUseValue/
@@ -100,13 +100,13 @@ final class ObjectPropertiesTable {
      * when the Java AR API does return a ULONG value for it - real or the API's own zero-default -
      * this now formats it exactly like the real tool would if it saw that same value).
      *
-     * <p>CAREnum::FieldPropertiesValue (111+ per-property enum/bitmask value tables) is still
-     * deliberately not fully ported (see class javadoc) - EXCEPT AR_SMOPROP_OVERLAY_PROPERTY
-     * (Original/Overlay/Custom), confirmed via live C++ output (a schema's "Overlay Property" row
-     * reads "Custom"), which is common enough on overlay-capable objects to be worth the small,
-     * targeted port. Everything else still falls through to the raw value - INTEGER/ENUM/ULONG show
-     * the plain number (matching C++'s own fallback for an unmatched property id) - EXCEPT
-     * AR_OPROP_OVERLAY_EXTEND_MASK/AR_OPROP_OVERLAY_INHERIT_MASK, hardcoded to always render
+     * <p>CAREnum::FieldPropertiesValue (111+ per-property enum/bitmask value tables) is now fully
+     * ported via {@link arinside.ar.AREnumLabels#fieldPropertiesValue} (see class javadoc) -
+     * AR_SMOPROP_OVERLAY_PROPERTY (Original/Overlay/Custom) stays its own separate, pre-existing
+     * check just above (confirmed via live C++ output - a schema's "Overlay Property" row reads
+     * "Custom"). A property/value pair genuinely not in either table still falls through to the raw
+     * value - INTEGER/ENUM/ULONG show the plain number (matching C++'s own fallback for an unmatched
+     * property id) - EXCEPT AR_OPROP_OVERLAY_EXTEND_MASK/AR_OPROP_OVERLAY_INHERIT_MASK, hardcoded to always render
      * "Unknown" (EnumDefault in the C++, `if (strValue.empty()) strValue = EnumDefault;`): these two
      * are AR_DATA_TYPE_BITMASK server-side with no per-value case in the real table either, so the
      * real tool always shows "Unknown" for them (confirmed via live C++ output across many menus,
@@ -150,7 +150,13 @@ final class ObjectPropertiesTable {
         return v == null ? "Unknown" : "Unknown (" + v + ")";
     }
 
-    /** Java port of the AR_SMOPROP_OVERLAY_PROPERTY case in core/AREnum.cpp's CAREnum::FieldPropertiesValue (CAREnum::GetOverlayType) - the only per-property value decode this table ports (see rawValueText's javadoc). */
+    /**
+     * Java port of the AR_SMOPROP_OVERLAY_PROPERTY case in core/AREnum.cpp's
+     * CAREnum::FieldPropertiesValue (CAREnum::GetOverlayType), kept as its own dedicated check
+     * (predates and is unrelated to {@link arinside.ar.AREnumLabels#fieldPropertiesValue}, which
+     * deliberately excludes this one property - see that method's own javadoc), plus every other
+     * property that table covers.
+     */
     private static String decodedValue(int propId, Object v) {
         if (propId == Constants.AR_SMOPROP_OVERLAY_PROPERTY && v instanceof Number n) {
             return switch (n.intValue()) {
@@ -159,6 +165,9 @@ final class ObjectPropertiesTable {
                 case Constants.AR_CUSTOM_OBJECT -> "Custom";
                 default -> null;
             };
+        }
+        if (v instanceof Number n) {
+            return arinside.ar.AREnumLabels.fieldPropertiesValue(propId, n.intValue());
         }
         return null;
     }

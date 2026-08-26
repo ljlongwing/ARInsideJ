@@ -34,6 +34,7 @@ public final class ContainerReferenceIndex {
     public record ContainerRef(String name, int containerType) {}
 
     private static final int[] CONTAINER_TYPES = {1, 3, 4, 5};
+    private static final int[] ALL_CONTAINER_TYPES = {1, 2, 3, 4, 5};
 
     private final Map<String, List<ContainerRef>> byActiveLink = new ConcurrentHashMap<>();
     private final Map<String, List<ContainerRef>> byFilter = new ConcurrentHashMap<>();
@@ -64,6 +65,16 @@ public final class ContainerReferenceIndex {
      * ContainerRef, which has no timestamp/changedBy) since the Workflow tab's JSON row needs those.
      */
     private final Map<String, List<Container>> bySchemaGuideOrWebservice = new ConcurrentHashMap<>();
+    /**
+     * Forward name -> containerType lookup across all 5 ARCON_* subtypes (including APP, unlike
+     * every other map here) - feeds DocPacklistDetails.cpp's ARREF_CONTAINER case
+     * (`CARContainer container(name); if (container.Exists()) srvType = CAREnum::ContainerType(...)`,
+     * confirmed at DocPacklistDetails.cpp:133-143), which resolves a packing list's nested-container
+     * member to its real subtype rather than the generic "Container" reference-type label. Populated
+     * directly from listContainerNames() per type - no per-container fetch needed, since only the
+     * type (already known from which list a name came from) is recorded, not any Container field.
+     */
+    private final Map<String, Integer> typeByName = new ConcurrentHashMap<>();
 
     /** Sequential fallback - used by file mode (no ReadPool available). */
     public static ContainerReferenceIndex build(ContainerSource containerRepo, int serverOverlayMode, boolean overlaySupportEnabled) throws ARException {
@@ -73,6 +84,12 @@ public final class ContainerReferenceIndex {
     public static ContainerReferenceIndex build(ContainerSource containerRepo, int serverOverlayMode, boolean overlaySupportEnabled,
                                                   ReadPool reads, Function<ArClient, ContainerSource> containerFactory) throws ARException {
         ContainerReferenceIndex idx = new ContainerReferenceIndex();
+
+        for (int type : ALL_CONTAINER_TYPES) {
+            for (String name : containerRepo.listContainerNames(type)) {
+                idx.typeByName.put(name, type);
+            }
+        }
 
         if (reads == null) {
             for (int type : CONTAINER_TYPES) {
@@ -152,4 +169,7 @@ public final class ContainerReferenceIndex {
 
     /** Every AL Guide/Filter Guide/Webservice whose own ContainerOwner list names this form - matches CARSchema::GetActLinkGuides()/GetFilterGuides()/GetWebservices(). */
     public List<Container> schemaGuidesAndWebservices(String name) { return bySchemaGuideOrWebservice.getOrDefault(name, List.of()); }
+
+    /** This container's own ARCON_* type, or null if no container by this name exists - see {@link #typeByName}'s javadoc. */
+    public Integer containerType(String name) { return typeByName.get(name); }
 }

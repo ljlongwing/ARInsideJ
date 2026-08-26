@@ -104,12 +104,33 @@ final class QualifierXmlBuilder {
             case "transactionValueFieldID" -> new ArithmeticOrRelationalOperand(OperandType.FIELDID_TRANSACTION.toInt(), c.intText());
             case "value" -> new ArithmeticOrRelationalOperand(ValueXmlBuilder.build(c));
             case "arithmeticOperation" -> new ArithmeticOrRelationalOperand(buildArithmeticOperationInfo(c));
+            case "statusHistoryValue" -> new ArithmeticOrRelationalOperand(buildStatusHistoryValueIndicator(c));
             default -> {
                 System.out.println("[WARN] xmlfile: unrecognized relational operand <" + tag + ">, defaulting to null value");
                 c.skipSubtree();
                 yield new ArithmeticOrRelationalOperand(new Value());
             }
         };
+    }
+
+    /**
+     * &lt;statusHistoryValue&gt;&lt;statusState&gt;9&lt;/statusState&gt;&lt;statusInfo&gt;time&lt;/statusInfo&gt;&lt;/statusHistoryValue&gt;
+     * - confirmed against a real relationalOperation operand in a 4.5GB export sample
+     * (full.xml:83677253-83677256, a "less" comparison against a status-transition time), not
+     * guessed from the tag name. statusState is the status enum value; statusInfo picks
+     * USER-vs-TIME (see {@link XmlEnums#statusHistoryIsUser}).
+     */
+    private static StatusHistoryValueIndicator buildStatusHistoryValueIndicator(XmlCursor c) throws XMLStreamException {
+        int enumValue = 0;
+        boolean isUser = false;
+        while (c.nextTag() == START_ELEMENT) {
+            switch (c.localName()) {
+                case "statusState" -> enumValue = c.intText();
+                case "statusInfo" -> isUser = XmlEnums.statusHistoryIsUser(c.elementText());
+                default -> c.skipSubtree();
+            }
+        }
+        return new StatusHistoryValueIndicator(isUser, enumValue);
     }
 
     private static ArithmeticOperationInfo buildArithmeticOperationInfo(XmlCursor c) throws XMLStreamException {

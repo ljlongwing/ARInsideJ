@@ -437,6 +437,18 @@ public final class AREnumLabels {
         return "[Type=" + code + "]";
     }
 
+    /** Java port of core/AREnum.cpp's CAREnum::ContainerType - the container's OWN subtype label (as opposed to {@link #referenceType}, which labels a reference/content-list entry's type). */
+    public static String containerType(int containerType) {
+        return switch (containerType) {
+            case Constants.ARCON_GUIDE -> "Active Link Guide";
+            case Constants.ARCON_APP -> "Application";
+            case Constants.ARCON_PACK -> "Packing List";
+            case Constants.ARCON_FILTER_GUIDE -> "Filter Guide";
+            case Constants.ARCON_WEBSERVICE -> "Webservice";
+            default -> "";
+        };
+    }
+
     /** Ported from core/AREnum.cpp CAREnum::GroupType. */
     public static String groupType(int type) {
         if (type == Constants.AR_GROUP_TYPE_VIEW) return "View";
@@ -496,6 +508,25 @@ public final class AREnumLabels {
         return "None";
     }
 
+    /**
+     * Best human-readable display string for a VUI - NOT a port of anything in DocVuiDetails.cpp
+     * (the real C++'s own VUI detail page title is just {@code vui.GetName()}, the raw internal
+     * name, which for every out-of-the-box/auto-generated VUI is itself just a number, e.g.
+     * "399990344" - genuinely not more useful than a bare ID there). A deliberate improvement over
+     * both the C++ and this port's own prior placeholder title ("VUI &lt;id&gt;"): prefers the
+     * AR_DPROP_LABEL display property - the text AR Developer Studio actually shows to a user (e.g.
+     * "Best Practice View") - since that's what a real person recognizes a VUI by, falling back to
+     * the raw {@code getName()} (same precedent already established and justified in
+     * SchemaDetailPage's defaultViewCell()), then to a bare numeric-ID label only if neither is set.
+     */
+    public static String vuiDisplayName(com.bmc.arsys.api.View view) {
+        String label = arinside.ar.PropertyHelper.stringProperty(view.getDisplayProperties(), Constants.AR_DPROP_LABEL);
+        if (!label.isEmpty()) return label;
+        String name = view.getName();
+        if (name != null && !name.isEmpty()) return name;
+        return "VUI " + view.getVUIId();
+    }
+
     /** Ported from core/AREnum.cpp CAREnum::UserGetLicType. */
     public static String licenseType(int type) {
         if (type == 0) return "Read";
@@ -513,5 +544,399 @@ public final class AREnumLabels {
         if (type == Constants.AR_NOTIFY_VIA_DEFAULT) return "Default";
         if (type == Constants.AR_NOTIFY_VIA_XREF) return "Cross-Reference Field";
         return UNKNOWN;
+    }
+
+    /**
+     * Java port of core/AREnum.cpp's {@code CAREnum::FieldPropertiesValue} (a ~680-line, 111+-case
+     * property-id -&gt; value -&gt; label lookup, `core/AREnum.cpp:606-1288`) - the field/VUI
+     * display-property enum-value decode table {@link arinside.doc.ObjectPropertiesTable} previously
+     * left almost entirely unported (only {@code AR_SMOPROP_OVERLAY_PROPERTY} was done, handled
+     * separately there - deliberately NOT duplicated here, see that class's own javadoc). Every
+     * {@code AR_DPROP_*}/{@code AR_DVAL_*} constant referenced was cross-checked against the real
+     * jar (`javap -constants com.bmc.arsys.api.Constants`) before use; 253 of 257
+     * distinct names matched by direct name lookup. Version-gated blocks in the C++ (`#if
+     * AR_CURRENT_API_VERSION &gt;= ...`) are all included unconditionally, matching this port's
+     * established practice elsewhere of not threading server-version context into doc/ pages (a
+     * pre-gate server simply never produces that enum value, which renders identically to the gate
+     * being absent).
+     *
+     * <p>Returns null (not {@link #UNKNOWN}) for a property id or value not in this table - matches
+     * the real C++'s own {@code return ""} miss-fallback, letting the caller apply its own "show the
+     * raw value instead" fallback rather than this method asserting an opinion about it.
+     *
+     * <p><b>One real, confirmed API-version divergence, not ported</b>: {@code
+     * AR_DPROP_AUTO_FIELD_TYPE}'s value set. The C header this C++ tool targets defines
+     * REGULAR=0/NAV=1/ACTION=2/GROUPTITLE=3/PAGETITLE=4/APPTITLE=5 (`thirdparty/arapi/include/ar.h:1953-1958`
+     * in the C++ repo), but the modern Java client jar's same-prefixed constants
+     * ({@code AR_DVAL_AUTO_FIELD_TITLE=0/GROUP=1/REGULAR=2/NAV=3/BUTTON=4}) are a different,
+     * non-corresponding value set - not simply a rename (the numbers don't line up either), and
+     * genuinely ambiguous which one a real modern server actually sends for this property. Guessing
+     * either mapping risks showing a confidently wrong label (worse than the existing raw-value
+     * fallback), so this property is left out of the table entirely rather than guessed.
+     */
+    public static String fieldPropertiesValue(int propId, int val) {
+        switch (propId) {
+            case Constants.AR_DPROP_NAVBAR_WORKFLOW_ON_SELECTED_ITEM:
+                if (val == Constants.AR_DVAL_NAVBAR_SELITEM_NOFIRE) return "Do Not Fire Workflow";
+                if (val == Constants.AR_DVAL_NAVBAR_SELITEM_FIRE) return "Fire Workflow";
+                return null;
+            case Constants.AR_DPROP_TABLE_COL_WRAP_TEXT:
+                if (val == Constants.AR_DVAL_TABLE_COL_WRAP_TEXT_DISABLE) return "Disable";
+                if (val == Constants.AR_DVAL_TABLE_COL_WRAP_TEXT_ENABLE) return "Enable";
+                return null;
+            case Constants.AR_DPROP_VIEWFIELD_BORDERS:
+                if (val == Constants.AR_DVAL_VIEWFIELD_BORDERS_DEFAULT) return "Default";
+                if (val == Constants.AR_DVAL_VIEWFIELD_BORDERS_NONE) return "None";
+                if (val == Constants.AR_DVAL_VIEWFIELD_BORDERS_ENABLE) return "Enable";
+                return null;
+            case Constants.AR_DPROP_VIEWFIELD_SCROLLBARS:
+                if (val == Constants.AR_DVAL_VIEWFIELD_SCROLLBARS_AUTO) return "Auto";
+                if (val == Constants.AR_DVAL_VIEWFIELD_SCROLLBARS_ON) return "On";
+                if (val == Constants.AR_DVAL_VIEWFIELD_SCROLLBARS_HIDDEN) return "Hidden";
+                return null;
+            case Constants.AR_DPROP_FIXED_TABLE_HEADERS:
+                if (val == Constants.AR_DVAL_FIXED_TABLE_HEADERS_DISABLE) return "Disabled";
+                if (val == Constants.AR_DVAL_FIXED_TABLE_HEADERS_ENABLE) return "Enabled";
+                return null;
+            case Constants.AR_DPROP_TABLE_COL_DISPLAY_TYPE:
+                if (val == Constants.AR_DVAL_TABLE_COL_DISPLAY_NONEDITABLE) return "Not editable";
+                if (val == Constants.AR_DVAL_TABLE_COL_DISPLAY_EDITABLE) return "Editable";
+                if (val == Constants.AR_DVAL_TABLE_COL_DISPLAY_HTML) return "Read Only HTML";
+                if (val == Constants.AR_DVAL_TABLE_COL_DISPLAY_PAGE_DATA) return "Page Data";
+                if (val == Constants.AR_DVAL_TABLE_COL_DISPLAY_DROPDOWN_MENU) return "Drop-Down Menu";
+                return null;
+            case Constants.AR_DPROP_TABLE_SELROWS_DISABLE:
+                if (val == Constants.AR_DVAL_TABLE_SELROWS_MULTI_SELECT) return "Multiple Selection";
+                if (val == Constants.AR_DVAL_TABLE_SELROWS_DISABLE_YES) return "Disable Selection";
+                if (val == Constants.AR_DVAL_TABLE_SELROWS_SINGLE_SELECT) return "Single Select";
+                return null;
+            // Real, confirmed C++ quirk kept exactly as-is (not "fixed"): these two case labels are
+            // OTHER properties' own ids (AR_DPROP_TABLE_AUTOREFRESH=5010/AR_DPROP_TABLE_DRILL_COL=5011),
+            // not real AR_DVAL_* values of AR_DPROP_TABLE_ENTRIES_RETURNED - almost certainly
+            // unreachable dead code in the original tool (a numeric "how many entries" property
+            // value would never coincidentally equal another property's own id), but this is a
+            // faithful port, not a redesign.
+            case Constants.AR_DPROP_TABLE_ENTRIES_RETURNED:
+                if (val == Constants.AR_DPROP_TABLE_AUTOREFRESH) return "Auto Refresh";
+                if (val == Constants.AR_DPROP_TABLE_DRILL_COL) return "Drill Down";
+                return null;
+            case Constants.AR_DPROP_TABLE_SELREFRESH:
+                if (val == Constants.AR_DVAL_TABLE_SELREFRESH_RETFIRE) return " Retain Select, Fire Workflow";
+                if (val == Constants.AR_DVAL_TABLE_SELREFRESH_RETNOFIRE) return "Retain Select, No Workflow";
+                if (val == Constants.AR_DVAL_TABLE_SELREFRESH_FIRSTFIRE) return "Select 1st, Fire Workflow";
+                if (val == Constants.AR_DVAL_TABLE_SELREFRESH_FIRSTNOFIRE) return "Select 1st, No Workflow";
+                if (val == Constants.AR_DVAL_TABLE_SELREFRESH_NOSEL) return "No Selection, No Workflow";
+                return null;
+            case Constants.AR_DPROP_TABLE_SELINIT:
+                if (val == Constants.AR_DVAL_TABLE_SELINIT_SELFIRE) return "Select 1st, Fire Workflow";
+                if (val == Constants.AR_DVAL_TABLE_SELINIT_SELNOFIRE) return "Select 1st, No Workflow";
+                if (val == Constants.AR_DVAL_TABLE_SELINIT_NOSEL) return "No Select, No Workflow";
+                return null;
+            case Constants.AR_DPROP_TABLE_DISPLAY_TYPE:
+                if (val == Constants.AR_DVAL_TABLE_DISPLAY_TABLE) return "Table";
+                if (val == Constants.AR_DVAL_TABLE_DISPLAY_RESULTS_LIST) return "Results List";
+                if (val == Constants.AR_DVAL_TABLE_DISPLAY_NOTIFICATION) return "Alert List";
+                if (val == Constants.AR_DVAL_TABLE_DISPLAY_SINGLE_TABLE_TREE) return "Single Table Tree";
+                if (val == Constants.AR_DVAL_TABLE_DISPLAY_MULTI_TABLE_TREE) return "Multi Table Tree";
+                if (val == Constants.AR_DVAL_TABLE_DISPLAY_PAGE_ARRAY) return "Table Page Array Field";
+                return null;
+            case Constants.AR_DPROP_EXPAND_COLLAPSE_TREE_LEVELS:
+                if (val == Constants.AR_DVAL_EXPAND_ALL_LEVELS) return "Expand All";
+                if (val == Constants.AR_DVAL_COLLAPSE_ALL_LEVELS) return "Collapse All";
+                return null;
+            case Constants.AR_DPROP_AUTO_FIELD_NEW_SECTION:
+                if (val == Constants.AR_DVAL_AUTO_FIELD_NEW_SECTION_OFF) return "Off";
+                if (val == Constants.AR_DVAL_AUTO_FIELD_NEW_SECTION_ON) return "On";
+                return null;
+            case Constants.AR_DPROP_AUTO_FIELD_NEW_COLUMN:
+                if (val == Constants.AR_DVAL_AUTO_FIELD_NEW_COLUMN_OFF) return "Off";
+                if (val == Constants.AR_DVAL_AUTO_FIELD_NEW_COLUMN_ON) return "On";
+                return null;
+            case Constants.AR_DPROP_FORMACTION_FLDS_EXCLUDE:
+                if (val == Constants.AR_DVAL_FORMACTION_FLDS_EXCLUDE_OFF) return "Off";
+                if (val == Constants.AR_DVAL_FORMACTION_FLDS_EXCLUDE_ON) return "On";
+                return null;
+            case Constants.AR_DPROP_AUTO_FIELD_ALIGN:
+                if (val == Constants.AR_DVAL_AUTO_FIELD_ALIGN_LEFT) return "Left";
+                if (val == Constants.AR_DVAL_AUTO_FIELD_ALIGN_RIGHT) return "Right";
+                return null;
+            case Constants.AR_DPROP_AUTO_FIELD_SPACER:
+                if (val == Constants.AR_DVAL_AUTO_FIELD_SPACER_OFF) return "Off";
+                if (val == Constants.AR_DVAL_AUTO_FIELD_SPACER_ON) return "On";
+                return null;
+            case Constants.AR_DPROP_AUTO_FIELD_NAVPROP:
+                if (val == Constants.AR_DVAL_AUTO_FIELD_LEVEL1) return "Level1";
+                if (val == Constants.AR_DVAL_AUTO_FIELD_LEVEL2) return "Level2";
+                if (val == Constants.AR_DVAL_AUTO_FIELD_LEVEL3) return "Level3";
+                return null;
+            case Constants.AR_DPROP_AUTO_LAYOUT_VUI_NAV:
+                if (val == Constants.AR_DVAL_AUTO_LAYOUT_VUI_NAV_OFF) return "Off";
+                if (val == Constants.AR_DVAL_AUTO_LAYOUT_VUI_NAV_ON) return "On";
+                return null;
+            case Constants.AR_DPROP_AUTO_LAYOUT:
+                if (val == Constants.AR_DVAL_AUTO_LAYOUT_OFF) return "Off";
+                if (val == Constants.AR_DVAL_AUTO_LAYOUT_ON) return "On";
+                return null;
+            // AR_DPROP_AUTO_FIELD_TYPE deliberately omitted - see method javadoc.
+            case Constants.AR_DPROP_AUTOFIT_COLUMNS:
+                if (val == Constants.AR_DVAL_AUTOFIT_COLUMNS_NONE) return "None";
+                if (val == Constants.AR_DVAL_AUTOFIT_COLUMNS_SET) return "Set";
+                return null;
+            case Constants.AR_DPROP_REFRESH:
+                if (val == Constants.AR_DVAL_REFRESH_NONE) return "None";
+                if (val == Constants.AR_DVAL_REFRESH_TABLE_MAX) return "Refresh";
+                return null;
+            case Constants.AR_DPROP_DRILL_DOWN:
+                if (val == Constants.AR_DVAL_DRILL_DOWN_NONE) return "None";
+                if (val == Constants.AR_DVAL_DRILL_DOWN_ENABLE) return "Enable";
+                return null;
+            case Constants.AR_DPROP_SORT_DIR:
+                if (val == Constants.AR_DVAL_SORT_DIR_ASCENDING) return "Ascending";
+                if (val == Constants.AR_DVAL_SORT_DIR_DESCENDING) return "Descending";
+                return null;
+            case Constants.AR_DPROP_PANE_VISIBILITY_OPTION:
+                if (val == Constants.AR_DVAL_PANE_VISIBILITY_USER_CHOICE) return "User Choice";
+                if (val == Constants.AR_DVAL_PANE_VISIBILITY_ADMIN) return "Administrator defined";
+                return null;
+            case Constants.AR_DPROP_PAGE_ARRANGEMENT:
+                if (val == Constants.AR_DVAL_PAGE_SCROLL) return "Scroll";
+                if (val == Constants.AR_DVAL_PAGE_LAYER) return "Layer";
+                return null;
+            case Constants.AR_DPROP_PAGE_LABEL_DISPLAY:
+                if (val == Constants.AR_DVAL_PAGE_DISPLAY_TOP) return "Top";
+                if (val == Constants.AR_DVAL_PAGE_DISPLAY_BOTTOM) return "Bottom";
+                if (val == Constants.AR_DVAL_PAGE_DISPLAY_LEFT) return "Left";
+                if (val == Constants.AR_DVAL_PAGE_DISPLAY_RIGHT) return "Right";
+                if (val == Constants.AR_DVAL_PAGE_DISPLAY_NONE) return "None";
+                return null;
+            case Constants.AR_DPROP_DETAIL_PANE_VISIBILITY:
+                if (val == Constants.AR_DVAL_PANE_ALWAYS_HIDDEN) return "Always Hidden";
+                if (val == Constants.AR_DVAL_PANE_HIDDEN) return "Hidden";
+                if (val == Constants.AR_DVAL_PANE_VISIBLE) return "Visible";
+                if (val == Constants.AR_DVAL_PANE_ALWAYS_VISIBLE) return "Always Visible";
+                return null;
+            case Constants.AR_DPROP_BACKGROUND_MODE:
+                if (val == Constants.AR_DVAL_BKG_MODE_OPAQUE) return "Default";
+                if (val == Constants.AR_DVAL_BKG_MODE_TRANSPARENT) return "Transparent";
+                return null;
+            case Constants.AR_DPROP_DATETIME_POPUP:
+                if (val == Constants.AR_DVAL_DATETIME_BOTH) return "Time and Date";
+                if (val == Constants.AR_DVAL_DATETIME_TIME) return "Time Only";
+                if (val == Constants.AR_DVAL_DATETIME_DATE) return "Date Only";
+                return null;
+            case Constants.AR_DPROP_MENU_MODE:
+                if (val == Constants.AR_DVAL_CNTL_ITEM) return "Item";
+                if (val == Constants.AR_DVAL_CNTL_ON) return "On";
+                if (val == Constants.AR_DVAL_CNTL_SEPARATOR) return "Separator";
+                if (val == Constants.AR_DVAL_CNTL_CHOICE) return "Choice";
+                if (val == Constants.AR_DVAL_CNTL_DIALOG) return "Dialog";
+                if (val == Constants.AR_DVAL_CNTL_A_MENU) return "Menu";
+                return null;
+            case Constants.AR_DPROP_BUTTON_IMAGE_POSITION:
+                if (val == Constants.AR_DVAL_IMAGE_CENTER) return "Center";
+                if (val == Constants.AR_DVAL_IMAGE_LEFT) return "Left";
+                if (val == Constants.AR_DVAL_IMAGE_RIGHT) return "Right";
+                if (val == Constants.AR_DVAL_IMAGE_ABOVE) return "Above";
+                if (val == Constants.AR_DVAL_IMAGE_BELOW) return "Below";
+                return null;
+            case Constants.AR_DPROP_LABEL_POS_SECTOR:
+                return labelPosSector(val);
+            case Constants.AR_DPROP_CHARFIELD_DISPLAY_TYPE:
+                if (val == Constants.AR_DVAL_CHARFIELD_EDIT) return "Edit";
+                if (val == Constants.AR_DVAL_CHARFIELD_DROPDOWN) return "Dropdown";
+                if (val == Constants.AR_DVAL_CHARFIELD_MASKED) return "Masked";
+                if (val == Constants.AR_DVAL_CHARFIELD_FILE) return "File";
+                return null;
+            case Constants.AR_DPROP_DATA_RADIO:
+                if (val == Constants.AR_DVAL_RADIO_DROPDOWN) return "Dropdown";
+                if (val == Constants.AR_DVAL_RADIO_RADIO) return "Radio";
+                if (val == Constants.AR_DVAL_RADIO_CHECKBOX) return "Checkbox";
+                return null;
+            case Constants.AR_DPROP_ENDCAP_END:
+                if (val == Constants.AR_DVAL_ENDCAP_ROUND) return "Rounded";
+                if (val == Constants.AR_DVAL_ENDCAP_FLUSH) return "Flush";
+                if (val == Constants.AR_DVAL_ENDCAP_EXTENDED) return "Extended";
+                if (val == Constants.AR_DVAL_ENDCAP_ARROW1) return "Arrow1";
+                return null;
+            case Constants.AR_DPROP_JOINT_STYLE:
+                if (val == Constants.AR_DVAL_JOINT_EXTENDED) return "Extended";
+                if (val == Constants.AR_DVAL_JOINT_SHARP) return "Sharp";
+                if (val == Constants.AR_DVAL_JOINT_ROUNDED) return "Rounded";
+                if (val == Constants.AR_DVAL_JOINT_SMOOTH) return "Smooth";
+                if (val == Constants.AR_DVAL_JOINT_MAX_SMOOTH) return "Max. Smooth";
+                return null;
+            case Constants.AR_DPROP_ALIGN:
+            case Constants.AR_DPROP_LABEL_POS_ALIGN:
+            case Constants.AR_DPROP_LABEL_ALIGN:
+                if (val == Constants.AR_DVAL_ALIGN_DEFAULT) return "Default";
+                if (val == Constants.AR_DVAL_ALIGN_TOP) return "Top";
+                if (val == Constants.AR_DVAL_ALIGN_MIDDLE) return "Middle";
+                if (val == Constants.AR_DVAL_ALIGN_FILL) return "Fill";
+                if (val == Constants.AR_DVAL_ALIGN_BOTTOM) return "Bottom";
+                if (val == Constants.AR_DVAL_ALIGN_TILE) return "Tile";
+                return null;
+            case Constants.AR_DPROP_JUSTIFY:
+            case Constants.AR_DPROP_LABEL_POS_JUSTIFY:
+            case Constants.AR_DPROP_LABEL_JUSTIFY:
+                if (val == Constants.AR_DVAL_JUSTIFY_DEFAULT) return "Default";
+                if (val == Constants.AR_DVAL_JUSTIFY_LEFT) return "Left";
+                if (val == Constants.AR_DVAL_JUSTIFY_CENTER) return "Center";
+                if (val == Constants.AR_DVAL_JUSTIFY_FILL) return "Fill";
+                if (val == Constants.AR_DVAL_JUSTIFY_RIGHT) return "Right";
+                if (val == Constants.AR_DVAL_JUSTIFY_TILE) return "Tile";
+                return null;
+            case Constants.AR_DPROP_DEPTH_EFFECT:
+                if (val == Constants.AR_DVAL_DEPTH_EFFECT_FLAT) return "Flat";
+                if (val == Constants.AR_DVAL_DEPTH_EFFECT_RAISED) return "Raised";
+                if (val == Constants.AR_DVAL_DEPTH_EFFECT_SUNKEN) return "Sunken";
+                if (val == Constants.AR_DVAL_DEPTH_EFFECT_FLOATING) return "Floating";
+                if (val == Constants.AR_DVAL_DEPTH_EFFECT_ETCHED) return "Etched";
+                return null;
+            case Constants.AR_DPROP_ENABLE:
+                if (val == Constants.AR_DVAL_ENABLE_DEFAULT) return "Default";
+                if (val == Constants.AR_DVAL_ENABLE_READ_ONLY) return "Read Only";
+                if (val == Constants.AR_DVAL_ENABLE_READ_WRITE) return "Read/Write";
+                if (val == Constants.AR_DVAL_ENABLE_DISABLE) return "Disabled";
+                return null;
+            case Constants.AR_DPROP_TRIM_TYPE:
+                return trimType(val);
+            case Constants.AR_DPROP_MANAGE_EXPAND_BOX:
+                if (val == Constants.AR_DVAL_EXPAND_BOX_DEFAULT) return "Default";
+                if (val == Constants.AR_DVAL_EXPAND_BOX_HIDE) return "Hide";
+                if (val == Constants.AR_DVAL_EXPAND_BOX_SHOW) return "Show";
+                return null;
+            case Constants.AR_DPROP_CNTL_TYPE:
+                return controlType(val);
+            case Constants.AR_DPROP_LAYOUT_POLICY:
+                if (val == Constants.AR_DVAL_LAYOUT_XY) return "XY";
+                if (val == Constants.AR_DVAL_LAYOUT_FILL) return "Fill";
+                return null;
+            case Constants.AR_DPROP_PAGEHOLDER_DISPLAY_TYPE:
+                if (val == Constants.AR_DVAL_PAGEHOLDER_DISPLAY_TYPE_TABCTRL) return "TabControl";
+                if (val == Constants.AR_DVAL_PAGEHOLDER_DISPLAY_TYPE_STACKEDVIEW) return "StackedView";
+                if (val == Constants.AR_DVAL_PAGEHOLDER_DISPLAY_TYPE_SPLITTERVIEW) return "SplitterView";
+                if (val == Constants.AR_DVAL_PAGEHOLDER_DISPLAY_TYPE_ACCORDION) return "Accordion";
+                return null;
+            case Constants.AR_DPROP_ORIENTATION:
+                if (val == Constants.AR_DVAL_ORIENTATION_HORIZONTAL) return "Horizontal";
+                if (val == Constants.AR_DVAL_ORIENTATION_VERTICAL) return "Vertical";
+                if (val == Constants.AR_DVAL_ORIENTATION_VERTICAL_UP) return "Vertical Reverse";
+                return null;
+            case Constants.AR_DPROP_PAGE_HEADER_STATE:
+                if (val == Constants.AR_DVAL_PAGE_HEADER_HIDDEN) return "Hidden";
+                if (val == Constants.AR_DVAL_PAGE_HEADER_VISIBLE) return "Visible";
+                return null;
+            case Constants.AR_DPROP_PAGE_BODY_STATE:
+                if (val == Constants.AR_DVAL_PAGE_BODY_COLLAPSE) return "Collapse";
+                if (val == Constants.AR_DVAL_PAGE_BODY_EXPAND) return "Expand";
+                return null;
+            case Constants.AR_DPROP_PANELHOLDER_SPLITTER:
+                if (val == Constants.AR_DVAL_SPLITTER_SHOW) return "Show";
+                if (val == Constants.AR_DVAL_SPLITTER_HIDE) return "Hide";
+                if (val == Constants.AR_DVAL_SPLITTER_INVISIBLE) return "Invisible";
+                return null;
+            case Constants.AR_DPROP_ALIGNED:
+                if (val == Constants.AR_DVAL_ALIGNED_LEFT) return "Left";
+                if (val == Constants.AR_DVAL_ALIGNED_RIGHT) return "Right";
+                return null;
+            case Constants.AR_DPROP_LOCALIZE_VIEW:
+                if (val == Constants.AR_DVAL_LOCALIZE_VIEW_SKIP) return "Skip";
+                if (val == Constants.AR_DVAL_LOCALIZE_VIEW_ALL) return "All";
+                return null;
+            case Constants.AR_DPROP_LOCALIZE_FIELD:
+                if (val == Constants.AR_DVAL_LOCALIZE_FIELD_SKIP) return "Skip";
+                if (val == Constants.AR_DVAL_LOCALIZE_FIELD_ALL) return "All";
+                return null;
+            case Constants.AR_DPROP_AUTO_RESIZE:
+                if (val == Constants.AR_DVAL_RESIZE_NONE) return "None";
+                if (val == Constants.AR_DVAL_RESIZE_VERT) return "Vertical";
+                if (val == Constants.AR_DVAL_RESIZE_HORZ) return "Horizontal";
+                if (val == Constants.AR_DVAL_RESIZE_BOTH) return "Both";
+                return null;
+            case Constants.AR_DPROP_NAVIGATION_MODE:
+                if (val == Constants.AR_DVAL_NAV_EXPANDABLE) return "Expandable";
+                if (val == Constants.AR_DVAL_NAV_FLYOUT) return "Flyout";
+                return null;
+            case Constants.AR_DPROP_APPLIST_MODE:
+                if (val == Constants.AR_DVAL_APP_TRADITIONAL) return "Tranditional"; // sic - matches the real C++'s own typo verbatim
+                if (val == Constants.AR_DVAL_APP_FLYOUT) return "Flyout";
+                return null;
+            case Constants.AR_DPROP_FIELD_PROCESS_ENTRY_MODE:
+                if (val == Constants.AR_DVAL_FIELD_PROCESS_NOT_REQUIRED) return "Not Required";
+                if (val == Constants.AR_DVAL_FIELD_PROCESS_REQUIRED) return "Required";
+                return null;
+            case Constants.AR_DPROP_FIELD_FLOAT_STYLE:
+                if (val == Constants.AR_DVAL_FLOAT_STYLE_NONE) return "None";
+                if (val == Constants.AR_DVAL_FLOAT_STYLE_MODELESS) return "Modeless";
+                if (val == Constants.AR_DVAL_FLOAT_STYLE_DIALOG) return "Dialog";
+                if (val == Constants.AR_DVAL_FLOAT_STYLE_TOOLTIP) return "Tooltip";
+                return null;
+            case Constants.AR_DPROP_FIELD_FLOAT_EFFECT:
+                if (val == Constants.AR_DVAL_FLOAT_EFFECT_NONE) return "None";
+                if (val == Constants.AR_DVAL_FLOAT_EFFECT_APPEAR_DISAPPEAR) return "Appear/Disappear";
+                if (val == Constants.AR_DVAL_FLOAT_EFFECT_GROW_SHRINK) return "Grow/Shrink";
+                if (val == Constants.AR_DVAL_FLOAT_EFFECT_FADEIN_FADEOUT) return "Fadein/Fadeout";
+                return null;
+            case Constants.AR_DPROP_SORT_AGGREGATION_TYPE:
+                if (val == Constants.AR_DVAL_SORT_AGGREGATION_NONE) return "None";
+                if (val == Constants.AR_DVAL_SORT_AGGREGATION_COUNT) return "Count";
+                return null;
+            // AR_SMOPROP_OVERLAY_PROPERTY deliberately excluded - already handled by
+            // arinside.doc.ObjectPropertiesTable's own dedicated check, kept there rather than
+            // duplicated here.
+            case Constants.AR_DPROP_TABLE_COLUMN_HEADER_ALIGNMENT:
+                if (val == Constants.AR_DVAL_TABLE_COLUMN_ALIGNMENT_RIGHT) return "Right";
+                if (val == Constants.AR_DVAL_TABLE_COLUMN_ALIGNMENT_CENTER) return "Center";
+                if (val == Constants.AR_DVAL_TABLE_COLUMN_ALIGNMENT_LEFT) return "Left";
+                return null;
+            case Constants.AR_DPROP_MOUSEOVER_EFFECT:
+                if (val == Constants.AR_DVAL_MOUSEOVER_EFFECT_NONE) return "None";
+                if (val == Constants.AR_DVAL_MOUSEOVER_EFFECT_CURSOR) return "Cursor";
+                if (val == Constants.AR_DVAL_MOUSEOVER_EFFECT_HIGHLIGHT) return "Highlight";
+                return null;
+            case Constants.AR_DPROP_COLUMN_INITIAL_STATE:
+                if (val == Constants.AR_DVAL_COLUMN_INITIAL_STATE_REMOVED) return "Removed";
+                if (val == Constants.AR_DVAL_COLUMN_INITIAL_STATE_SHOWN) return "Shown";
+                return null;
+            default:
+                return null;
+        }
+    }
+
+    /** Ported from core/AREnum.cpp CAREnum::TrimType. */
+    private static String trimType(int val) {
+        if (val == Constants.AR_DVAL_TRIM_NONE) return UNKNOWN;
+        if (val == Constants.AR_DVAL_TRIM_LINE) return "Line";
+        if (val == Constants.AR_DVAL_TRIM_SHAPE) return "Shape";
+        if (val == Constants.AR_DVAL_TRIM_TEXT) return "Multi-Row text";
+        if (val == Constants.AR_DVAL_TRIM_IMAGE) return "Image";
+        return "";
+    }
+
+    /**
+     * Ported from core/AREnum.cpp CAREnum::ControlType - a real, odd "last matching bit wins"
+     * quirk (the C++ overwrites its result string on every matching bit rather than concatenating
+     * them, so a multi-bit mask silently shows only the highest-bit label), kept exactly as-is
+     * rather than "fixed" to a joined list.
+     */
+    private static String controlType(int bMaskIn) {
+        int[] bitmask = {1, 1 << 1, 1 << 2, 1 << 3, 1 << 4, 1 << 5, 1 << 6, 1 << 7, 1 << 8, 1 << 9};
+        String[] executeText = {"Button", "Menu", "Toolbar", "Tab Switch", "Url", "Chart", "Meter", "Horiz-Nav", "Vert-Nav", "Nav-Item"};
+        String result = "Control";
+        for (int k = 0; k < bitmask.length; k++) {
+            if ((bMaskIn & bitmask[k]) != 0) result = executeText[k];
+        }
+        return result;
+    }
+
+    /** Ported from the AR_DPROP_LABEL_POS_SECTOR case inline in core/AREnum.cpp's FieldPropertiesValue - unlike controlType(), this one DOES concatenate every matching bit's label (no separator between them, matching the C++'s bare stringstream appends exactly). */
+    private static String labelPosSector(int val) {
+        int[] bitmask = {1, 1 << 1, 1 << 2, 1 << 3, 1 << 4, 1 << 5};
+        String[] sectText = {"None", "Center", "North", "East", "South", "West"};
+        StringBuilder sb = new StringBuilder();
+        for (int k = 0; k < bitmask.length; k++) {
+            if ((val & bitmask[k]) != 0) sb.append(sectText[k]);
+        }
+        return sb.toString();
     }
 }

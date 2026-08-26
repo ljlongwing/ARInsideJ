@@ -42,7 +42,8 @@ public final class PermissionIndex {
     /** Java port of DocAnalyzer.cpp's IndexAnalyzer finding: an indexed character field with an inefficient QBE match mode or an overlong index key. */
     public record IndexFinding(String schemaName, String fieldName, String indexName, String message) {}
     public record FieldRef(String formName, String fieldName, int fieldId, int overlayType, Timestamp lastUpdateTime, String lastChangedBy) {}
-    public record ViewRef(String formName, int vuiId, int overlayType, Timestamp lastUpdateTime, String lastChangedBy) {}
+    /** displayName is the resolved {@link arinside.ar.AREnumLabels#vuiDisplayName} string, captured at scan time while the real View object (with its DisplayProperties) is still in hand - see this class's build() for why. */
+    public record ViewRef(String formName, int vuiId, String displayName, int overlayType, Timestamp lastUpdateTime, String lastChangedBy) {}
     /** Java port of DocCustomWorkflow.cpp's per-form overlay/custom row - see overlayOrCustomForms's javadoc. */
     public record FormRef(String name, int overlayType, Timestamp lastUpdateTime, String lastChangedBy) {}
 
@@ -208,7 +209,7 @@ public final class PermissionIndex {
         for (View view : views) {
             int viewOverlayType = OverlaySupport.overlayType(view.getObjectProperties());
             if (viewOverlayType == Constants.AR_OVERLAY_OBJECT || viewOverlayType == Constants.AR_CUSTOM_OBJECT) {
-                overlayOrCustomViews.add(new ViewRef(formName, view.getVUIId(), viewOverlayType, view.getLastUpdateTime(), view.getLastChangedBy()));
+                overlayOrCustomViews.add(new ViewRef(formName, view.getVUIId(), arinside.ar.AREnumLabels.vuiDisplayName(view), viewOverlayType, view.getLastUpdateTime(), view.getLastChangedBy()));
             }
         }
 

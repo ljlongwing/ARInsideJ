@@ -24,9 +24,12 @@ import java.util.List;
  * bounded scope, not an oversight. (The C++'s JoinFormReferences/FieldMapping - join/view-schema
  * field mapping - actually lives on CDocFieldDetails, not this page's C++ counterpart
  * DocVUIDetails.cpp; it's ported on {@link FieldDetailPage}, see its fieldMapping()/
- * joinFormReferences() methods, not here.) The Java API identifies VUIs by a numeric VUIId only (getListView returns
- * List&lt;Integer&gt;, not names) - there's no display-name field available the way there is for
- * every other object type, so the page title/heading is "VUI &lt;id&gt;".
+ * joinFormReferences() methods, not here.) The page title/heading uses
+ * {@link arinside.ar.AREnumLabels#vuiDisplayName} - corrected 2026-08-26 after this javadoc's own
+ * former "no display-name field available" claim turned out to be stale/wrong: {@code View} extends
+ * {@code ObjectBase}, which does carry a real {@code getName()}, and the AR_DPROP_LABEL display
+ * property (already used elsewhere, e.g. SchemaDetailPage's Views-tab table) is available too - see
+ * that helper's own javadoc for why Label wins over Name.
  *
  * <p>Also feeds {@link ImageReferenceIndex} (ImageDetailPage's "Workflow Reference" section) as a
  * side effect - matches DocVUIDetails.cpp's SpecialPropertyCallback, which resolves
@@ -43,7 +46,7 @@ public final class VuiDetailPage {
     }
 
     public void render(String schemaName, boolean schemaOverlaid, View vui, List<Field> fieldsOnThisVui) {
-        String title = "VUI " + vui.getVUIId();
+        String title = AREnumLabels.vuiDisplayName(vui);
         PagePath page = Naming.schemaVuiDetail(schemaName, schemaOverlaid, vui.getVUIId());
         WebPage webPage = new WebPage(page.fileName(), title, page.rootLevel(), appConfig);
 

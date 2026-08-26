@@ -483,7 +483,7 @@ public final class Main {
                 System.out.println("Documenting forms...");
                 int formCount = new SchemaOverviewPage(schemas, appConfig, serverOverlayMode, schemaTypes).render();
                 System.out.println(formCount + " forms listed.");
-                SchemaDetailPage schemaPage = new SchemaDetailPage(schemas, appConfig, workflowIndex, serverOverlayMode, fieldRefs, globalFields, joinFields, schemaTypes, imageRefs, knownUserNames, schemaRefs, containerRefs, appIndex, roleIndex, earlyGroupsById, schemaDbInfo);
+                SchemaDetailPage schemaPage = new SchemaDetailPage(schemas, appConfig, workflowIndex, serverOverlayMode, fieldRefs, missingFieldRefs, globalFields, joinFields, schemaTypes, imageRefs, knownUserNames, schemaRefs, containerRefs, appIndex, roleIndex, earlyGroupsById, schemaDbInfo);
                 List<String> formNames = scoped(schemas.listFormNames(), scopeFilter != null ? scopeFilter::formInScope : null,
                     writes, name -> ScopeStubPage.render(appConfig, "Form", name, Naming.schemaDetail(name, false)));
                 if (reads != null) {
@@ -498,7 +498,7 @@ public final class Main {
                 // repository is required here too - SchemaBulkCache has the identical problem for
                 // listFormNames()/getForm().
                 SchemaRepository schemasLive = new SchemaRepository(client, blackList);
-                SchemaDetailPage schemaLivePage = new SchemaDetailPage(schemasLive, appConfig, workflowIndex, serverOverlayMode, fieldRefs, globalFields, joinFields, schemaTypes, imageRefs, knownUserNames, schemaRefs, containerRefs, appIndex, roleIndex, earlyGroupsById, schemaDbInfo);
+                SchemaDetailPage schemaLivePage = new SchemaDetailPage(schemasLive, appConfig, workflowIndex, serverOverlayMode, fieldRefs, missingFieldRefs, globalFields, joinFields, schemaTypes, imageRefs, knownUserNames, schemaRefs, containerRefs, appIndex, roleIndex, earlyGroupsById, schemaDbInfo);
                 documentOverlayBaseLayers(client, "form", schemasLive::listFormNames, schemaLivePage::render);
 
                 System.out.println("Indexing group/role permission cross-references (scan/ pass)...");

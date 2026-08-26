@@ -43,6 +43,7 @@ final class DefFilterBuilder {
             case NAME -> filter.setName(raw);
             case OWNER -> filter.setOwner(raw);
             case LAST_CHANGED -> filter.setLastChangedBy(raw);
+            case TIMESTAMP -> arinside.ar.ObjectTimestamp.set(filter, ParseUtil.longValue(raw));
             case HELP -> filter.setHelpText(raw);
             case OBJECT_PROP, SMOPROP_LIST -> {
                 ObjectPropertyMap existing = filter.getProperties();
@@ -60,7 +61,7 @@ final class DefFilterBuilder {
             }
             case ERRORHANDLER_OPTIONS -> filter.setErrorFilterOptions(ParseUtil.intValue(raw));
             case ERRORHANDLER_NAME -> filter.setErrorHandlingFilter(raw);
-            default -> { /* CHANGE_DIARY/TIMESTAMP - no client setter, matches Form's identical documented gap */ }
+            default -> { /* CHANGE_DIARY - no client setter, matches Form's identical documented gap; TIMESTAMP now set via arinside.ar.ObjectTimestamp above */ }
         }
     }
 

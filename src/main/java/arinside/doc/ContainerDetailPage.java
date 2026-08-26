@@ -32,15 +32,18 @@ import java.util.Set;
  * Java port of the shared parts of doc/DocContainerHelper.cpp (BaseInfo/PermissionList/
  * SubadminList/ContainerForms/GuideContent) plus doc/DocApplicationDetails.cpp /
  * DocPacklistDetails.cpp / DocWebserviceDetails.cpp / DocAlGuideDetails.cpp /
- * DocFilterGuideDetails.cpp's shared base, collapsed into one General-info-plus-raw-member-list
- * page. Renders every Reference (name + raw ReferenceType) in one flat "Members" table instead of
- * the C++'s per-subtype grouped rendering (e.g. Application groups by owning schema, shows entry
- * points, help/about-box config) - that grouping remains a deliberate, documented scope cut. The
- * General tab's Permissions/Subadministrator Permissions/Owner Object List/Guide Content sections
- * (previously entirely missing - only Label+Description were shown) are now ported in full; none
- * of them needed a new fetch pass, since Container.getAssignedGroup()/getAdminGroupList()/
- * getContainerOwner()/getReferences() are all already-loaded fields on the object this page
- * already fetches.
+ * DocFilterGuideDetails.cpp's shared base, collapsed into one General-info-plus-content page. Every
+ * one of the 5 ARCON_* subtypes now has its own type-specific "what's in this container" section
+ * matching the real C++'s per-subtype rendering: Application ({@link #applicationContent}, grouped
+ * counts by member type), Webservice ({@link #webserviceContent}), Packing List
+ * ({@link #packListInformation}, nested containers resolved to their real subtype), and AL/Filter
+ * Guide ({@link #guideContent}, inside the General tab). A generic flat, unlinked "Members" tab
+ * used to stand in for all of this (a real, since-closed scope gap, not a C++ behavior this port
+ * ever needed to replicate - the C++ has no single generic content view at all). The General tab's
+ * Permissions/Subadministrator Permissions/Owner Object List/Guide Content sections (previously
+ * entirely missing - only Label+Description were shown) are ported in full; none of them needed a
+ * new fetch pass, since Container.getAssignedGroup()/getAdminGroupList()/getContainerOwner()/
+ * getReferences() are all already-loaded fields on the object this page already fetches.
  */
 public final class ContainerDetailPage {
     private final ContainerSource repo;
@@ -115,15 +118,20 @@ public final class ContainerDetailPage {
 
         TabControl tabs = new TabControl();
         tabs.addTab("General", generalInfo(c, appRefName, page.rootLevel()));
-        tabs.addTab("Members", members(name, c, page.rootLevel()));
         webPage.addContent(tabs.toXHtml());
         // The C++ has no tabbed container page to port a tab-init script from - see container_page.js's own comment.
         webPage.addScriptReference("img/container_page.js");
+        // Every one of the 5 ARCON_* subtypes has its own type-specific "what's in this container"
+        // section below (matching the real C++, which has no single generic content Java's old flat
+        // "Members" tab stood in for) - see this file's class javadoc for that history.
         if (containerType == Constants.ARCON_APP) {
             webPage.addContent(applicationContent(name, c, page.rootLevel()));
         }
         if (containerType == Constants.ARCON_WEBSERVICE) {
             webPage.addContent(webserviceContent(c, page.rootLevel()));
+        }
+        if (containerType == Constants.ARCON_PACK) {
+            webPage.addContent(packListInformation(name, c, page.rootLevel()));
         }
         if (containerType == Constants.ARCON_GUIDE) {
             webPage.addContent(guideCallers("Active Links calling this guide", "Active Link", guideCalls.alCallers(name), page.rootLevel(),
@@ -501,28 +509,66 @@ public final class ContainerDetailPage {
         return Integer.toString(groupId);
     }
 
-    private String members(String containerName, Container c, int rootLevel) {
-        Table tbl = new Table("containerMembers", "TblObjectList");
-        tbl.addColumn(30, "Type");
-        tbl.addColumn(50, "Name");
-        tbl.addColumn(20, "Label");
+    /**
+     * Java port of DocPacklistDetails.cpp's PackListInformation() (lines 89-192) - ARCON_PACK only.
+     * Unlike the generic flat listing this replaced, a nested ARREF_CONTAINER member resolves to its
+     * real subtype (e.g. "Filter Guide") via {@link ContainerReferenceIndex#containerType}, matching
+     * the C++'s `CARContainer container(name); if (container.Exists()) srvType = ContainerType(...)`
+     * - falling back to the generic "Container" label when the nested container no longer resolves,
+     * same as the C++'s own existence check. Every other case (Schema/Filter/Escalation/ActiveLink/
+     * Menu/Image) links to that object's own detail page, matching the C++ switch exactly; any
+     * reference type not in that switch is skipped entirely (produces an empty srvType there too).
+     */
+    private String packListInformation(String containerName, Container c, int rootLevel) {
+        Table tbl = new Table("specificPropList", "TblObjectList");
+        tbl.description = "Objects in Packing List";
+        tbl.addColumn(20, "Type");
+        tbl.addColumn(80, "Server Object");
 
         int count = 0;
         if (c.getReferences() != null) {
             for (Reference ref : c.getReferences()) {
-                TableRow row = new TableRow();
-                row.addCell(AREnumLabels.referenceType(ref.getReferenceType()));
-                row.addCell(ref.getName() == null ? "" : ref.getName());
-                row.addCell(ref.getLabel() == null ? "" : ref.getLabel());
-                tbl.addRow(row);
-                count++;
-
-                // Java port of DocPacklistDetails.cpp's ARREF_IMAGE case - feeds ImageDetailPage's
-                // "Workflow Reference" section, same side-effect pattern as workflowIndex above.
-                if (ref.getReferenceType() != null && ref.getReferenceType().toInt() == ReferenceType.IMAGE.toInt() && ref.getName() != null) {
-                    imageRefs.add(ref.getName(), new ImageReferenceIndex.Ref(containerName, overviewTitle, icon,
+                ReferenceType type = ref.getReferenceType();
+                String name = ref.getName();
+                if (type == null || name == null || name.isEmpty()) continue;
+                int t = type.toInt();
+                String srvType;
+                String srvObj;
+                if (t == ReferenceType.SCHEMA.toInt()) {
+                    srvType = "Schema";
+                    boolean isOverlaid = globalFields != null && globalFields.isOverlaid(name);
+                    srvObj = URLLink.to(name, Naming.schemaDetail(name, isOverlaid), ImageTag.Id.Schema, rootLevel).toHtml();
+                } else if (t == ReferenceType.FILTER.toInt()) {
+                    srvType = "Filter";
+                    srvObj = URLLink.to(name, Naming.filterDetail(name, false), ImageTag.Id.Filter, rootLevel).toHtml();
+                } else if (t == ReferenceType.ESCALATION.toInt()) {
+                    srvType = "Escalation";
+                    srvObj = URLLink.to(name, Naming.escalationDetail(name, false), ImageTag.Id.Escalation, rootLevel).toHtml();
+                } else if (t == ReferenceType.ACTIVELINK.toInt()) {
+                    srvType = "Active Link";
+                    srvObj = URLLink.to(name, Naming.activeLinkDetail(name, false), ImageTag.Id.ActiveLink, rootLevel).toHtml();
+                } else if (t == ReferenceType.CONTAINER.toInt()) {
+                    Integer nestedType = containerRefs.containerType(name);
+                    srvType = nestedType != null ? AREnumLabels.containerType(nestedType) : "Container";
+                    srvObj = nestedType != null
+                        ? URLLink.to(name, Naming.containerDetail(nestedType, name, false), GroupDetailPage.containerIcon(nestedType), rootLevel).toHtml()
+                        : WebUtil.validate(name);
+                } else if (t == ReferenceType.CHAR_MENU.toInt()) {
+                    srvType = "Menu";
+                    srvObj = URLLink.to(name, Naming.menuDetail(name, false), ImageTag.Id.Menu, rootLevel).toHtml();
+                } else if (t == ReferenceType.IMAGE.toInt()) {
+                    srvType = "Image";
+                    srvObj = URLLink.to(name, Naming.imageDetail(name), ImageTag.Id.Image, rootLevel).toHtml();
+                    // Java port of DocPacklistDetails.cpp's ARREF_IMAGE case's image.AddReference() -
+                    // feeds ImageDetailPage's "Workflow Reference" section, same side-effect pattern
+                    // as workflowIndex above.
+                    imageRefs.add(name, new ImageReferenceIndex.Ref(containerName, overviewTitle, icon,
                         Naming.containerDetail(containerType, containerName, OverlaySupport.isOverlaidForNaming(c.getProperties(), serverOverlayMode)), "Member"));
+                } else {
+                    continue;
                 }
+                tbl.addRow(new TableRow().addCellList(srvType, srvObj));
+                count++;
             }
         }
         if (count > 0) tbl.removeEmptyMessageRow();

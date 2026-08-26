@@ -19,7 +19,7 @@ final class MenuXmlBuilder {
     /** c positioned at the &lt;menu&gt; START_ELEMENT; leaves c at its END_ELEMENT. */
     static Menu build(XmlCursor c) throws XMLStreamException {
         String xsiType = c.xsiType();
-        String name = null, owner = null, lastModifiedBy = null, helpText = null;
+        String name = null, owner = null, lastModifiedBy = null, helpText = null, modifiedDate = null;
         ObjectPropertyMap props = null;
         int refreshCode = 0;
         MenuBody body = new MenuBody();
@@ -29,6 +29,7 @@ final class MenuXmlBuilder {
                 case "menuName" -> name = c.elementText();
                 case "owner" -> owner = c.elementText();
                 case "lastModifiedBy" -> lastModifiedBy = c.elementText();
+                case "modifiedDate" -> modifiedDate = c.elementText();
                 case "helpText" -> helpText = c.elementText();
                 case "objectProperties" -> props = PropertyMapXmlBuilder.build(c, new ObjectPropertyMap());
                 case "menuRefresh" -> refreshCode = readRefreshCode(c);
@@ -94,6 +95,7 @@ final class MenuXmlBuilder {
         if (name != null) menu.setName(name);
         if (owner != null) menu.setOwner(owner);
         if (lastModifiedBy != null) menu.setLastChangedBy(lastModifiedBy);
+        arinside.ar.ObjectTimestamp.set(menu, XmlTimestamp.parse(modifiedDate));
         if (helpText != null) menu.setHelpText(helpText);
         if (props != null) menu.setProperties(props);
         menu.setRefreshCode(refreshCode);

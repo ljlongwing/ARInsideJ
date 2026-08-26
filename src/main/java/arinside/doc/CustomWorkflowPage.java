@@ -80,7 +80,7 @@ public final class CustomWorkflowPage {
         vuiTbl.addColumn(15, "By");
         for (var v : permIndex.overlayOrCustomViews()) {
             vuiTbl.addRow(new TableRow().addCellList(WebUtil.validate(v.formName()),
-                URLLink.to("VUI " + v.vuiId(), Naming.schemaVuiDetail(v.formName(), globalFields.isOverlaid(v.formName()), v.vuiId()), ImageTag.Id.Document, page.rootLevel()).toHtml(),
+                URLLink.to(v.displayName(), Naming.schemaVuiDetail(v.formName(), globalFields.isOverlaid(v.formName()), v.vuiId()), ImageTag.Id.Document, page.rootLevel()).toHtml(),
                 OverlaySupport.overlayTypeLabel(v.overlayType()), changed(v.lastUpdateTime()), userLink(v.lastChangedBy(), page.rootLevel())));
         }
         webPage.addContent(vuiTbl.toXHtml());

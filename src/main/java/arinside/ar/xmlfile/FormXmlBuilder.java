@@ -21,9 +21,10 @@ import static javax.xml.stream.XMLStreamConstants.START_ELEMENT;
  * subtype only decided once the whole &lt;form&gt; element has been read, since &lt;compoundForm&gt;
  * isn't guaranteed to appear before every other child tag in the source.
  *
- * <p>Neither {@code Timestamp} field (owner/lastChangedBy's paired last-update-time) has a public
- * setter anywhere in the AR Java API's object model, so "last modified" timestamps are simply not
- * reconstructible from the export in this port - not a scope cut, a hard API limitation.
+ * <p>{@code <modifiedDate>}'s last-update-time is set via {@link arinside.ar.ObjectTimestamp} - see
+ * that class's javadoc for why reflection is needed (the field has no public setter anywhere in the
+ * AR Java API's object model - this was previously left unreconstructed here for that reason,
+ * before that helper existed).
  */
 final class FormXmlBuilder {
     private FormXmlBuilder() {}
@@ -32,7 +33,7 @@ final class FormXmlBuilder {
 
     /** c positioned at the &lt;form&gt; START_ELEMENT; leaves c at its END_ELEMENT. */
     static FormResult build(XmlCursor c) throws XMLStreamException {
-        String name = null, owner = null, lastModifiedBy = null, helpText = null, defaultVui = null;
+        String name = null, owner = null, lastModifiedBy = null, helpText = null, defaultVui = null, modifiedDate = null;
         ObjectPropertyMap properties = null;
         List<EntryListFieldInfo> entryListFields = null;
         List<IndexInfo> indexInfo = null;
@@ -45,6 +46,7 @@ final class FormXmlBuilder {
                 case "formName" -> name = c.elementText();
                 case "owner" -> owner = c.elementText();
                 case "lastModifiedBy" -> lastModifiedBy = c.elementText();
+                case "modifiedDate" -> modifiedDate = c.elementText();
                 case "helpText" -> helpText = c.elementText();
                 case "objectProperties" -> properties = PropertyMapXmlBuilder.build(c, new ObjectPropertyMap());
                 case "resultListFields" -> entryListFields = buildEntryListFields(c);
@@ -68,6 +70,7 @@ final class FormXmlBuilder {
         if (indexInfo != null) form.setIndexInfo(indexInfo);
         if (permissions != null) form.setPermissions(permissions);
         if (defaultVui != null) form.setDefaultVUI(defaultVui);
+        arinside.ar.ObjectTimestamp.set(form, XmlTimestamp.parse(modifiedDate));
         return new FormResult(form, fields, views);
     }
 

@@ -19,7 +19,7 @@ final class ContainerXmlBuilder {
 
     /** c positioned at the &lt;container&gt; START_ELEMENT; leaves c at its END_ELEMENT. */
     static Container build(XmlCursor c) throws XMLStreamException {
-        String name = null, owner = null, lastModifiedBy = null, label = null, description = null;
+        String name = null, owner = null, lastModifiedBy = null, label = null, description = null, modifiedDate = null;
         ObjectPropertyMap props = null;
         List<PermissionInfo> permissions = null;
         List<ContainerOwner> owners = new ArrayList<>();
@@ -31,6 +31,7 @@ final class ContainerXmlBuilder {
                 case "containerName" -> name = c.elementText();
                 case "owner" -> owner = c.elementText();
                 case "lastModifiedBy" -> lastModifiedBy = c.elementText();
+                case "modifiedDate" -> modifiedDate = c.elementText();
                 case "label" -> label = c.elementText();
                 case "description" -> description = c.elementText();
                 case "objectProperties" -> props = PropertyMapXmlBuilder.build(c, new ObjectPropertyMap());
@@ -56,6 +57,7 @@ final class ContainerXmlBuilder {
         if (name != null) container.setName(name);
         if (owner != null) container.setOwner(owner);
         if (lastModifiedBy != null) container.setLastChangedBy(lastModifiedBy);
+        arinside.ar.ObjectTimestamp.set(container, XmlTimestamp.parse(modifiedDate));
         if (label != null) container.setLabel(label);
         if (description != null) container.setDescription(description);
         if (props != null) container.setProperties(props);

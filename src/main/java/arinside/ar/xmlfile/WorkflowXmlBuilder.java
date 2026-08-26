@@ -23,6 +23,7 @@ final class WorkflowXmlBuilder {
                 case "activeLinkName" -> name = c.elementText();
                 case "owner" -> al.setOwner(c.elementText());
                 case "lastModifiedBy" -> al.setLastChangedBy(c.elementText());
+                case "modifiedDate" -> arinside.ar.ObjectTimestamp.set(al, XmlTimestamp.parse(c.elementText()));
                 case "helpText" -> al.setHelpText(c.elementText());
                 case "objectProperties" -> al.setProperties(PropertyMapXmlBuilder.build(c, new ObjectPropertyMap()));
                 case "executionOrder" -> al.setOrder(c.intText());
@@ -59,6 +60,7 @@ final class WorkflowXmlBuilder {
                 case "filterName" -> name = c.elementText();
                 case "owner" -> f.setOwner(c.elementText());
                 case "lastModifiedBy" -> f.setLastChangedBy(c.elementText());
+                case "modifiedDate" -> arinside.ar.ObjectTimestamp.set(f, XmlTimestamp.parse(c.elementText()));
                 case "helpText" -> f.setHelpText(c.elementText());
                 case "objectProperties" -> f.setProperties(PropertyMapXmlBuilder.build(c, new ObjectPropertyMap()));
                 case "executionOrder" -> f.setOrder(c.intText());
@@ -91,6 +93,7 @@ final class WorkflowXmlBuilder {
                 case "escalationName" -> name = c.elementText();
                 case "owner" -> e.setOwner(c.elementText());
                 case "lastModifiedBy" -> e.setLastChangedBy(c.elementText());
+                case "modifiedDate" -> arinside.ar.ObjectTimestamp.set(e, XmlTimestamp.parse(c.elementText()));
                 case "helpText" -> e.setHelpText(c.elementText());
                 case "objectProperties" -> e.setProperties(PropertyMapXmlBuilder.build(c, new ObjectPropertyMap()));
                 case "escalationTime" -> e.setEscalationTm(buildEscalationTime(c));

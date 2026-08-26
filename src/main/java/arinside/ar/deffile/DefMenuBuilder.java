@@ -39,6 +39,7 @@ final class DefMenuBuilder {
 
     private String name, owner, lastChangedBy, helpText;
     private ObjectPropertyMap properties;
+    private long timestamp;
 
     Menu build() {
         if (menu == null) return null;
@@ -48,6 +49,7 @@ final class DefMenuBuilder {
         menu.setLastChangedBy(lastChangedBy);
         menu.setHelpText(helpText);
         if (properties != null) menu.setProperties(properties);
+        arinside.ar.ObjectTimestamp.set(menu, timestamp);
         return menu;
     }
 
@@ -56,13 +58,14 @@ final class DefMenuBuilder {
             case NAME -> name = raw;
             case OWNER -> owner = raw;
             case LAST_CHANGED -> lastChangedBy = raw;
+            case TIMESTAMP -> timestamp = ParseUtil.longValue(raw);
             case HELP -> helpText = raw;
             case OBJECT_PROP, SMOPROP_LIST -> {
                 properties = DefPropertyDecoder.decode(raw, charset, properties != null ? properties : new ObjectPropertyMap());
             }
             case REFRESH_CODE -> { if (menu != null) menu.setRefreshCode(ParseUtil.intValue(raw)); }
             case CHAR_MENU -> decodeCharMenu(raw, charset);
-            default -> { /* CHANGE_DIARY/TIMESTAMP/GUID/BUNDLE_VERSION - no client setter or not rendered, matches Form's identical documented gaps */ }
+            default -> { /* CHANGE_DIARY/GUID/BUNDLE_VERSION - no client setter or not rendered, matches Form's identical documented gaps */ }
         }
     }
 

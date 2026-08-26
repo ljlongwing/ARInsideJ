@@ -127,6 +127,13 @@ public final class ActionSummaryTable {
         if (action instanceof PushFieldsAction a) return pushFieldsOf(a, primaryForm, qr, currentServerName);
         if (action instanceof MessageAction a) return messageActionOf(a.getMessageNum(), a.getMessageType(), a.getMessageText(), true, a.isUsePromptingPane(), primaryForm, qr);
         if (action instanceof FilterMessageAction a) return messageActionOf(a.getMessageNum(), a.getMessageType(), a.getMessageText(), false, false, primaryForm, qr);
+        // DSOAction MUST be checked before RunProcessAction - com.bmc.arsys.api.DSOAction extends
+        // RunProcessAction (confirmed via javap), so the broader check below would otherwise always
+        // shadow dsoOf() for every real DSO action, rendering the raw "Distributed-Transfer -m ..."
+        // command-line text instead of the friendlier "Transfer/Return/Delete to Server:Form" - a
+        // real, pre-existing dispatch-order bug found while wiring up .def mode's own DSO decoding,
+        // not something introduced by that fix (this dispatch is shared by every input mode).
+        if (action instanceof DSOAction a) return dsoOf(a);
         if (action instanceof RunProcessAction a) return "<code>" + TextFieldSubstitution.substitute(a.getCommandLine(), primaryForm, qr, qualDetail("Field in Run Process", qr)) + "</code>";
         if (action instanceof NotifyAction a) return notifyOf(a, primaryForm, qr);
         // Java port of DocFilterActionStruct.cpp's FilterActionLog - was missing the "File Name: "
@@ -154,7 +161,6 @@ public final class ActionSummaryTable {
         // ("Continue button:" vs the real "Label for Continue Button:").
         if (action instanceof WaitAction a) return "Label for Continue Button: " + (hasText(a.getContinueButtonTitle()) ? WebUtil.validate(a.getContinueButtonTitle()) : "(null)");
         if (action instanceof ServiceAction a) return serviceOf(a, primaryForm, qr, currentServerName);
-        if (action instanceof DSOAction a) return dsoOf(a);
         return "";
     }
 

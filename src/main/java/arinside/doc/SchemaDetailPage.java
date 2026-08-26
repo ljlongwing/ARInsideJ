@@ -56,6 +56,7 @@ public final class SchemaDetailPage {
     private final WorkflowReferenceIndex workflowIndex;
     private final int serverOverlayMode;
     private final FieldReferenceIndex fieldRefs;
+    private final arinside.scan.MissingFieldReferenceIndex missingFieldRefs;
     private final GlobalFieldIndex globalFields;
     private final JoinFieldIndex joinFields;
     private final SchemaTypeIndex schemaTypes;
@@ -69,7 +70,7 @@ public final class SchemaDetailPage {
     private final arinside.scan.SchemaDbInfoIndex schemaDbInfo;
 
     public SchemaDetailPage(SchemaSource repo, AppConfig appConfig, WorkflowReferenceIndex workflowIndex, int serverOverlayMode,
-                             FieldReferenceIndex fieldRefs, GlobalFieldIndex globalFields, JoinFieldIndex joinFields, SchemaTypeIndex schemaTypes,
+                             FieldReferenceIndex fieldRefs, arinside.scan.MissingFieldReferenceIndex missingFieldRefs, GlobalFieldIndex globalFields, JoinFieldIndex joinFields, SchemaTypeIndex schemaTypes,
                              ImageReferenceIndex imageRefs, Set<String> knownUserNames, arinside.scan.SchemaReferenceIndex schemaRefs,
                              arinside.scan.ContainerReferenceIndex containerRefs, arinside.scan.AppMembershipIndex appIndex,
                              arinside.scan.RoleIndex roleIndex, Map<Integer, arinside.ar.GroupRecord> groupsById,
@@ -79,6 +80,7 @@ public final class SchemaDetailPage {
         this.workflowIndex = workflowIndex;
         this.serverOverlayMode = serverOverlayMode;
         this.fieldRefs = fieldRefs;
+        this.missingFieldRefs = missingFieldRefs;
         this.globalFields = globalFields;
         this.joinFields = joinFields;
         this.schemaTypes = schemaTypes;
@@ -233,12 +235,11 @@ public final class SchemaDetailPage {
 
     /**
      * Java port of DocSchemaDetails.cpp's GenerateReferencesTable() - the "References" tab. All
-     * four of WorkflowReferences()'s sub-tables are real (see SchemaReferenceIndex's javadoc for
+     * sub-tables are real, including AlWindowOpenReferences() (the AL "Open Window Action" row,
+     * REFM_OPENWINDOW_FORM, see openWindowRefsCell()) - see SchemaReferenceIndex's javadoc for
      * the history of "writing"/"deleting"/"executing services" having been wrongly believed dead -
      * a scan/-only grep missed that doc/ also populates schema.AddReference() as AL/Filter/
-     * Escalation pages render). Only AlWindowOpenReferences() (the AL "Open Window Action" row,
-     * REFM_OPENWINDOW_FORM) remains unported - a separate code path/hook point, deferred as a
-     * smaller follow-up.
+     * Escalation pages render.
      */
     private String referencesInfo(String formName, int rootLevel) {
         StringBuilder sb = new StringBuilder();
@@ -518,12 +519,12 @@ public final class SchemaDetailPage {
         // this content into a real jQuery UI accordion widget.
         ArchiveInfo archive = form.getArchiveInfo();
         if (archive != null && form.getFormType() != Constants.AR_SCHEMA_DIALOG) {
-            sb.append(archiveInfo(formName, archive, fieldNames, rootLevel));
+            sb.append(archiveInfo(formName, isOverlaid, archive, fieldNames, rootLevel));
         }
 
         AuditInfo audit = form.getAuditInfo();
         if (audit != null && form.getFormType() != Constants.AR_SCHEMA_DIALOG) {
-            sb.append(auditInfo(formName, audit, rootLevel));
+            sb.append(auditInfo(formName, isOverlaid, audit, rootLevel));
         }
 
         List<IndexInfo> indexes = form.getIndexInfo();
@@ -889,7 +890,7 @@ public final class SchemaDetailPage {
      * side of every OTHER form's own audit-target reference, a new scan-phase pass (see that index's
      * javadoc) since REFM_SCHEMA_AUDIT_SOURCE was entirely unported before this fix.
      */
-    private String auditInfo(String formName, AuditInfo audit, int rootLevel) {
+    private String auditInfo(String formName, boolean isOverlaid, AuditInfo audit, int rootLevel) {
         Table tbl = new Table("schemaAudit", "TblObjectList");
         tbl.addColumn(30, "Property");
         tbl.addColumn(70, "Value");
@@ -911,7 +912,7 @@ public final class SchemaDetailPage {
 
         QualifierInfo qual = audit.getQualifier();
         String qualText = qual != null && qual.getOperation() != QualifierInfo.AR_COND_OP_NONE
-            ? qualification(formName, qual, rootLevel) : "No qualification specified";
+            ? qualification(formName, isOverlaid, qual, "Audit Qualification", rootLevel) : "No qualification specified";
         tbl.addRow(new TableRow().addCellList("Qualification", qualText));
 
         return accordionItem("Audit Settings", rootLevel, tbl);
@@ -947,7 +948,7 @@ public final class SchemaDetailPage {
      * DocSchemaDetails.cpp - a genuinely newer AR System feature this jar exposes beyond what the
      * original C++ tool could show, kept as a clearly-labeled extra row rather than dropped.
      */
-    private String archiveInfo(String formName, ArchiveInfo archive, Map<Integer, String> fieldNames, int rootLevel) {
+    private String archiveInfo(String formName, boolean isOverlaid, ArchiveInfo archive, Map<Integer, String> fieldNames, int rootLevel) {
         int type = archive.getArchiveType();
         boolean archiveToForm = (type & ArchiveInfo.AR_ARCHIVE_FORM) != 0;
         boolean deleteSource = (type & ArchiveInfo.AR_ARCHIVE_DELETE) != 0;
@@ -993,7 +994,7 @@ public final class SchemaDetailPage {
         tbl.addRow(new TableRow().addCellList("Times", ScheduleFormat.calendar(archive.getArchiveTmInfo())));
 
         String qual = archive.getQualifier() != null && archive.getQualifier().getOperation() != QualifierInfo.AR_COND_OP_NONE
-            ? qualification(formName, archive.getQualifier(), rootLevel) : "";
+            ? qualification(formName, isOverlaid, archive.getQualifier(), "Archive Qualification", rootLevel) : "";
         tbl.addRow(new TableRow().addCellList("Qualification", qual));
 
         if (archive.getDescription() != null && !archive.getDescription().isEmpty()) {
@@ -1090,10 +1091,22 @@ public final class SchemaDetailPage {
         return tbl;
     }
 
-    /** Archive/Audit qualifiers reference fields on this same form already shown on this page, so unlike AL/filter/escalation Run If they aren't fed into FieldReferenceIndex - a deliberate, smaller-value scope cut for this new panel. */
-    private String qualification(String formName, com.bmc.arsys.api.QualifierInfo q, int rootLevel) {
-        QualificationRenderer renderer = new QualificationRenderer(formName, rootLevel, globalFields, (f, id, exists, detail) -> {});
-        return renderer.render(q);
+    /**
+     * Java port of DocSchemaDetails.cpp's ShowAuditProperties/ShowArchiveProperties feeding their
+     * qualification through CARQualification with a CRefItem tagged REFM_SCHEMA_AUDIT_QUALIFICATION/
+     * REFM_SCHEMA_ARCHIVE_QUALIFICATION (RefItem.cpp:638-643 for the "Audit Qualification"/"Archive
+     * Qualification" detail text) - previously a no-op sink here, so a field referenced only by its
+     * own form's Archive/Audit qualifier never showed up in that field's own "Referenced By" table,
+     * same bug shape as the field-reference-sink gap fixed earlier for menus.
+     */
+    private String qualification(String formName, boolean isOverlaid, com.bmc.arsys.api.QualifierInfo q, String detail, int rootLevel) {
+        QualificationRenderer.FieldReferenceSink sink = (f, fieldId, fieldExists, qualDetail) -> {
+            FieldReferenceIndex.Ref ref = new FieldReferenceIndex.Ref(formName, "Schema", ImageTag.Id.Schema, Naming.schemaDetail(formName, isOverlaid), qualDetail);
+            fieldRefs.add(f, fieldId, ref);
+            if (!fieldExists) missingFieldRefs.add(f, fieldId, ref);
+        };
+        QualificationRenderer renderer = new QualificationRenderer(formName, rootLevel, globalFields, sink);
+        return renderer.render(q, detail);
     }
 
     private static String nullToEmpty(String s) { return s == null ? "" : s; }
@@ -1105,7 +1118,7 @@ public final class SchemaDetailPage {
         tbl.addColumn(70, "Value");
         tbl.addRow(new TableRow().addCellList("Name", WebUtil.validate(formName)));
         String type = AREnumLabels.internalSchemaType(schemaTypes.internalSchemaType(formName, form.getFormType()));
-        String details = typeDetails(form, rootLevel);
+        String details = typeDetails(formName, isOverlaid, form, rootLevel);
         if (!details.isEmpty()) type += " " + details;
         tbl.addRow(new TableRow().addCellList("Type", type));
         tbl.addRow(new TableRow().addCellList("Default View", defaultViewCell(formName, isOverlaid, form.getDefaultVUI(), vuis, rootLevel)));
@@ -1136,17 +1149,30 @@ public final class SchemaDetailPage {
      * clone-source spans - see the JS's own javadoc history), never the Join qualification line, nor
      * View's "(Table Name: X   Key Field: Y)" or Vendor's "(Plugin: X   Table: Y)" sub-info - all
      * three now ported. Join qualification uses a two-schema QualificationRenderer (memberA/memberB)
-     * matching CARQualification's own two-form constructor there, and is only shown when non-empty
-     * (unlike Archive/Audit's qualification rows, which always render even when empty).
+     * matching CARQualification's own two-form constructor there (`TypeDetails()` at
+     * DocSchemaDetails.cpp:1236), and is only shown when non-empty (unlike Archive/Audit's
+     * qualification rows, which always render even when empty). Field references inside it feed
+     * FieldReferenceIndex/MissingFieldReferenceIndex with a real "Join Qualification" detail label
+     * (REFM_SCHEMA_JOIN_QUALIFICATION, RefItem.cpp:635-636) - previously a no-op sink here, same bug
+     * shape as the Archive/Audit field-reference gap fixed the same session. Note this is NOT the
+     * same as {@link #allFieldsSpecialTable}'s own no-op QualificationRenderer sink (used only for
+     * its fieldRef() link-rendering convenience) - that one correctly stays a no-op, since the real
+     * C++'s AllFieldsSpecial() renders those Real-Field links via plain LinkToField(), never
+     * CRefItem/AddFieldReference (confirmed by reading DocSchemaDetails.cpp:426-518 in full).
      */
-    private String typeDetails(Form form, int rootLevel) {
+    private String typeDetails(String formName, boolean isOverlaid, Form form, int rootLevel) {
         if (form instanceof JoinForm join) {
             StringBuilder sb = new StringBuilder("(<span id='join-left'>").append(schemaLink(join.getMemberA(), rootLevel))
                 .append("</span> &lt;-&gt; <span id='join-right'>").append(schemaLink(join.getMemberB(), rootLevel)).append("</span>)");
             QualifierInfo joinQual = join.getJoinQualification();
             if (joinQual != null && joinQual.getOperation() != QualifierInfo.AR_COND_OP_NONE) {
-                QualificationRenderer qr = new QualificationRenderer(join.getMemberA(), join.getMemberB(), rootLevel, globalFields, (f, id, exists, detail) -> {});
-                sb.append("<br/>Qualification: ").append(qr.render(joinQual));
+                QualificationRenderer.FieldReferenceSink sink = (f, fieldId, fieldExists, detail) -> {
+                    FieldReferenceIndex.Ref ref = new FieldReferenceIndex.Ref(formName, "Schema", ImageTag.Id.Schema, Naming.schemaDetail(formName, isOverlaid), detail);
+                    fieldRefs.add(f, fieldId, ref);
+                    if (!fieldExists) missingFieldRefs.add(f, fieldId, ref);
+                };
+                QualificationRenderer qr = new QualificationRenderer(join.getMemberA(), join.getMemberB(), rootLevel, globalFields, sink);
+                sb.append("<br/>Qualification: ").append(qr.render(joinQual, "Join Qualification"));
             }
             return sb.toString();
         }
@@ -1334,6 +1360,11 @@ public final class SchemaDetailPage {
         tbl.addColumn(10, "Modified");
         tbl.addColumn(20, "By");
 
+        // Deliberately a no-op sink, NOT the same gap as typeDetails()'s Join Qualification one -
+        // this QualificationRenderer is only reused here for fieldRef()'s link-rendering
+        // convenience (the "Real Field" column below), and the real C++'s AllFieldsSpecial()
+        // (DocSchemaDetails.cpp:426-518) renders those same links via plain LinkToField(), never
+        // CRefItem/AddFieldReference - confirmed by reading it in full, not assumed.
         QualificationRenderer ref = new QualificationRenderer(formName, rootLevel, globalFields, (f, id, exists, detail) -> {});
         JoinForm join = form instanceof JoinForm jf ? jf : null;
 

@@ -17,6 +17,7 @@ import java.nio.charset.Charset;
 final class DefImageBuilder {
     private String name, type, owner, lastChangedBy, description, checkSum, imageContent;
     private ObjectPropertyMap properties;
+    private long timestamp;
 
     Image build() {
         if (name == null || name.isEmpty()) return null;
@@ -29,6 +30,7 @@ final class DefImageBuilder {
         image.setCheckSum(checkSum);
         if (properties != null) image.setProperties(properties);
         if (imageContent != null) image.setImageData(new ImageData(decodeHexContent(imageContent)));
+        arinside.ar.ObjectTimestamp.set(image, timestamp);
         return image;
     }
 
@@ -38,11 +40,12 @@ final class DefImageBuilder {
             case IMAGE_TYPE -> type = raw;
             case OWNER -> owner = raw;
             case LAST_CHANGED -> lastChangedBy = raw;
+            case TIMESTAMP -> timestamp = ParseUtil.longValue(raw);
             case DESCRIPTION -> description = raw;
             case IMAGE_CHECKSUM -> checkSum = raw;
             case OBJECT_PROP -> properties = DefPropertyDecoder.decode(raw, charset, properties != null ? properties : new ObjectPropertyMap());
             case IMAGE_CONTENT -> imageContent = raw;
-            default -> { /* IMAGE_SIZE/HELP/CHANGE_DIARY/TIMESTAMP - no client setter or not rendered */ }
+            default -> { /* IMAGE_SIZE/HELP/CHANGE_DIARY - no client setter or not rendered */ }
         }
     }
 

@@ -23,8 +23,10 @@ import java.util.List;
  * {@code ActiveLinkParseEventHandler} never handles these tags at all (only {@code
  * FilterParseEventHandler} does), even though {@code ActiveLink} the client type has
  * setErrorActlinkOptions/Name accessors - the DEF format itself just doesn't carry this for AL.
- * CHANGE_DIARY/TIMESTAMP are read but discarded - {@code ActiveLink} has no diary/last-update-time
- * setter in the client API (same confirmed hard API limitation already documented for Form).
+ * CHANGE_DIARY is read but discarded - {@code ActiveLink} has no diary setter in the client API.
+ * TIMESTAMP is set via {@link arinside.ar.ObjectTimestamp} - see that class's javadoc for why
+ * reflection is needed (was previously discarded here too, under the same "no client setter" note,
+ * before that helper existed).
  */
 final class DefActiveLinkBuilder {
     private enum ClauseState { NONE, ACTION, ELSE }
@@ -46,6 +48,7 @@ final class DefActiveLinkBuilder {
             case NAME -> al.setName(raw);
             case OWNER -> al.setOwner(raw);
             case LAST_CHANGED -> al.setLastChangedBy(raw);
+            case TIMESTAMP -> arinside.ar.ObjectTimestamp.set(al, ParseUtil.longValue(raw));
             case HELP -> al.setHelpText(raw);
             case OBJECT_PROP, SMOPROP_LIST -> {
                 ObjectPropertyMap existing = al.getProperties();
@@ -68,7 +71,7 @@ final class DefActiveLinkBuilder {
                 forms.add(raw);
                 al.setPrimaryForm(forms.get(0));
             }
-            default -> { /* CHANGE_DIARY/TIMESTAMP - no client setter, see class javadoc */ }
+            default -> { /* CHANGE_DIARY - no client setter, see class javadoc */ }
         }
     }
 

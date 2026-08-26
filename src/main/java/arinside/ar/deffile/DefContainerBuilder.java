@@ -25,6 +25,7 @@ import java.util.List;
 final class DefContainerBuilder {
     private int type = 2; // ApplicationContainer - matches beginContainerParsing's default before a type: tag arrives
     private String name, owner, lastChangedBy, label, description;
+    private long timestamp;
     private ObjectPropertyMap properties;
     private List<PermissionInfo> permissions;
     private List<Integer> adminGroupIds;
@@ -54,6 +55,7 @@ final class DefContainerBuilder {
         if (adminGroupIds != null) c.setAdminGroupList(adminGroupIds);
         c.setContainerOwner(owners);
         c.setReferences(references);
+        arinside.ar.ObjectTimestamp.set(c, timestamp);
         return c;
     }
 
@@ -79,7 +81,8 @@ final class DefContainerBuilder {
                 for (String tok : raw.trim().split(" ")) if (!tok.isBlank()) adminGroupIds.add(ParseUtil.intValue(tok));
             }
             case CONTAINER_OWNER, ADD_CTNR_OWNER -> decodeOwners(raw, charset);
-            default -> { /* HELP/CHANGE_DIARY/TIMESTAMP/REFERENCE_GROUPS/CORE_VERS/EXPORT_VERS/NUM_REFERENCES - not rendered or no client setter */ }
+            case TIMESTAMP -> timestamp = ParseUtil.longValue(raw);
+            default -> { /* HELP/CHANGE_DIARY/REFERENCE_GROUPS/CORE_VERS/EXPORT_VERS/NUM_REFERENCES - not rendered or no client setter */ }
         }
     }
 

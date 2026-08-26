@@ -42,6 +42,7 @@ final class DefActionBuilder {
     private final boolean activeLinkContext;
     private Action currentAction;
     private StringBuilder buffer; // OLE COM-method / macro-text multi-line accumulation, flushed at clause end
+    private Charset charset; // captured from item() - build()/endActionClause() has no charset param of its own, but charset is invariant per file so "last seen" is always correct
 
     DefActionBuilder(boolean activeLinkContext) {
         this.activeLinkContext = activeLinkContext;
@@ -60,7 +61,7 @@ final class DefActionBuilder {
     private void flushBuffer() {
         if (currentAction != null && buffer != null) {
             if (currentAction instanceof OleAutomationAction ole) {
-                ole.setMethodList(new ArrayList<>()); // COM-method decoding not ported (obscure, no DecodeCOMMethods port) - action still built, method list simply empty
+                ole.setMethodList(DefComMethodDecoder.decode(buffer.toString(), charset));
             } else if (currentAction instanceof RunMacroAction macro) {
                 macro.setMacroText(buffer.toString());
             }
@@ -69,10 +70,22 @@ final class DefActionBuilder {
     }
 
     void item(DefItemLabel item, String raw, Charset charset) {
+        this.charset = charset;
         switch (item) {
             // ---- shared across AL/Filter/Escalation ----
             case COMMAND -> {
-                if (raw.startsWith("Distributed-")) break; // DSO action - not ported, no rendering path in this port either
+                // DSO (distributed) action - matches the real server's WorkflowParseEventHandler
+                // trigger exactly ("Distributed-" prefix, Filter/Escalation only, never Active
+                // Link - confirmed). DSOAction's own constructor fully
+                // self-parses the command line (Distributed-Transfer/-Return/-Delete ... syntax) -
+                // ActionSummaryTable already renders it fully (see its dsoOf()), this was
+                // previously the only action type this port silently dropped from .def mode despite
+                // already being able to render it (confirmed working in XML mode via
+                // ActionXmlBuilder.buildDso()) - a real, now-fixed data-loss bug, not a no-op.
+                if (raw.startsWith("Distributed-") && !activeLinkContext) {
+                    currentAction = new DSOAction(raw);
+                    break;
+                }
                 if (currentAction == null) currentAction = new RunProcessAction();
                 ((RunProcessAction) currentAction).setCommandLine(raw);
             }

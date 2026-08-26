@@ -37,6 +37,7 @@ final class DefEscalationBuilder {
             case NAME -> esc.setName(raw);
             case OWNER -> esc.setOwner(raw);
             case LAST_CHANGED -> esc.setLastChangedBy(raw);
+            case TIMESTAMP -> arinside.ar.ObjectTimestamp.set(esc, ParseUtil.longValue(raw));
             case HELP -> esc.setHelpText(raw);
             case OBJECT_PROP, SMOPROP_LIST -> {
                 ObjectPropertyMap existing = esc.getProperties();
@@ -65,7 +66,7 @@ final class DefEscalationBuilder {
                 forms.add(raw);
                 esc.setPrimaryForm(forms.get(0));
             }
-            default -> { /* CHANGE_DIARY/TIMESTAMP - no client setter, matches Form's identical documented gap */ }
+            default -> { /* CHANGE_DIARY - no client setter, matches Form's identical documented gap; TIMESTAMP now set via arinside.ar.ObjectTimestamp above */ }
         }
     }
 

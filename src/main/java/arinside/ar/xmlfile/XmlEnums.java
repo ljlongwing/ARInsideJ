@@ -130,6 +130,13 @@ final class XmlEnums {
         };
     }
 
+    /** statusHistoryValue's &lt;statusInfo&gt; text - only "time" confirmed in a real 4.5GB export sample (full.xml:83677255); "user" is the obvious counterpart (matches StatusHistoryValueIndicatorType.USER/TIME's own naming) but unconfirmed live, so anything not literally "user" defaults to the confirmed time case rather than guessing wrong. */
+    static boolean statusHistoryIsUser(String s) {
+        if ("user".equals(s)) return true;
+        if (!"time".equals(s)) warnUnknown("statusHistoryValue statusInfo", s, 0);
+        return false;
+    }
+
     static int qbeMatch(String s) {
         return switch (s) {
             case "anyMatch" -> Constants.AR_QBE_MATCH_ANYWHERE;

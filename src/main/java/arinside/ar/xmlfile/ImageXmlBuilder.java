@@ -22,6 +22,7 @@ final class ImageXmlBuilder {
                 case "imageType" -> img.setType(c.elementText());
                 case "owner" -> img.setOwner(c.elementText());
                 case "lastModifiedBy" -> img.setLastChangedBy(c.elementText());
+                case "modifiedDate" -> arinside.ar.ObjectTimestamp.set(img, XmlTimestamp.parse(c.elementText()));
                 case "objectProperties" -> img.setProperties(PropertyMapXmlBuilder.build(c, new ObjectPropertyMap()));
                 case "imageChecksum" -> img.setCheckSum(c.elementText());
                 case "imageContent" -> {
