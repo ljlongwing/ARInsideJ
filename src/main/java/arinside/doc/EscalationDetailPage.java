@@ -83,8 +83,9 @@ public final class EscalationDetailPage {
             // enabled populated (order/executeOn stay null - RefItem::GetObjectOrder only supports
             // Active Link/Filter, defaulting -1/unset for everything else including Escalation) -
             // Escalation is one of the three types RefItem::GetObjectEnabled sets supportsEnabled=
-            // true for, so the general Workflow Reference table shows an Enabled cell for
-            // Escalation rows too.
+            // true for, so the real tool's general Workflow Reference table shows an Enabled cell
+            // for Escalation rows too - previously left null here (a real gap, confirmed via live
+            // comparison against DocFieldDetails.cpp's field showing a blank Enabled column).
             FieldReferenceIndex.Ref ref = new FieldReferenceIndex.Ref(name, "Escalation", ImageTag.Id.Escalation, escLink, detail, null, esc.isEnable(), null);
             fieldRefs.add(formName, fieldId, ref);
             if (!fieldExists) missingFieldRefs.add(formName, fieldId, ref);
@@ -168,8 +169,9 @@ public final class EscalationDetailPage {
     /**
      * Java port of CAREscalation::GetPoolStr() - AR_OPROP_POOL_NUMBER object property, server 7.1+
      * only, "" (no row) when unset/zero. Value.getIntValue() NPEs when the property exists but its
-     * underlying value is null, so getValue() itself is checked for null first instead of relying
-     * on getIntValue()'s internal unboxing.
+     * underlying value is null (confirmed via a real escalation on the live test server,
+     * SRM:SRV:TriggerSurveyNotification) - getValue() itself is checked for null first instead of
+     * relying on getIntValue()'s internal unboxing.
      */
     private String poolNumber(Escalation esc) {
         if (esc.getProperties() == null) return "";

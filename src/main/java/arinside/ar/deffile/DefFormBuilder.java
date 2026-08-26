@@ -7,19 +7,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Builds a {@code com.bmc.arsys.api.Form}/{@code Field}/{@code View} from a {@code begin schema
- * ... end} block, matching {@code arinside.ar.xmlfile.FormXmlBuilder}'s target shape.
+ * Java port of {@code com.bmc.arsys.server.domain.imports.def.impl.FormParseEventHandler} + {@code VuiParseEventHandler}
+ * (small) - targeting {@code com.bmc.arsys.api.Form}/{@code Field}/{@code View}
+ * directly rather than the server-internal domain model, matching {@code arinside.ar.xmlfile.
+ * FormXmlBuilder}'s existing target shape (used directly as the reference for what client-API
+ * setters exist).
  *
- * <p>One instance per block. {@link DefFileParser} owns clause nesting (routing {@code field
- * {}/vui {}} events here) and struct boundaries; this class only tracks per-form/per-field/per-vui
- * state.
+ * <p>One instance per {@code begin schema ... end} block. {@link DefFileParser} owns clause
+ * nesting (routing {@code field {}/vui {}} events here) and struct boundaries; this class only
+ * tracks per-form/per-field/per-vui state.
  *
- * <p>JOIN_QRY/ARCHIVEINFO_QRY/AUDITINFO_QRY are decoded via {@link DefQualificationDecoder}.
+ * <p>JOIN_QRY/ARCHIVEINFO_QRY/AUDITINFO_QRY are decoded via {@link DefQualificationDecoder} (added
+ * after this class's first pass, then retrofitted in - see that class's own javadoc for the format).
  *
- * <p><b>Deliberately not handled</b>: granular-overlay extend/inherit-mask bookkeeping - none of
- * this is rendered anywhere in this port's {@code Doc*Page} classes, so {@code ADD_*} tags are
- * treated identically to their non-ADD counterparts (append to the same list) rather than tracked
- * separately.
+ * <p><b>Deliberately not ported</b> (disclosed, not silently dropped): granular-overlay extend/inherit-mask bookkeeping
+ * (the real handler's separate {@code addedPermissions}/{@code addedIndexInfos}/{@code
+ * addedSubAdminGrpIds} tracking, merged conditionally in {@code ensureDefinitionIsComplete()} based
+ * on {@code GranularOverlayType}) - confirmed via the architecture memory that none of this is
+ * rendered anywhere in this port's {@code Doc*Page} classes; {@code ADD_*} tags are treated
+ * identically to their non-ADD counterparts (append to the same list) rather than tracked
+ * separately, a deliberate simplification.
  */
 final class DefFormBuilder {
     record FormResult(String formName, Form form, List<Field> fields, List<View> views) {}
@@ -52,13 +59,18 @@ final class DefFormBuilder {
     }
 
     /**
-     * An overlaid form's plain-named schema block in a {@code .def} export carries {@code
-     * AR_SMOPROP_OVERLAY_PROPERTY=1} (AR_OVERLAID_OBJECT, the hidden base layer) with no separate
-     * active-layer ({@code =2}) block anywhere in the export under any name - unlike a live server,
-     * which always resolves the plain name to the active layer. This parser only ever sees one
-     * layer per name and has no way to reconstruct the other offline, so a lone base-layer object
-     * is stripped of its overlay marker here and documented under its plain name rather than
-     * disappearing behind an unreachable "__o" suffix with nothing left to fill the plain-name slot.
+     * A real, confirmed-via-live-data quirk (not a decoding bug - verified against the raw .def
+     * bytes for HPD:Help Desk, a real overlaid form): an overlaid object's plain-named schema block
+     * carries {@code AR_SMOPROP_OVERLAY_PROPERTY=1} (AR_OVERLAID_OBJECT, the hidden base layer) with
+     * no separate active-layer ({@code =2}) block anywhere in the export under any name - unlike the
+     * live server, which always resolves the plain name to the active layer. This parser (like the
+     * unrelated live-RPC {@code FileModeSchemaRepository} before it - see its own javadoc for the
+     * identical, already-accepted precedent) only ever sees one layer per name and has no way to
+     * reconstruct the other offline, so a lone base-layer object is stripped of its overlay marker
+     * here and documented under its plain name rather than disappearing behind an unreachable "__o"
+     * suffix with nothing left to fill the plain-name slot - the same "one layer only, no merge
+     * attempted" scope cut already established for this exact situation, just hit via a different
+     * data source this time.
      */
     FormResult build() {
         ObjectPropertyMap props = form.getProperties();
@@ -81,8 +93,10 @@ final class DefFormBuilder {
             case DEFAULT_VUI -> form.setDefaultVUI(raw);
             case HELP -> form.setHelpText(raw);
             case OBJECT_PROP, SMOPROP_LIST -> {
-                // Both tags target the same merged property map: com.bmc.arsys.api.Form.getProperties()
-                // carries overlay/SMOPROP-style entries in one map (OverlaySupport reads overlay type
+                // Both tags target the SAME merged property map on the client side - unlike the
+                // server-internal domain model (which splits "properties" vs "serverManagedProperties"),
+                // com.bmc.arsys.api.Form.getProperties() already carries overlay/SMOPROP-style entries
+                // in one map elsewhere in this port (confirmed: OverlaySupport reads overlay type
                 // straight off form.getProperties()), so both tags accumulate into one target map.
                 ObjectPropertyMap existing = form.getProperties();
                 ObjectPropertyMap props = DefPropertyDecoder.decode(raw, charset, existing != null ? existing : new ObjectPropertyMap());
@@ -137,7 +151,7 @@ final class DefFormBuilder {
             case ARCHIVEINFO_DESCRIPTION -> { ArchiveInfo a = ensureArchive(); if (a != null) a.setDescription(raw); }
             case AUDITINFO -> setAuditInfo(raw);
             case AUDITINFO_FORM -> setAuditForm(raw);
-            default -> { /* not rendered anywhere in this port's doc/ layer */ }
+            default -> { /* not rendered anywhere in this port's doc/ layer, or deferred (qualifications) - see class javadoc */ }
         }
     }
 
@@ -170,7 +184,7 @@ final class DefFormBuilder {
         return a;
     }
 
-    /** archive: <enable>\<type>\<len>\<targetName if len>0>\ - type==0 && enable==0 && len==0 means "no archive". */
+    /** archive: <enable>\<type>\<len>\<targetName if len>0>\ - type==0 && enable==0 && len==0 means "no archive" (matches the real handler's own null-out check). */
     private void setArchiveInfo(String raw) {
         String[] t = raw.trim().split("\\\\", -1);
         if (t.length < 3) return;
@@ -195,10 +209,13 @@ final class DefFormBuilder {
     }
 
     /**
-     * audit: <enable>\<type>\<auditMask>\...\<name if present>\ - token count varies by export
-     * version (5 tokens with a mask, 4 without); this reads whatever's present positionally
-     * (enable, type, then the last non-empty remaining token as the audit-target form name if the
-     * token count suggests one was written) - auditMask is set when a 3rd numeric token is present.
+     * audit: <enable>\<type>\<auditMask>\...\<name if present>\ - the real handler's own token
+     * count varies by export version (5 tokens for export-version&gt;10 with a mask, 4 without);
+     * this port reads whatever's present positionally (enable, type, then the last non-empty
+     * remaining token as the audit-target form name if the token count suggests one was written)
+     * rather than replicating the version branch exactly, since {@code com.bmc.arsys.api.AuditInfo}
+     * is a flat type either way (see class javadoc) - auditMask is set when a 3rd numeric token
+     * is present.
      */
     private void setAuditInfo(String raw) {
         String[] t = raw.trim().split("\\\\", -1);
@@ -321,7 +338,7 @@ final class DefFormBuilder {
                 currentView.setObjectProperties(DefPropertyDecoder.decode(raw, charset, existing != null ? existing : new ObjectPropertyMap()));
             }
             case DISPLAY_PROPLIST -> currentView.setDisplayProperties(DefPropertyDecoder.decode(raw, charset, new ViewDisplayPropertyMap()));
-            default -> { /* not rendered anywhere in this port's doc/ layer */ }
+            default -> { /* not rendered anywhere in this port's doc/ layer - see FieldDetailPage/VuiDetailPage's own established scope */ }
         }
     }
 

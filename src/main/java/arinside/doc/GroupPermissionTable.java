@@ -14,8 +14,9 @@ import java.util.Set;
 /**
  * Java port of output/GroupTable.cpp (CGroupTable) - the rich Name/ID/Type/Category/Modified/By
  * table DocAlDetails.cpp's Permissions() and DocContainerHelper.cpp's SubadminList() both render
- * for a group-id list, used by ActiveLinkDetailPage.permissions() and
- * ContainerDetailPage.subadminList().
+ * for a group-id list. Found via re-reading DocAlDetails.cpp: this port had simplified both call
+ * sites (ActiveLinkDetailPage.permissions(), ContainerDetailPage.subadminList()) down to a bare
+ * linked-name list with no other columns.
  *
  * <p>Role rows genuinely use a different cell layout than group rows under the same 6-column
  * header (Type="Role"/Name-link/ID/Modified/By - only 5 cells, one column short since "Role" takes

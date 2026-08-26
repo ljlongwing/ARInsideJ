@@ -15,11 +15,17 @@ import java.util.Map;
  * LoadFromServer(), etc.) - one bulk ARGetMultipleActiveLinks/Filters/Escalations-equivalent RPC per
  * type (getListActiveLinkObjects()/getListFilterObjects()/getListEscalationObjects()), instead of
  * this port's original one-getActiveLink(name)-call-per-object pattern (which matched the C++'s
- * "--slow" fallback mode, not its default). Active link and filter bulk fetches return
- * fully-populated objects with no extra criteria tuning needed; escalations need an explicit
- * {@code criteria.setRetrieveAll(true)} (see below).
+ * "--slow" fallback mode, not its default). Confirmed via a live spike against the test server: a
+ * bulk fetch of 59,283 active links took ~1.9s and 34,315 filters ~1.1s, versus multi-minute full
+ * scans for the same object counts under the old per-object pattern - and every field on a
+ * bulk-fetched object (formList, order, executeMask, controlField, focusField, qualifier,
+ * actionList, elseList, groupList, properties, owner, helpText, lastChangedBy, lastUpdateTime,
+ * diary) matched a direct getActiveLink(name) fetch of the same object exactly, so - unlike
+ * MenuCriteria's default (which needs an explicit setRetrieveAll(true) to avoid returning
+ * mostly-empty objects) - the no-arg bulk calls here already return fully-populated objects with no
+ * extra criteria tuning needed.
  *
- * <p>One instance is built once (see Main.java) right after the live connection opens and shared
+ * One instance is built once (see Main.java) right after the live connection opens and shared
  * (read-only, thread-safe by construction - never mutated after {@link #load}) across every
  * WorkflowRepository this run creates, including the per-pooled-connection instances the various
  * scan indexes build via their reads.submit(c -&gt; ...) factories - the cache data itself doesn't
@@ -29,11 +35,16 @@ import java.util.Map;
  * back to its original per-name fetch for that type only - the other types keep their bulk speedup
  * independently.
  *
- * <p>{@code EscalationCriteria} inherits {@code setRetrieveAll(boolean)} from {@code
- * ObjectBaseCriteria}/{@code CriteriaFlags} without redeclaring it, so a bare {@code new
- * EscalationCriteria()} (retrieveAll unset) makes {@code getListEscalationObjects} return nothing;
- * {@code criteria.setRetrieveAll(true)} must be called explicitly to get real results - same fix
- * shape as {@code MenuCriteria} elsewhere in this port, just inherited rather than redeclared.
+ * Escalations initially looked broken (getListEscalationObjects returned 0 results against the live
+ * test server no matter which formName/names-list shape was tried) - that was an incomplete
+ * investigation, not a real jar limitation: EscalationCriteria's own class file has no
+ * setRetrieveAll method, and javap doesn't surface inherited methods when a class is inspected in
+ * isolation, so the fact that EscalationCriteria extends ObjectBaseCriteria extends CriteriaFlags
+ * (which DOES declare setRetrieveAll(boolean)) was missed on the first pass. With
+ * `new EscalationCriteria()` left at its default (retrieveAll unset), the bulk call apparently
+ * returns nothing; with `criteria.setRetrieveAll(true)` explicitly called, it returns every real
+ * escalation with fields matching a direct getEscalation() fetch exactly (confirmed via spike) -
+ * same fix shape as MenuCriteria elsewhere in this port, just inherited rather than redeclared.
  */
 public final class WorkflowBulkCache {
     private final Map<String, ActiveLink> activeLinks;

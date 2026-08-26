@@ -101,9 +101,9 @@ final class XmlCursor {
     /**
      * Same as {@link #intText()}, but for elements that are sometimes a plain int and sometimes a
      * named enum string this port doesn't have a lookup table for (e.g. dataDictionaryMenu's
-     * formType/fieldType, which can read "allowedInMultiFormSearch" instead of a number) - falls
-     * back to {@code fallback} with a warning rather than aborting the whole containing object's
-     * parse over one rarely-used, non-critical field.
+     * formType/fieldType, confirmed against a real export to sometimes read "allowedInMultiFormSearch"
+     * instead of a number) - falls back to {@code fallback} with a warning rather than aborting the
+     * whole containing object's parse over one rarely-used, non-critical field.
      */
     int intTextOrDefault(int fallback, String fieldDescription) throws XMLStreamException {
         String text = elementText().trim();

@@ -9,10 +9,10 @@ import java.util.Map;
 
 /**
  * String-to-int lookup tables for the AR System .xml export's enum vocabulary, built from the AR
- * Java API's own {@link Constants} values. Anything not in a table falls back to a logged default
- * rather than throwing, since the export's long tail of rarely-used enum values can't be fully
- * enumerated up front - unknowns should show up as log warnings to fix incrementally, not crash
- * the parse.
+ * Java API's own {@link Constants} values and confirmed against real export samples (see
+ * ArsXmlFileParser's javadoc). Anything not in a table falls back to a logged default rather than
+ * throwing, since the export's long tail of rarely-used enum values can't be fully sampled up
+ * front - unknowns should show up as log warnings to fix incrementally, not crash the parse.
  */
 final class XmlEnums {
     private XmlEnums() {}
@@ -145,11 +145,13 @@ final class XmlEnums {
     /**
      * An out-of-[1,93]-range code isn't just "wrong" for an unrecognized functionType -
      * ActionSummaryTable's functionOf() passes it straight into FunctionAssignInfo.toFuncName(),
-     * whose internal lookup table indexes by (code - 1) with no bounds check, throwing an
-     * uncaught IndexOutOfBoundsException instead of the documented ARException for an invalid code.
-     * Falling back to AR_FUNCTION_DATE (1, the lowest real function code) is always in range - it
-     * renders the wrong function name for a genuinely-unrecognized one, but never crashes the whole
-     * page over it.
+     * whose internal lookup table indexes by (code - 1) with NO bounds check and no validation that
+     * throws for an invalid code either (confirmed empirically: both -1 and 0 produced an uncaught
+     * IndexOutOfBoundsException three call frames away instead of the documented ARException -
+     * against a handful of real active links with obscure/newer function names not in this port's
+     * table). Falling back to AR_FUNCTION_DATE (1, the lowest real function code) is always in
+     * range - it renders the wrong function name for a genuinely-unrecognized one, but never crashes
+     * the whole page over it.
      */
     static int functionCode(String s) {
         Integer code = FUNCTION_CODES.get(s);
@@ -165,7 +167,8 @@ final class XmlEnums {
 
     private static Map<String, Integer> buildFunctionCodes() {
         Map<String, Integer> m = new HashMap<>();
-        // AR_FUNCTION_* constants, keyed by the XML export's camelCase functionType spelling.
+        // AR_FUNCTION_* constants, keyed by the XML export's camelCase functionType spelling -
+        // ground truth taken directly from Constants/assumed sequential.
         m.put("date", Constants.AR_FUNCTION_DATE);
         m.put("time", Constants.AR_FUNCTION_TIME);
         m.put("month", Constants.AR_FUNCTION_MONTH);

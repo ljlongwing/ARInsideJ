@@ -14,13 +14,15 @@ import com.bmc.arsys.api.Value;
  *
  * Deviation from the C++: the C++'s FillRequest() picks how many sequential operation IDs to
  * request based on the connected server's version (fewer IDs for older servers) specifically to
- * avoid asking for operations the server doesn't know about. The Java API's batch
- * getServerInfo(int[]) call rejects the *entire* request if even one ID is unrecognized
- * ("ERROR (123): Unrecognized server information tag") - there's no partial-success behavior.
- * Rather than replicate the C++'s version-based ID-count table (which would need to be kept in
- * sync with server version numbers), this queries one operation ID at a time and skips whichever
- * ones the server rejects - slower (one round trip per ID, ~350 of them) but robust to any
- * server/jar version mismatch.
+ * avoid asking for operations the server doesn't know about. This jar's AR_SERVER_INFO_*
+ * constants (23.3.002) include operations newer than what this test server supports, and
+ * empirically the Java API's batch getServerInfo(int[]) call rejects the *entire* request if even
+ * one ID is unrecognized ("ERROR (123): Unrecognized server information tag") - there's no
+ * partial-success behavior. Rather than replicate the C++'s version-based ID-count table (which
+ * would need to be kept in sync with server version numbers), this queries one operation ID at a
+ * time and skips whichever ones the server rejects - slower (one round trip per ID, ~350 of them)
+ * but robust to any server/jar version mismatch, and each round trip is a couple of ms per the
+ * benchmarks already run against this server.
  */
 public final class ServerInfoPage {
     private final ArClient client;

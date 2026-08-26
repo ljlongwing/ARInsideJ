@@ -9,24 +9,34 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Builds the {@code action { }}/{@code else { }} content shared across Active Link/Filter/
- * Escalation blocks, targeting {@code com.bmc.arsys.api.Action} subtypes directly - the same
- * shapes {@code arinside.ar.xmlfile.ActionXmlBuilder} builds for XML mode.
+ * Java port of the {@code action { }}/{@code else { }} handling shared across
+ * {@code ActiveLinkParseEventHandler}/{@code FilterParseEventHandler}/{@code EscalationParseEventHandler}
+ * and their common base {@code WorkflowParseEventHandler}, targeting {@code
+ * com.bmc.arsys.api.Action} subtypes directly (the exact shapes {@code
+ * arinside.ar.xmlfile.ActionXmlBuilder} already builds for XML mode - used directly as the
+ * client-API reference for constructors/setters).
  *
  * <p>One instance per {@code action { }}/{@code else { }} clause - a real action builds up
- * incrementally across multiple, separately-tagged item events (e.g. an Open Window action's
+ * incrementally across MULTIPLE, separately-tagged item events (e.g. an Open Window action's
  * server/form/vui/mode all arrive as distinct tags), so {@link #currentAction} is lazily created on
- * whichever tag arrives first and mutated by every subsequent tag.
+ * whichever tag arrives first and mutated by every subsequent tag, mirroring the real handlers'
+ * identical "if (this.currentAction == null) currentAction = new X()" pattern throughout.
  *
  * <p>Message vs FilterMessage (MSG_NUM/MSG_TEXT/MSG_TYPE/MSG_PANE) is context-dependent - an
  * Active Link's Message action is {@link MessageAction} (has a prompt-pane flag), a Filter/
  * Escalation's is {@link FilterMessageAction} (no prompt-pane flag) - selected via the {@code
- * activeLinkContext} constructor flag.
+ * activeLinkContext} constructor flag, matching {@code ActionXmlBuilder}'s identical dispatch.
  *
- * <p><b>Not handled</b>: CallGuide's input/output field mappings - {@code CALLGUIDE_INPUT}/
- * {@code CALLGUIDE_OUTPUT} carry no field-pair data in this format the way SET_FIELD/PUSH_FIELD/
- * OPEN_DLG_INPUT do. Open Window's report-mode details ({@code OPEN_DLG_RPTSTR}, structured report
- * parameters for the rare "open as report" window mode) are left unset.
+ * <p><b>Deliberately not ported</b> (disclosed, matches a real, confirmed gap in the DEF format
+ * itself, not a scope cut on this port's part): CallGuide's input/output field mappings -
+ * {@code CALLGUIDE_INPUT}/{@code CALLGUIDE_OUTPUT} have no field-pair decoding logic anywhere in
+ * the real {@code ActiveLinkParseEventHandler} either (confirmed by reading it directly - those
+ * cases only lazily construct the action, nothing else), and neither tag appears in {@code
+ * DefParserImpl.parseValue()}'s central type-decoding dispatch, so the real DEF format apparently
+ * never encodes this data the way SET_FIELD/PUSH_FIELD/OPEN_DLG_INPUT do. Open Window's report-mode
+ * details ({@code OPEN_DLG_RPTSTR}) - a narrow feature (structured report parameters for the rare
+ * "open as report" window mode) whose domain-side parser ({@code OpenWindowActionImpl.
+ * parseReportString}) is not ported; the field simply stays unset.
  */
 final class DefActionBuilder {
     private final boolean activeLinkContext;
@@ -165,7 +175,7 @@ final class DefActionBuilder {
                 if (currentAction == null) currentAction = new WaitAction();
                 ((WaitAction) currentAction).setContinueButtonTitle(raw);
             }
-            default -> { /* not an action-body tag */ }
+            default -> { /* not an action-body tag - see DefWorkflowBuilder for object-level tags */ }
         }
     }
 
@@ -215,7 +225,7 @@ final class DefActionBuilder {
         ((GotoAction) currentAction).setFieldIdOrValue(value);
     }
 
-    /** serverLen\server\sqlLen\<sql bytes, exactly sqlLen-1 long>. */
+    /** serverLen\server\sqlLen\<sql bytes, exactly sqlLen-1 long - matches the real decoder's own off-by-one exactly>. */
     private void decodeDirectSql(String raw, Charset charset) {
         DefValueDecoder d = new DefValueDecoder(raw, charset);
         String server = d.readString(d.readInt());
@@ -227,13 +237,18 @@ final class DefActionBuilder {
     }
 
     /**
-     * assignIndex\fieldId\<assignment>. Always builds a SetFieldsFromForm regardless of the
-     * assignment's real source, matching {@code arinside.ar.xmlfile.ActionXmlBuilder}'s XML-mode
-     * simplification.
+     * assignIndex\fieldId\<assignment>. This port always builds SetFieldsFromForm regardless of the
+     * assignment's real source (matches arinside.ar.xmlfile.ActionXmlBuilder's own established,
+     * already-accepted simplification for XML mode - see its javadoc).
      *
-     * <p>{@code assignIndex} is NOT a compact list position - it's some other stable slot/id
-     * concept, irrelevant to read-only documentation - so entries are appended in arrival order
-     * instead of inserted by index.
+     * <p>{@code assignIndex} is NOT a compact list position - confirmed via live data (a real
+     * single-field Set-Fields action arrived with {@code assignIndex=7}, which an earlier version of
+     * this method took literally, padding 7 null entries in front of the one real assignment; a null
+     * entry would NPE the first time {@code ActionSummaryTable} iterates the list). It's some other
+     * stable slot/id concept the real importer cares about for re-import purposes, irrelevant to
+     * read-only documentation - this port just appends in arrival order instead, matching {@code
+     * ActionXmlBuilder}'s own proven-correct approach (which never had an index concept at all,
+     * since XML mode's field list is just document order).
      */
     private void decodeSetField(String raw, Charset charset) {
         DefValueDecoder d = new DefValueDecoder(raw, charset);

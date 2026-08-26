@@ -7,25 +7,33 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Decodes a packed {@code .def} qualification into {@code com.bmc.arsys.api.QualifierInfo}/
- * {@code ArithmeticOrRelationalOperand} - the same shapes {@code arinside.ar.xmlfile.
- * QualifierXmlBuilder} builds for XML mode.
+ * Java port of {@code com.bmc.arsys.server.domain.util.decode.QualificationDecoder},
+ * targeting {@code com.bmc.arsys.api.QualifierInfo}/{@code ArithmeticOrRelationalOperand} directly
+ * (the exact shapes {@code arinside.ar.xmlfile.QualifierXmlBuilder} already builds for XML mode -
+ * used directly as the client-API reference for constructors/OperandType/AR_REL_OP_* values).
  *
- * <p>Shares one {@link DefValueDecoder} cursor with plain value decoding.
+ * <p>Shares one {@link DefValueDecoder} cursor with plain value decoding, matching the real
+ * class's own inheritance-based cursor sharing (composition here instead, simpler).
  *
  * <p>Top-level qualifier operator codes map directly onto {@code QualifierInfo.AR_COND_OP_*}
- * (0=none/1=AND/2=OR/3=NOT/4=relational/5=from-field). Relational operator codes (1-9) map
- * directly onto {@code RelationalOperationInfo.AR_REL_OP_*} the same way. Operator 5 is the
- * ordinary field-as-boolean-qualifier feature, see {@link QualifierFromFieldInfo}.
+ * (0=none/1=AND/2=OR/3=NOT/4=relational/5=from-field - confirmed identical numbering, same
+ * C-API-era convention already relied on throughout this port). Relational operator codes (1-9)
+ * map directly onto {@code RelationalOperationInfo.AR_REL_OP_*} the same way. Operator 5 was
+ * initially mis-scoped as an obscure "external cross-schema qualification" and left unsupported -
+ * real data proved this wrong (375 of 539 real qualification failures in one spike run were this
+ * single case) - it's the ordinary field-as-boolean-qualifier feature, see {@link
+ * QualifierFromFieldInfo}.
  *
  * <p><b>Deliberately unsupported</b> (thrown as a plain {@link IllegalStateException}, caught by
- * {@link DefFileParser}'s per-object recovery so one exotic qualification fails only its own
- * object, not the whole file - safer than guessing at token consumption and silently misaligning
- * the cursor for whatever follows): top-level operator 6 (JavaBean-expression) and the JavaBean-
- * expression/value-expression operand types (10/11), both genuinely rare in practice.
+ * {@link DefFileParser}'s existing per-object recovery so one exotic qualification fails only its
+ * own object, not the whole file - safer than guessing at token consumption and silently
+ * misaligning the cursor for whatever follows): top-level operator 6 (JavaBean-expression) and the
+ * JavaBean-expression/value-expression operand types (10/11) - confirmed real but genuinely rare in
+ * live data (under 0.6% of real AL/Filter/Escalation objects combined, per the same spike run).
  * STATUS_HISTORY/FUNCTION/VALUE_SET operands ARE fully token-consumed (so they never desync the
- * cursor) but render as a generic null-value placeholder, matching {@code QualificationRenderer}'s
- * own "simplified placeholder" treatment of these same operand types.
+ * cursor) but render as a generic null-value placeholder - matching {@code QualificationRenderer}'s
+ * own already-established "simplified placeholder" treatment of these same operand types, so no
+ * rendering fidelity is actually lost by simplifying here too.
  */
 final class DefQualificationDecoder {
     private final DefValueDecoder d;
@@ -53,9 +61,13 @@ final class DefQualificationDecoder {
             case 2 -> new QualifierInfo(QualifierInfo.AR_COND_OP_OR, orEmpty(decodeQualification()), orEmpty(decodeQualification()));
             case 3 -> new QualifierInfo(QualifierInfo.AR_COND_OP_NOT, orEmpty(decodeQualification()), null);
             case 4 -> decodeRelational();
-            // AR_COND_OP_FROM_FIELD: a field used directly as a boolean qualifier, wrapping a
-            // single field id - matches arinside.ar.xmlfile.QualifierXmlBuilder's identical
-            // "fieldID"/"qualifierFromField" case.
+            // Confirmed via live data, NOT the obscure "external cross-schema qualification" this
+            // was first assumed to be (375/539 real qualification failures were this single case,
+            // far too common to be obscure): the domain's ExternalQualificationImpl(int) wraps a
+            // single field id, exactly matching the client's own QualifierFromFieldInfo(int) /
+            // AR_COND_OP_FROM_FIELD=5 shape - a field used directly as a boolean qualifier, a real,
+            // ordinary AR System feature already proven working by arinside.ar.xmlfile.
+            // QualifierXmlBuilder's identical "fieldID"/"qualifierFromField" case.
             case 5 -> new QualifierInfo(new QualifierFromFieldInfo(d.readInt()));
             default -> throw new IllegalStateException("unsupported top-level qualification operator " + operator);
         };

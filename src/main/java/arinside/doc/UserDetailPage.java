@@ -60,10 +60,13 @@ public final class UserDetailPage {
     }
 
     /**
-     * Java port of CARInside::LinkToGroup(appRefName="", groupId, rootLevel). Resolves a group id to
-     * its real group name for display (e.g. "Public" instead of the raw id "0"). appRefName is empty
-     * here matching the original tool (a user's group list isn't scoped to any one application), so
-     * a negative (role) id essentially never resolves to a real role name in practice.
+     * Java port of CARInside::LinkToGroup(appRefName="", groupId, rootLevel) - the user page's own
+     * Group List row previously hardcoded the literal group id as link text (e.g. "0" instead of
+     * "Public") regardless of the group's real name, the same bug already found and fixed on
+     * SchemaDetailPage/ActiveLinkDetailPage/ContainerDetailPage this session - just not yet applied
+     * here. appRefName is empty here matching the C++ exactly (a user's group list isn't scoped to
+     * any one application), so a negative (role) id essentially never resolves to a real role name
+     * in practice - same as the real tool.
      */
     private String groupRef(int groupId, int rootLevel) {
         if (groupId < 0) {

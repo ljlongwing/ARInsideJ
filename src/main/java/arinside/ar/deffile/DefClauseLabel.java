@@ -4,13 +4,16 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * The nested {@code field {}/vui {}/action {}/else {}/}}-style sub-block markers within a struct.
+ * Java port of {@code com.bmc.arsys.server.domain.export.def.DefClauseLabel} - the nested
+ * {@code field {}/vui {}/action {}/else {}/}}-style sub-block markers within a struct.
  *
- * <p>Every end-of-block marker ({@code field {}`s closing {@code }}, {@code action {}'s, {@code
- * else {}'s, {@code support file {}'s) trims to the identical key {@code "}"}, so a bare {@code
- * "}"} can't say by itself which kind of block just closed - the caller must track its own
- * open-block context (a stack of "currently inside field/action/else/file") and interpret it
- * against whatever is on top. This is why there's only one {@code END} constant here.
+ * <p>The real source declares 4 distinct end-of-block constants ({@code END}/{@code END_ACTION}/
+ * {@code END_ELSE}/{@code END_FILE}), but their raw label strings ({@code "}\n"}, {@code "   }\n"}
+ * x3) all trim to the identical key {@code "}"} - confirmed by reading the trim-based lookup logic
+ * directly, not assumed. That means the real parser cannot and does not distinguish which kind of
+ * block just closed from the tag string alone; it must track its own open-block context (a stack
+ * of "currently inside field/action/else/file") and interpret a bare {@code "}"} against whatever
+ * is on top. This port does the same - one {@code END} constant, nesting tracked by the caller.
  */
 public enum DefClauseLabel {
     FIELD("field {\n"),

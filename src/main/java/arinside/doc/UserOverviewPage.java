@@ -16,12 +16,13 @@ import java.util.Map;
 /**
  * Java port of CDocMain::UserList + output/UserTable.{h,cpp}, plus the letter-filtered
  * overview/users_<letter>.htm pages (CDocMain::UserList's searchChar loop, driven from
- * ARInside.cpp's DoWork). Users are the one object type that splits into separate per-letter
- * overview pages (overview/users_a.htm, _b.htm, ... - only for letters/digits that occur among
- * real user names, plus overview/users_other.htm for anything outside a-z0-9). The
- * `user/index.htm` full listing this port already builds stays a single page (matches
- * DefaultFileNamingStrategy's behavior, which this port otherwise follows); only the overview/
- * mirror gets split, matching ObjectNameFileNamingStrategy's behavior.
+ * ARInside.cpp's DoWork). Confirmed against the real C++ baseline that this is the one object
+ * type that actually splits into separate per-letter overview pages on this server
+ * (overview/users_a.htm, _b.htm, ... - only for letters/digits that occur among real user names,
+ * plus overview/users_other.htm for anything outside a-z0-9). The `user/index.htm` full listing
+ * this port already builds stays a single page (matches DefaultFileNamingStrategy's behavior,
+ * which this port otherwise follows); only the overview/ mirror gets split, matching
+ * ObjectNameFileNamingStrategy's behavior on the real baseline server.
  */
 public final class UserOverviewPage {
     private static final String LETTERS = "abcdefghijklmnopqrstuvwxyz0123456789";

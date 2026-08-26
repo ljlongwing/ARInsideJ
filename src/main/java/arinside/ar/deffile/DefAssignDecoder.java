@@ -7,20 +7,27 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Decodes a packed {@code .def} assignment into {@code com.bmc.arsys.api.AssignInfo} - the same
- * shape {@code arinside.ar.xmlfile.AssignInfoXmlBuilder} builds for XML mode. Used for {@code
- * set-field}/{@code push-field} action tags on Active Links/Filters/Escalations.
+ * Java port of {@code com.bmc.arsys.server.domain.util.decode.AssignDecoder} (ported from the
+ * real AR Server), targeting
+ * {@code com.bmc.arsys.api.AssignInfo} directly (the exact shape {@code
+ * arinside.ar.xmlfile.AssignInfoXmlBuilder} already builds for XML mode - used directly as the
+ * client-API reference). Used for {@code set-field}/{@code push-field} action tags on Active
+ * Links/Filters/Escalations.
  *
- * <p>The format's inner assignment-type tag numbering (0=none/1=value/2=field/3=process/4=arith/
- * 5=function/7=sql/8=filterAPI) matches {@code AssignInfo.AR_ASSIGN_TYPE_*} exactly, so most cases
- * pass the raw tag straight through with no translation table.
+ * <p>The DEF format's own inner assignment-type tag numbering (0=none/1=value/2=field/3=process/
+ * 4=arith/5=function/7=sql/8=filterAPI) matches {@code AssignInfo.AR_ASSIGN_TYPE_*} exactly -
+ * confirmed via javap, same C-API-era numbering convention already relied on throughout this file -
+ * so most cases pass the raw tag straight through with no translation table.
  *
  * <p><b>Deliberately unsupported</b> (see {@link DefQualificationDecoder}'s javadoc for the same
- * reasoning): tag 6 (DDE actions are a distinct top-level action type, not reachable as a nested
- * assignment), tag 9 (unused), tags 10/11 (JavaBean expression / custom action, thrown so one
- * exotic assignment fails only its own object via {@link DefFileParser}'s per-object recovery).
- * Tag 12 (ValueExpression) is a thin wrapper with no client-API equivalent - simplified here by
- * returning the recursively-decoded inner assignment directly, unwrapped.
+ * reasoning): tag 6 (DDE - not actually reachable via this generic path even in the real decoder,
+ * DDE actions are a distinct top-level action type handled elsewhere, not a nested assignment),
+ * tag 9 (unused), tags 10/11 (JavaBean expression / custom action - obscure, thrown so one exotic
+ * assignment fails only its own object via {@link DefFileParser}'s existing per-object recovery).
+ * Tag 12 (ValueExpression) is a thin wrapper the domain re-decodes as a fresh nested assignment and
+ * wraps in a marker type with no client-API equivalent - simplified here by returning the
+ * recursively-decoded inner assignment directly, unwrapped (drops a meaningless wrapper, keeps the
+ * real data).
  */
 final class DefAssignDecoder {
     private final DefValueDecoder d;
@@ -39,7 +46,7 @@ final class DefAssignDecoder {
         return new DefAssignDecoder(sharedCursor).decodeAssignment(false);
     }
 
-    /** Same as {@link #decodeInline} but forces the field-assignment tag - a push target is always a plain field reference, never a value/arithmetic/etc. */
+    /** Same as {@link #decodeInline} but forces the field-assignment tag (matches {@code decodePushFields}'s target half, which the real decoder always forces to tag 2 - a push target is always a plain field reference, never a value/arithmetic/etc.). */
     static AssignInfo decodeInlinePushTarget(DefValueDecoder sharedCursor) {
         return new DefAssignDecoder(sharedCursor).decodeAssignment(true);
     }
@@ -68,7 +75,7 @@ final class DefAssignDecoder {
             }
             case 2 -> {
                 AssignFieldInfo field = decodeFieldAssignment();
-                if (field == null) return null; // unhandled sub-tag
+                if (field == null) return null; // matches the real decoder's own "unhandled sub-tag -> null" quirk
                 info.setAssignType(AssignInfo.AR_ASSIGN_TYPE_FIELD);
                 info.setField(field);
             }
@@ -108,7 +115,7 @@ final class DefAssignDecoder {
         return info;
     }
 
-    /** server\schema\assignTag\(fieldId if 1 | statHistory if 4 | currencyPart if 6)\<inline "Set If" qualifier bytes>noMatch\multiMatch\ - the qualifier/noMatch/multiMatch trailer is only present (and only read) when assignTag matched one of 1/4/6. */
+    /** server\schema\assignTag\(fieldId if 1 | statHistory if 4 | currencyPart if 6)\<inline "Set If" qualifier bytes>noMatch\multiMatch\ - the qualifier/noMatch/multiMatch trailer is only present (and only read) when assignTag matched one of 1/4/6, exactly matching the real decoder's own control flow. */
     private AssignFieldInfo decodeFieldAssignment() {
         String server = d.readString(d.readInt());
         String schema = d.readString(d.readInt());
@@ -141,7 +148,7 @@ final class DefAssignDecoder {
         return op;
     }
 
-    /** "<longEnumValue> <intType>" - a single space-delimited token, not backslash-delimited like everything else in this format. */
+    /** "<longEnumValue> <intType>" - a single space-delimited token, not backslash-delimited like everything else in this format (matches the real Decoder.decodeStatusHistory2() exactly). */
     private StatusHistoryValueIndicator decodeStatusHistory2() {
         String s = d.readString();
         int space = s.indexOf(' ');
@@ -153,7 +160,7 @@ final class DefAssignDecoder {
         } catch (NumberFormatException e) {
             enumValue = 0;
         }
-        return new StatusHistoryValueIndicator(false, enumValue); // isUser/isTime unknown from this encoding; STATUS_HISTORY renders as a placeholder throughout this port
+        return new StatusHistoryValueIndicator(false, enumValue); // isUser/isTime unknown from this encoding - see class javadoc precedent (STATUS_HISTORY is a placeholder-rendered type throughout this port)
     }
 
     /** currFieldId\partTag\(currencyCode if partTag==functional)\ - identical packed shape to DefQualificationDecoder's own currency-part operand. */
@@ -169,7 +176,7 @@ final class DefAssignDecoder {
         int op = d.readInt();
         if (op < 1 || op > 6) return new ArithOpAssignInfo(ArithmeticOperationInfo.AR_ARITH_OP_ADD, new AssignInfo(), new AssignInfo());
         AssignInfo left = orEmpty(decodeAssignment(false));
-        if (op == 6) { // NEGATE (unary) - ActionSummaryTable reads getOperandRight() for this case
+        if (op == 6) { // NEGATE (unary) - ActionSummaryTable reads getOperandRight() for this case, confirmed via source
             return new ArithOpAssignInfo(op, left, left);
         }
         AssignInfo right = orEmpty(decodeAssignment(false));

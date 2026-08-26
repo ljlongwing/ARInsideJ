@@ -7,16 +7,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Builds a {@code com.bmc.arsys.api.Container} subtype from a {@code begin container ... end}
- * block plus its nested {@code reference { }} clauses - the same shapes {@code ContainerXmlBuilder}
- * builds for XML mode.
+ * Java port of {@code ContainerParseEventHandler} + {@code ReferenceParseEventHandler},
+ * targeting {@code com.bmc.arsys.api.Container} subtypes directly - the exact shapes {@code
+ * ContainerXmlBuilder} already builds for XML mode, used as the client-API reference.
  *
- * <p>A container's {@code type:} tag is not guaranteed to be the first tag, so plain fields are
- * buffered and the real subtype is only constructed once, in {@link #build()}, once every field
- * has been seen.
+ * <p>The real handler starts every container as a generic {@code ApplicationContainerImpl}
+ * (matching {@code beginContainerParsing}), then swaps to the real subtype once the {@code type:}
+ * tag arrives, copying every field seen so far across (a container's {@code type:} tag is not
+ * guaranteed to be the first tag, confirmed by reading {@code setContainerType}'s explicit
+ * field-by-field copy) - this port defers subtype selection to {@link #build()} instead (buffering
+ * plain fields, then constructing the one real subtype once at the end), simpler than replaying a
+ * live copy since nothing here is emitted incrementally to a listener.
  *
- * <p>{@code type:} values map to subtypes as ACTIVELINK_GUIDE=1/APPLICATION=2/PACKINGLIST=3/
- * FILTER_GUIDE=4/WEBSERVICE=5.
+ * <p>{@code type: 5} in real data ("Roles", carrying {@code &lt;portProperties&gt;}/operation-mapping
+ * reference blobs) confirmed {@link ContainerType#WEBSERVICE} per the domain enum ordering (ACTIVELINK_GUIDE=1/APPLICATION=2/PACKINGLIST=3/FILTER_GUIDE=4/WEBSERVICE=5); the constant names alone don't reveal the raw int ordering.
  */
 final class DefContainerBuilder {
     private int type = 2; // ApplicationContainer - matches beginContainerParsing's default before a type: tag arrives
@@ -80,9 +84,10 @@ final class DefContainerBuilder {
     }
 
     /**
-     * {@code owning-obj}/{@code add-owning-obj}: {@code count\(ownerType\len\value\)*}. Only
-     * ownerType 2 (SCHEMA) is kept, matching {@code ContainerXmlBuilder}'s own "form" mapping to
-     * {@link ContainerOwner#SCHEMA}.
+     * {@code owning-obj}/{@code add-owning-obj}: {@code count\(ownerType\len\value\)*} - Java port of
+     * {@code DefParserHelper.loadContainerOwners}. Real data only ever carries ownerType 2 (SCHEMA -
+     * confirmed by the real handler itself throwing on anything else), so only that type is kept,
+     * matching {@code ContainerXmlBuilder}'s own "form" mapping to {@link ContainerOwner#SCHEMA}.
      */
     private void decodeOwners(String raw, Charset charset) {
         DefValueDecoder d = new DefValueDecoder(raw, charset);

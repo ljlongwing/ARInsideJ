@@ -4,9 +4,10 @@ import java.util.EnumMap;
 import java.util.Map;
 
 /**
- * Java port of output/ImageTag.{h,cpp}. Only the plain enum-based icon rendering is ported -
- * the C++'s overlay-aware constructor (ImageTag(const CARServerObject&, rootLevel)) has no
- * equivalent here; this covers what WebPage/URLLink need.
+ * Java port of output/ImageTag.{h,cpp}. The overlay-aware constructor that takes a server
+ * object (ImageTag(const CARServerObject&, rootLevel) in the C++) is added once the object
+ * model exists (Phase 2+); for now this covers the plain enum-based icon rendering that
+ * WebPage/URLLink need.
  */
 public final class ImageTag {
 

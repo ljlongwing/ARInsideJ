@@ -89,30 +89,39 @@ final class ObjectPropertiesTable {
      * Java port of core/ARProplistHelper.cpp's CARProplistHelper::GetValue - deliberately NOT the
      * same formatter as {@link ValueFormat} (that one renders AR_VALUE qualification literals,
      * which quote CHAR/TIME values the way qualification syntax requires - e.g. `'Some Text'`).
-     * Raw object-property values are never quoted in the original tool (GetValue's
-     * AR_DATA_TYPE_CHAR case is plain {@code CWebUtil::Validate(arV.u.charVal)}, no quotes).
+     * Raw object-property values are never quoted in the real tool (confirmed: GetValue's
+     * AR_DATA_TYPE_CHAR case is plain {@code CWebUtil::Validate(arV.u.charVal)}, no quotes) - using
+     * ValueFormat here was a real bug producing a bare {@code ""} for every empty/unset CHAR
+     * property where the real tool shows a blank cell.
      *
-     * <p>AR_DATA_TYPE_ULONG has one hardcoded special case matching the original GetValue -
-     * AR_OPROP_SCC_TIMESTAMP is epoch-seconds converted via CUtil::DateTimeToHTMLString.
+     * <p>AR_DATA_TYPE_ULONG has one hardcoded special case in the real GetValue - AR_OPROP_SCC_TIMESTAMP
+     * is epoch-seconds converted via CUtil::DateTimeToHTMLString, confirmed via live comparison (the
+     * C++ baseline never even shows this row when the value is genuinely absent server-side, but
+     * when the Java AR API does return a ULONG value for it - real or the API's own zero-default -
+     * this now formats it exactly like the real tool would if it saw that same value).
      *
      * <p>CAREnum::FieldPropertiesValue (111+ per-property enum/bitmask value tables) is still
      * deliberately not fully ported (see class javadoc) - EXCEPT AR_SMOPROP_OVERLAY_PROPERTY
-     * (Original/Overlay/Custom), which is common enough on overlay-capable objects to be worth the
-     * small, targeted port. Everything else still falls through to the raw value - INTEGER/ENUM/
-     * ULONG show the plain number (matching the C++'s own fallback for an unmatched property id) -
-     * EXCEPT AR_OPROP_OVERLAY_EXTEND_MASK/AR_OPROP_OVERLAY_INHERIT_MASK, hardcoded to always render
+     * (Original/Overlay/Custom), confirmed via live C++ output (a schema's "Overlay Property" row
+     * reads "Custom"), which is common enough on overlay-capable objects to be worth the small,
+     * targeted port. Everything else still falls through to the raw value - INTEGER/ENUM/ULONG show
+     * the plain number (matching C++'s own fallback for an unmatched property id) - EXCEPT
+     * AR_OPROP_OVERLAY_EXTEND_MASK/AR_OPROP_OVERLAY_INHERIT_MASK, hardcoded to always render
      * "Unknown" (EnumDefault in the C++, `if (strValue.empty()) strValue = EnumDefault;`): these two
-     * are AR_DATA_TYPE_BITMASK server-side with no per-value case in the original decode table
-     * either (BMC's own FieldPropertiesValue switch has no case for either property id), so the
-     * original tool always shows "Unknown" for them, never the raw mask number - hardcoded by
-     * property id rather than gated on {@code DataType.BITMASK} because the Java AR API surfaces
-     * these two specifically as a different DataType client-side.
+     * are AR_DATA_TYPE_BITMASK server-side with no per-value case in the real table either, so the
+     * real tool always shows "Unknown" for them (confirmed via live C++ output across many menus,
+     * never the raw mask number) - hardcoded by property id rather than gated on {@code
+     * DataType.BITMASK} because the Java AR API surfaces these two specifically as a different
+     * DataType client-side (confirmed empirically: the BITMASK branch never fired for them). This
+     * isn't a research gap on our side - grepping AREnum.cpp confirms BMC's own
+     * FieldPropertiesValue switch has no case at all for either property id, so even the original
+     * tool's authors never had a decode table for these two masks.
      *
-     * <p>Deliberate departure from strict C++ parity: every "Unknown" fallback (both the hardcoded
-     * pair above and the generic BITMASK/decode-miss case below) appends the raw underlying value
-     * in parens - e.g. "Unknown (12)" - so a reader can look the number up manually even though this
-     * table can't decode it to a label. The original tool discards the number entirely in this
-     * case; this is intentionally more useful than a byte-exact match would be.
+     * <p>Deliberate departure from strict C++ parity, at the user's request: every "Unknown"
+     * fallback (both the hardcoded pair above and the generic BITMASK/decode-miss case below) now
+     * appends the raw underlying value in parens - e.g. "Unknown (12)" - so a reader can look the
+     * number up manually even though this table can't decode it to a label. C++ itself discards the
+     * number entirely in this case; this is intentionally more useful than the byte-exact original.
      */
     private static final Set<Integer> ALWAYS_UNKNOWN = Set.of(
         Constants.AR_OPROP_OVERLAY_EXTEND_MASK, Constants.AR_OPROP_OVERLAY_INHERIT_MASK);

@@ -23,8 +23,8 @@ import java.util.function.Function;
  * join forms pull this field in as their primary/secondary member field". The C++ rescans every
  * join form's every field, from scratch, once per field being documented (its own DocFieldDetails.cpp
  * comment flags this as a known TODO: "each field scans for current schemas join-form references
- * again... maybe its possible to move this scanning to the scan-phase") - on a server with
- * thousands of forms that per-field rescan would be quadratic, so this builds the same information
+ * again... maybe its possible to move this scanning to the scan-phase") - at this port's real data
+ * scale (4667+ forms) that per-field rescan would be quadratic, so this builds the same information
  * as one reverse index instead, in a single pass over every join form's fields, matching the
  * established pattern of every other scan/ index in this port (GlobalFieldIndex etc.).
  */

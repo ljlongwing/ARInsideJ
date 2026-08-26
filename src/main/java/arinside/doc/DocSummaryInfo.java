@@ -4,8 +4,13 @@ import arinside.config.AppConfig;
 import arinside.output.*;
 
 /**
- * Java port of doc/DocSummaryInfo.cpp - the "index.htm" home page content (a summary table of
- * every object type + counts, linking to each overview page).
+ * Java port of doc/DocSummaryInfo.cpp - the real "index.htm" home page content (a summary table of
+ * every object type + counts, linking to each overview page). Previously this port's index.htm was
+ * a literal hardcoded placeholder ("This space is intentionally left blank...") left over from very
+ * early in the port and never replaced - every later verification round checked object/page counts
+ * and content correctness of individual detail pages, but never actually opened the home page
+ * itself, so this went unnoticed for the entire port until a direct visual comparison against the
+ * C++ baseline caught it.
  *
  * Unlike the C++ (which threads count fields through CDocSummaryInfo as documentation proceeds,
  * then renders once at the very end of CARInside::Documentation()), this is a plain static render

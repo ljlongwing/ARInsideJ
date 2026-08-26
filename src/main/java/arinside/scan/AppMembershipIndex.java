@@ -20,13 +20,14 @@ import java.util.Map;
  * Java port of the AppRefName-assignment side effect scattered through
  * doc/DocApplicationDetails.cpp's SearchForms/SearchActiveLinks/SearchFilters/SearchContainer -
  * "which Application container owns this form (directly) / packing list (directly, via the app's
- * own CONTAINER-type content)". The original tool derives every OTHER object type's app ownership
- * from these two direct assignments (an active link/filter/escalation's app = the app of any form
- * it's attached to; a guide/filter-guide's app = the app of its owner form, via ContainerForms/
+ * own CONTAINER-type content)". The C++ derives every OTHER object type's app ownership from these
+ * two direct assignments (an active link/filter/escalation's app = the app of any form it's
+ * attached to; a guide/filter-guide's app = the app of its owner form, via ContainerForms/
  * ContainerOwner - see PermissionIndex's containerApp()) rather than a separate per-type pass, so
- * this index only needs to capture the two direct, no-indirection cases. ARCON_WEBSERVICE containers
- * are never assigned an app at all in the original tool either; PermissionIndex's containerApp()
- * matches that by always returning null for webservices.
+ * this index only needs to capture the two direct, no-indirection cases. Confirmed via source that
+ * ARCON_WEBSERVICE containers are never assigned an app at all (SearchContainer's switch has no
+ * case for it) - a genuine gap in the original tool, not something to "fix" here; PermissionIndex's
+ * containerApp() replicates that same gap by always returning null for webservices.
  *
  * Built as a small, synchronous, upfront pass (like PermissionIndex's knownMenuNames) since
  * Application containers are a bounded, typically small set (dozens, not thousands) - must finish

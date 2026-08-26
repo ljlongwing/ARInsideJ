@@ -7,17 +7,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Builds a {@code com.bmc.arsys.api.Filter}'s object-level (non-action) fields from a {@code
- * begin filter ... end} block, matching {@code arinside.ar.xmlfile.WorkflowXmlBuilder.buildFilter}'s
- * target shape. Action-body tags are delegated to {@link DefActionBuilder}.
+ * Java port of {@code FilterParseEventHandler}'s object-level (non-action) tag handling, targeting {@code com.bmc.arsys.api.Filter}
+ * directly (the exact shape {@code arinside.ar.xmlfile.WorkflowXmlBuilder.buildFilter} already
+ * builds). Action-body tags are delegated to {@link DefActionBuilder}.
  *
- * <p>Unlike ActiveLink, Filter's {@code permission:} tag IS a {@code groupId\permissionLevel}
- * pair - but the client {@code Filter} type has no permissions accessor at all, so
- * PERMISSION/ADD_PERMISSION tags are simply not applicable here.
+ * <p>Unlike ActiveLink, Filter's {@code permission:} tag IS a {@code groupId\permissionLevel} pair
+ * (confirmed via {@code DefParserImpl.parseValue()}'s {@code instanceof ActiveLink} special case -
+ * everything that ISN'T an ActiveLink uses the paired form) - but the client {@code Filter} type has
+ * no permissions accessor at all in this jar (confirmed via javap - Filters don't carry
+ * group-permission data the way Forms/ActiveLinks do), so PERMISSION/ADD_PERMISSION tags are simply
+ * not applicable here and are never emitted by a real Filter block anyway.
  *
  * <p>Error handler fields (ERRORHANDLER_OPTIONS/NAME) map directly onto {@code
- * Filter.setErrorFilterOptions}/{@code setErrorHandlingFilter}, since the client type carries
- * these fields directly.
+ * Filter.setErrorFilterOptions}/{@code setErrorHandlingFilter} - simpler than the real domain
+ * handler's separate {@code ErrorHandlerInfo} side-map, since the client type carries these fields
+ * directly (confirmed via {@code WorkflowXmlBuilder.buildFilter}).
  */
 final class DefFilterBuilder {
     private enum ClauseState { NONE, ACTION, ELSE }
@@ -56,7 +60,7 @@ final class DefFilterBuilder {
             }
             case ERRORHANDLER_OPTIONS -> filter.setErrorFilterOptions(ParseUtil.intValue(raw));
             case ERRORHANDLER_NAME -> filter.setErrorHandlingFilter(raw);
-            default -> { /* CHANGE_DIARY/TIMESTAMP - no client setter */ }
+            default -> { /* CHANGE_DIARY/TIMESTAMP - no client setter, matches Form's identical documented gap */ }
         }
     }
 

@@ -136,7 +136,7 @@ public final class AREnumLabels {
         return UNKNOWN;
     }
 
-    /** core/AREnum.cpp's CAREnum::NotifyMechanism - a Notify action's delivery mechanism. Not the same mapping as {@link #defaultNotify} (CAREnum::UserGetDefNotify, a user's own notify preference) - that one labels AR_NOTIFY_VIA_NOTIFIER "Notifier" and has no default case; this one labels it "Alert" and falls back to "Other" for anything unrecognized. */
+    /** core/AREnum.cpp's CAREnum::NotifyMechanism - a Notify action's delivery mechanism. Not the same mapping as {@link #defaultNotify} (CAREnum::UserGetDefNotify, a user's own notify preference) - that one labels AR_NOTIFY_VIA_NOTIFIER "Notifier" and has no default case; this one labels it "Alert" and falls back to "Other" for anything unrecognized, confirmed via source, not assumed identical. */
     public static String notifyMechanism(int type) {
         if (type == Constants.AR_NOTIFY_NONE) return "None";
         if (type == Constants.AR_NOTIFY_VIA_NOTIFIER) return "Alert";
@@ -408,11 +408,12 @@ public final class AREnumLabels {
 
     /**
      * Friendly label for the object-reference types most useful on a container's Members tab.
-     * com.bmc.arsys.api.ReferenceType.toString() prints "[Type=N]" rather than a name, so this
-     * covers the "this is a real referenced object" types plus the app/packing-list grouping
-     * types; the many config/metadata reference types (help file names, icons, ...) intentionally
-     * fall through to the raw numeric label - they're container properties, not member objects,
-     * and aren't worth naming individually here.
+     * com.bmc.arsys.api.ReferenceType.toString() prints "[Type=N]" rather than a name (confirmed
+     * empirically against real container data - not documented behavior, don't assume otherwise),
+     * so this covers the "this is a real referenced object" types plus the app/packing-list
+     * grouping types actually observed in real data; the many config/metadata reference types
+     * (help file names, icons, ...) intentionally fall through to the raw numeric label - they're
+     * container properties, not member objects, and aren't worth naming individually here.
      */
     public static String referenceType(com.bmc.arsys.api.ReferenceType type) {
         if (type == null) return "";

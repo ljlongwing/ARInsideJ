@@ -13,12 +13,16 @@ import java.nio.charset.StandardCharsets;
 import static javax.xml.stream.XMLStreamConstants.START_ELEMENT;
 
 /**
- * Genuinely offline parser for the real AR System Administrator .xml export format - file mode must
- * never need a live server connection, and the AR Java API's own {@code getListXFromDef} calls are
- * real server RPCs, not a local parse the way the C++ tool's {@code ARParseXMLDocument} is. This is
- * a from-scratch StAX parser built directly against the AR Java API's own object model.
+ * Genuinely offline parser for the real AR System Administrator .xml export format - the user's
+ * hard requirement was that file mode must never need a live server connection, and the AR Java
+ * API's own {@code getListXFromDef} calls turned out to be real server RPCs (confirmed by spike),
+ * not a local parse the way the C++ tool's {@code ARParseXMLDocument} is. No C++ source was
+ * reusable for this (see DocActionSetFieldsHelper's tinyxml usage, which turned out to parse an
+ * unrelated embedded webservice field-mapping blob, not the export format itself) - this is a
+ * from-scratch StAX parser built directly against the AR Java API's own object model.
  *
- * <p>Structural properties of the export format that shape this parser:
+ * <p>Findings that shaped this parser, from direct byte-offset inspection of a real 4.5GB export
+ * (never fully loaded - sampled via {@code grep -b}/{@code tail -c}/{@code head -c}):
  * <ul>
  *   <li>9 top-level element types, each independently root-namespaced: form, activeLink, filter,
  *   escalation, menu, container, image, plus distributedMapping/distributedPool (DSO config -
@@ -42,9 +46,10 @@ public final class ArsXmlFileParser {
 
     public static ParsedObjects parse(String filePath) throws IOException, XMLStreamException {
         // The JDK's default JAXP security limits (jdk.xml.maxElementDepth=100 in particular) are
-        // meant to guard against untrusted/malicious XML, but real exports can legitimately nest
-        // hundreds of levels deep (e.g. a long string-concatenation <arithmetic> chain in a
-        // SetFields action). This is a trusted local export file, not untrusted input, so these
+        // meant to guard against untrusted/malicious XML, but real exports legitimately nest
+        // hundreds of levels deep - confirmed against full.xml, a long string-concatenation
+        // <arithmetic> chain in one real active link's SetFields action exceeded depth 100 on its
+        // own. This is the user's own trusted local export file, not untrusted input, so these
         // limits are raised generously rather than left at their conservative defaults.
         System.setProperty("jdk.xml.maxElementDepth", "100000");
         System.setProperty("jdk.xml.totalEntitySizeLimit", "0");

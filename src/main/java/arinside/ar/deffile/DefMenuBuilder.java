@@ -9,17 +9,26 @@ import java.util.Deque;
 import java.util.List;
 
 /**
- * Builds a {@code com.bmc.arsys.api.Menu} subtype from a {@code begin char menu ... end} block -
- * the same shapes {@code MenuDetailPage} (live server mode) already renders.
+ * Java port of {@code MenuParseEventHandler} + {@code MenuPropertyDecoder} (ported from the
+ * real AR Server),
+ * targeting {@code com.bmc.arsys.api.Menu} subtypes directly - the exact shapes {@code
+ * MenuDetailPage} (live server mode) already renders, used as the client-API reference for what's
+ * actually read downstream (confirmed via {@code lm.getItems()} for List menus).
  *
  * <p>Every {@code char-menu:} occurrence, regardless of menu type, starts with the same
- * {@code <index>\<menuType>\...} prefix, sniffed by {@link #createMenu} on the first occurrence;
- * each per-type decoder then discards the same two leading tokens before its own content.
+ * {@code <index>\<menuType>\...} prefix (confirmed by reading both {@code createMenu} - which
+ * sniffs type from this prefix on the FIRST occurrence - and each per-type decoder, which discards
+ * the same two leading tokens before its own real content). {@code CHAR_MENU} is a real jar
+ * built-in decoder candidate ({@code MenuItem.decode(String)}, with {@code AR_DEF_MENU_*}
+ * constants) - checked, but its {@code bufferToMenuItemList} expects tab-indented
+ * newline-separated text, a DIFFERENT serialization than this format's index-prefixed
+ * backslash-token lines, so it's not reusable here - this class replicates the real depth-stack
+ * algorithm from {@code MenuPropertyDecoder.decodeListMenuProperties}/{@code updateSubMenuStack}
+ * instead.
  *
  * <p>Query/Sql/File/DataDictionary menus arrive as ONE {@code char-menu:} occurrence (their whole
  * content is one packed value, no itemized index concept) and are decoded in a single pass; only
- * List menus are itemized across potentially many occurrences, tracked via {@link #stack} (a
- * depth-stack, since {@code index} is a nesting depth, not a list position).
+ * List menus are itemized across potentially many occurrences, tracked via {@link #stack}.
  */
 final class DefMenuBuilder {
     private Menu menu;
@@ -53,7 +62,7 @@ final class DefMenuBuilder {
             }
             case REFRESH_CODE -> { if (menu != null) menu.setRefreshCode(ParseUtil.intValue(raw)); }
             case CHAR_MENU -> decodeCharMenu(raw, charset);
-            default -> { /* CHANGE_DIARY/TIMESTAMP/GUID/BUNDLE_VERSION - no client setter or not rendered */ }
+            default -> { /* CHANGE_DIARY/TIMESTAMP/GUID/BUNDLE_VERSION - no client setter or not rendered, matches Form's identical documented gaps */ }
         }
     }
 
@@ -70,7 +79,7 @@ final class DefMenuBuilder {
             case 3 -> decodeFile((FileMenu) menu, d);
             case 4 -> decodeSql((SqlMenu) menu, d);
             case 6 -> decodeDataDictionary((DataDictionaryMenu) menu, d);
-            default -> { /* type 5 ("server-side") carries no decodable content */ }
+            default -> { /* type 5 ("server-side") - real but content-less in the real handler too (parseServerSideMenu is an empty method), nothing to decode */ }
         }
     }
 
@@ -87,8 +96,9 @@ final class DefMenuBuilder {
         };
     }
 
-    // ServerSideMenu has no distinct client type in this Menu hierarchy and carries no content to
-    // lose; a plain ListMenu stands in as a harmless placeholder container.
+    // ServerSideMenu has no distinct client type found in this jar's Menu hierarchy - real handler's
+    // own parseServerSideMenu() is an empty no-op method too, confirmed via source, so there's no
+    // real content to lose; a plain ListMenu stands in as a harmless placeholder container.
     private Menu serverSideMenuPlaceholder() { return new ListMenu(); }
 
     private QueryMenu newQueryMenu() {
@@ -112,12 +122,18 @@ final class DefMenuBuilder {
 
     /**
      * index\menuType\labelLen\label\(valueLen\value\ if leaf, nothing more if the raw value ends in
-     * a literal trailing backslash - a submenu marker). index is a nesting depth, not a list
+     * a literal trailing backslash - a submenu marker). index is a NESTING DEPTH, not a list
      * position - see class javadoc.
      *
-     * <p>The index and menuType tokens are already consumed by {@link #decodeCharMenu} before this
-     * method runs (shared with Query/Sql/File/DataDictionary's own decoders); do not re-read either
-     * one here.
+     * <p>The real {@code decodeListMenuProperties} does {@code index=readInt(); readString()
+     * [throwaway]; labelLength=readInt(); label=readString(labelLength);} - that one throwaway IS
+     * the menuType token, already consumed by {@link #decodeCharMenu} before this method is called
+     * (shared with Query/Sql/File/DataDictionary's own decoders, which correctly rely on the same
+     * shared 2-token prefix) - an earlier version of this method added a SECOND, redundant throwaway
+     * read here, shifting every subsequent field by one token and silently corrupting every list
+     * item's label (all decoded as empty). Found by inspecting real output (every "MsgType Menu"
+     * item showed a real, sequential integer value but a blank label) - fixed by removing the
+     * duplicate read; do not add a throwaway here.
      */
     private void decodeListItem(int index, String raw, DefValueDecoder d) {
         int labelLen = d.readInt();
@@ -140,18 +156,18 @@ final class DefMenuBuilder {
         } else if (!stack.isEmpty()) {
             attach(index, item);
         }
-        // else: a nested item with no open parent on the stack - silently dropped
+        // else: a nested item with no open parent on the stack - matches the real decoder's own silent-drop behavior for malformed/out-of-order data
     }
 
     private boolean isSubMenu(MenuItem item) {
-        return item.getType() == 2; // MenuItem.getType(): 1=Value, 2=SubMenu
+        return item.getType() == 2; // MenuItem.getType(): 1=Value, 2=SubMenu (confirmed via javap)
     }
 
     private void attach(int depth, MenuItem item) {
         StackEntry top = stack.peek();
         if (depth <= top.depth()) {
             while (!stack.isEmpty() && stack.peek().depth() >= depth) stack.pop();
-            if (stack.isEmpty()) return; // no valid parent left
+            if (stack.isEmpty()) return; // matches real code's implicit guard (no valid parent left)
             top = stack.peek();
         }
         top.item().setSubMenu(item); // MenuItem.setSubMenu(MenuItem) appends to an existing SubMenu-typed item's list
@@ -193,7 +209,7 @@ final class DefMenuBuilder {
         menu.setServer(d.readString(serverLen));
         menu.setNameType(d.readInt());
         menu.setValueFormat(d.readInt());
-        d.readString(); // throwaway token, unused
+        d.readString(); // throwaway - matches the real decoder's own unexplained skip
         if (menu instanceof FieldDataDictionaryMenu fm) {
             fm.setFieldType(d.readInt());
             int formLen = d.readInt();

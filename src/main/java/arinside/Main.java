@@ -113,7 +113,7 @@ public final class Main {
         if (AppConfig.verboseMode) appConfig.dump();
 
         arinside.output.WebUtil.webpageFileExtension = appConfig.gzCompression
-            ? "htm.gz" // extension is set now, before any page paths are computed, for path fidelity
+            ? "htm.gz" // GZip writer itself lands in Phase 6; extension is set now for path fidelity
             : "htm";
 
         if (appConfig.deleteExistingFiles) {
@@ -326,16 +326,20 @@ public final class Main {
                 RoleIndex roleIndex = identity != null ? RoleIndex.build(identity.listRoles()) : RoleIndex.build(List.of());
 
                 // DB Table ID/View/SH View rows on the schema General tab - a raw SQL passthrough
-                // query (ARGetListSQL-equivalent), server mode only. See SchemaDbInfoIndex's javadoc.
+                // query (ARGetListSQL-equivalent), server mode only. See SchemaDbInfoIndex's javadoc -
+                // this was previously (wrongly) documented as a permanent Java-API-surface gap.
                 System.out.println("Indexing schema DB table info (scan/ pass)...");
                 arinside.scan.SchemaDbInfoIndex schemaDbInfo = arinside.scan.SchemaDbInfoIndex.build(client);
 
                 // Same reasoning as roleIndex above - CARInside::LinkToGroup only links a positive
-                // group ID when CARGroup::Exists() is true, using the group's real name as link text
-                // (e.g. "Public" for group 0), falling back to plain numeric text otherwise
-                // (ARInside.cpp:1177-1203) - a second, cheap identity.listGroups() call rather than
-                // threading Main.java's later groupNamesById map (built near the end of the pipeline,
-                // well after schemas render) all the way back up here.
+                // group ID when CARGroup::Exists() is true (using the group's real name as link
+                // text, e.g. "Public" for group 0 - a real bug fixed here, found via user report:
+                // this used to just track membership as a Set<Integer> and always render the literal
+                // text "Group N" regardless of the group's actual name), falling back to plain
+                // numeric text otherwise (ARInside.cpp:1177-1203) - a second, cheap
+                // identity.listGroups() call rather than threading Main.java's later groupNamesById
+                // map (built near the end of the pipeline, well after schemas render) all the way
+                // back up here.
                 Map<Integer, GroupRecord> earlyGroupsById = new HashMap<>();
                 if (identity != null) for (GroupRecord g : identity.listGroups()) earlyGroupsById.put(g.groupId, g);
 
@@ -387,19 +391,22 @@ public final class Main {
                 } else {
                     documentEachWriteOnly("active link detail", alNames, writes, alPage::render);
                 }
-                // documentOverlayBaseLayers relies on comparing a default-mode name list against a
-                // "-2"-mode name list, and separately re-fetching each base name while "-2" is
-                // active - but workflow/schemas are backed by WorkflowBulkCache/SchemaBulkCache, and
-                // listActiveLinkNames()/getActiveLink() etc. all serve straight from that cache
-                // regardless of the session's current overlay-group setting. A cache-backed
-                // WorkflowRepository would make both discoverOverlayBaseNames() calls return the
-                // identical cached (always default-mode) list, and the render step's own
-                // getActiveLink()/getForm() call would serve the stale cached (active-layer) object
-                // instead of a live "-2"-aware fetch. This uses a genuinely cache-less
-                // WorkflowRepository (2-arg constructor, no WorkflowBulkCache) - built once, reused
-                // for all three AL/Filter/Escalation base-layer passes below - for both the name
-                // lister and the page instance's own repo, so every call in this one pass is a real
-                // live query.
+                // Java port bug fix, found via a real full-pipeline compare-output.py regression
+                // check (2026-08-18): documentOverlayBaseLayers relies on comparing a default-mode
+                // name list against a "-2"-mode name list, and separately re-fetching each base name
+                // while "-2" is active - but workflow/schemas are backed by WorkflowBulkCache/
+                // SchemaBulkCache (added in a later speed-optimization round than the overlay
+                // base-layer feature itself), and listActiveLinkNames()/getActiveLink() etc. all
+                // serve straight from that cache regardless of the session's current overlay-group
+                // setting. That made BOTH discoverOverlayBaseNames() calls return the identical
+                // cached (always default-mode) list - zero diff, so this whole feature was silently
+                // finding 0 base-layer objects for every type - and even if a base name HAD been
+                // discovered another way, the render step's own getActiveLink()/getForm() call would
+                // still have served the stale cached (active-layer) object instead of a real live
+                // "-2"-aware fetch. Fixed by using a genuinely cache-less WorkflowRepository (2-arg
+                // constructor, no WorkflowBulkCache) - built once, reused for all three AL/Filter/
+                // Escalation base-layer passes below - for both the name lister and the page
+                // instance's own repo, so every call in this one pass is a real live query.
                 WorkflowRepository workflowLive = new WorkflowRepository(client, blackList);
                 ActiveLinkDetailPage alLivePage = new ActiveLinkDetailPage(workflowLive, appConfig, serverOverlayMode, globalFields, fieldRefs, missingFieldRefs, knownUserNames, appIndex, containerRefs, schemaRefs, roleIndex, earlyGroupsById);
                 documentOverlayBaseLayers(client, "active link", workflowLive::listActiveLinkNames, alLivePage::render);
@@ -512,7 +519,7 @@ public final class Main {
                 System.out.println("Documenting menus...");
                 int menuCount = new MenuOverviewPage(workflow, appConfig, serverOverlayMode, menuAttachments).render();
                 System.out.println(menuCount + " menus listed.");
-                MenuDetailPage menuPage = new MenuDetailPage(workflow, appConfig, serverOverlayMode, knownUserNames, workflowIndex, globalFields, menuAttachments, containers, appIndex, containerRefs);
+                MenuDetailPage menuPage = new MenuDetailPage(workflow, appConfig, serverOverlayMode, knownUserNames, workflowIndex, globalFields, menuAttachments, containers, appIndex, containerRefs, fieldRefs, missingFieldRefs);
                 List<String> menuNames = scoped(workflow.listMenuNames(), scopeFilter != null ? scopeFilter::menuInScope : null,
                     writes, name -> ScopeStubPage.render(appConfig, "Menu", name, Naming.menuDetail(name, false)));
                 if (reads != null) {

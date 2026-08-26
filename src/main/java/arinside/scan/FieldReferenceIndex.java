@@ -20,8 +20,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * qualifiers are rendered during their own normal detail-page pass - no extra fetch pass of its
  * own. Active links/filters/escalations are documented BEFORE schemas/fields in Main.java's
  * pipeline order specifically so this index is already complete by the time FieldDetailPage first
- * (and only) renders each field's "Referenced By" section, avoiding a second render pass over
- * every form once this index is complete.
+ * (and only) renders each field's "Referenced By" section - forms used to be documented first and
+ * re-rendered a second time at the end of the pipeline once this index was complete, which roughly
+ * doubled total file-write volume for no benefit; the reorder eliminated that second pass entirely.
  *
  * Thread-safe: {@link #add} is called concurrently once active link/filter/escalation rendering
  * runs on the parallel write pool (see ReadPool/WritePool) - ConcurrentHashMap for both map

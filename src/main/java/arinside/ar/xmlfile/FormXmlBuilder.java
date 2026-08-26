@@ -12,9 +12,9 @@ import static javax.xml.stream.XMLStreamConstants.START_ELEMENT;
 /**
  * Builds {@link Form} (+ its {@link Field}/{@link View} children) from a &lt;form&gt; top-level
  * element, including its real {@link JoinForm}/{@link ViewForm} subtype from &lt;compoundForm&gt;
- * when present (`&lt;compoundForm&gt;` wraps exactly one of `&lt;regularForm/&gt;`/`&lt;joinForm&gt;`/
- * `&lt;viewForm&gt;`/other rarer variants) - this is what lets FieldDetailPage's join/view Field
- * Mapping section (see its javadoc) work in file mode too,
+ * when present (confirmed against the real export: `&lt;compoundForm&gt;` wraps exactly one of
+ * `&lt;regularForm/&gt;`/`&lt;joinForm&gt;`/`&lt;viewForm&gt;`/other rarer variants) - this is what
+ * lets FieldDetailPage's join/view Field Mapping section (see its javadoc) work in file mode too,
  * not just live server mode. Dialog/vendor forms still fall back to plain {@link RegularForm} -
  * nothing in this port renders their extra detail either way, matching FieldDetailPage's own scope.
  * The common form-level properties are accumulated into locals first and the concrete Form

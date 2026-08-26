@@ -266,7 +266,8 @@ public final class SchemaDetailPage {
      * rowDescription is a short, fixed label per sub-table (e.g. "Push Fields") standing in for the
      * C++'s much more detailed per-row CRefItem::GetDescription() ("Target in 'Push Fields'
      * If-Action 3") - this port doesn't carry the If/Else-branch/action-index provenance through
-     * SchemaReferenceIndex.Caller, so every row in a given sub-table shares the same fixed label.
+     * SchemaReferenceIndex.Caller, matching the level of detail this table already accepted for the
+     * pre-existing "Set Fields" row before this method had real data for the other three.
      */
     private String workflowReferenceSubTable(String description, List<arinside.scan.SchemaReferenceIndex.Caller> callers, String rowDescription, int rootLevel) {
         Table tbl = new Table("schemaWfRef" + description.hashCode(), "TblObjectList");
@@ -349,9 +350,14 @@ public final class SchemaDetailPage {
     /**
      * Java port of DocSchemaDetails.cpp's WorkflowDoc() - the "Workflow" tab's instant-filter list
      * of every Active Link/Filter/Escalation/AL-Guide/Filter-Guide/Webservice attached to this form.
-     * Real rows are built entirely client-side from a JSON blob via schema_page.js's
-     * initWorkflowList()/FilterableTable mechanism (matching the C++'s own copy); the
-     * server-rendered table itself is always just the empty "Table contains no data" placeholder.
+     * Previously a bare static 2-column Type/Name table with no filtering at all; schema_page.js's
+     * initWorkflowList()/FilterableTable mechanism (byte-identical to the C++'s own copy) was
+     * already shipping unused, exactly like the Fields-tab filter fix earlier this session - it just
+     * needed the "var referenceList = [...]" JSON blob, the type-checkbox filter control, and a
+     * matching empty table shell (real rows are built entirely client-side from the JSON, on tab
+     * select - confirmed by checking the real C++ output: the server-rendered table is always just
+     * the empty "Table contains no data" placeholder, matching this port's own Table class's default
+     * empty-table behavior with no extra code needed).
      */
     private String workflowRefs(String formName, int rootLevel) {
         StringBuilder sb = new StringBuilder();
@@ -376,10 +382,11 @@ public final class SchemaDetailPage {
     /**
      * Java port of DocSchemaDetails.cpp's AddJsonRow(CARActiveLink/CARFilter/CAREscalation/
      * CARContainer, ...) - row shape [objType, name, enabled-or-containerType, order, executeOn,
-     * ifCount, elseCount, modified, changedBy, link], objType = the C++'s
+     * ifCount, elseCount, modified, changedBy, link], objType = the real C++'s
      * GetServerObjectTypeXML()-AR_STRUCT_XML_OFFSET values (6=Active Link/5=Filter/9=Escalation/
-     * 12=Container). Escalation's Order slot is the empty string "" (it has no Order concept),
-     * matching the C++ exactly.
+     * 12=Container - confirmed against both schema_page.js's own hardcoded checks and the real C++
+     * output's actual JSON). Escalation's Order slot is the empty string "" (it has no
+     * Order concept), matching the C++ exactly.
      */
     private String workflowJson(String formName, int rootLevel) {
         StringBuilder json = new StringBuilder("var referenceList = [");
@@ -505,7 +512,10 @@ public final class SchemaDetailPage {
         }
 
         // Order from here down matches DocSchemaDetails.cpp's ShowProperties() call sequence
-        // exactly: Archive, then Audit, then Indexes, then Full Text Search.
+        // exactly (Archive, then Audit, then Indexes, then Full Text Search) - an earlier version
+        // of this method rendered Indexes before Archive/Audit, a divergence from the real
+        // accordion order that went unnoticed since nothing before today's fix actually turned
+        // this content into a real jQuery UI accordion widget.
         ArchiveInfo archive = form.getArchiveInfo();
         if (archive != null && form.getFormType() != Constants.AR_SCHEMA_DIALOG) {
             sb.append(archiveInfo(formName, archive, fieldNames, rootLevel));
@@ -556,16 +566,19 @@ public final class SchemaDetailPage {
 
     /**
      * Java port of DocSchemaDetails.cpp's trailing propIdx.UnusedPropertiesToHTML(strm, rootLevel)
-     * call (ShowProperties(), right after ShowPermissionProperties and before ShowChangeHistory).
-     * The C++ tracks a "claimed" bit per property as each Show*Properties() method reads one via
-     * GetAndUseValue, then dumps whatever's left unclaimed at the end; this port has no equivalent
-     * claimed-bit bookkeeping (each typed section here reads Form's own typed accessors, or a raw
-     * property directly via intProp/PropertyHelper), so the same result is reached the same way
-     * {@link ObjectPropertiesTable} already does for Menu/AL/Filter/VUI pages - an explicit
-     * exclude-set naming every property id one of THIS page's own typed sections already shows. One
-     * extra id beyond the C++'s own exclude set: AR_OPROP_DRILL_DOWN_IN_WEB_REPORTS - the C++ never
-     * claims it due to a copy-paste bug (basicPropertiesInfo's javadoc has the full story), so the
-     * original tool actually shows it twice; this port shows it once, correctly, and excludes it
+     * call (ShowProperties(), right after ShowPermissionProperties and before ShowChangeHistory) -
+     * previously entirely missing, so a form's Object Properties were never shown at all (found via
+     * user report). The real C++ tracks a "claimed" bit per property as each Show*Properties()
+     * method reads one via GetAndUseValue, then dumps whatever's left unclaimed at the end; this
+     * port has no equivalent claimed-bit bookkeeping (each typed section here reads Form's own typed
+     * accessors, or a raw property directly via intProp/PropertyHelper), so the same result is
+     * reached the same way {@link ObjectPropertiesTable} already does for Menu/AL/Filter/VUI pages -
+     * an explicit exclude-set naming every property id one of THIS page's own typed sections already
+     * shows (enumerated by reading every GetAndUseValue(AR_OPROP_...) call between ShowBasicProperties
+     * and ShowFTSMTSProperties in the real source - confirmed complete). One extra id
+     * beyond the C++'s own exclude set: AR_OPROP_DRILL_DOWN_IN_WEB_REPORTS - the real C++ never
+     * claims it due to a confirmed copy-paste bug (basicPropertiesInfo's javadoc has the full story),
+     * so the real tool actually shows it twice; this port shows it once, correctly, and excludes it
      * here on purpose rather than reproducing that redundancy.
      */
     private String objectPropertiesInfo(com.bmc.arsys.api.ObjectPropertyMap props, int rootLevel) {
@@ -574,9 +587,10 @@ public final class SchemaDetailPage {
             Constants.AR_OPROP_CORE_FIELDS_OPTION_MASK, Constants.AR_OPROP_FORM_ALLOW_DELETE,
             Constants.AR_OPROP_DRILL_DOWN_IN_WEB_REPORTS, Constants.AR_OPROP_LOCALIZE_FORM_VIEWS,
             Constants.AR_OPROP_LOCALIZE_FORM_DATA, Constants.AR_OPROP_FORM_TAG_NAME,
-            // AR_SMOPROP_* (a different property-id namespace than AR_OPROP_*) - entryPointsInfo()
-            // already shows both of these; omitting them here would duplicate them into this
-            // leftover dump too.
+            // AR_SMOPROP_* (a different property-id namespace than AR_OPROP_*, easy to miss on a
+            // AR_OPROP_-only grep - found and fixed the same day this whole section was added, via
+            // re-checking ShowEntryPointProperties specifically) - entryPointsInfo() already shows
+            // both of these; omitting them here duplicated them into this leftover dump too.
             Constants.AR_SMOPROP_ENTRYPOINT_DEFAULT_NEW_ORDER, Constants.AR_SMOPROP_ENTRYPOINT_DEFAULT_SEARCH_ORDER,
             Constants.AR_OPROP_MFS_OPTION_MASK, Constants.AR_OPROP_MFS_WEIGHTED_RELEVANCY_FIELDS,
             Constants.AR_OPROP_FT_SCAN_TIME_MONTH_MASK, Constants.AR_OPROP_FT_SCAN_TIME_WEEKDAY_MASK,
@@ -917,9 +931,11 @@ public final class SchemaDetailPage {
     /**
      * Java port of DocSchemaDetails.cpp's ShowArchiveProperties - archiveType is a real bitmask
      * (AR_ARCHIVE_FORM=1/DELETE=2/FILE_XML=4/FILE_ARX=8 are independent destination bits,
-     * combinable with the AR_ARCHIVE_NO_ATTACHMENTS=32/NO_DIARY=64 flag bits, all distinct powers
-     * of two), not a mutually-exclusive enum, so bit-testing rather than plain `==` comparisons is
-     * required to correctly detect a combined-flag archiveType. Always rendered for every non-Dialog
+     * combinable with the AR_ARCHIVE_NO_ATTACHMENTS=32/NO_DIARY=64 flag bits - confirmed against
+     * thirdparty/arapi/include/ar.h's #defines, all distinct powers of two), not a
+     * mutually-exclusive enum - an earlier version of this method used plain `==` comparisons,
+     * silently showing "None" for any form with a combined-flag archiveType and omitting the
+     * Archive State/Archive From Form/Times rows entirely. Always rendered for every non-Dialog
      * schema (matching the C++, which calls this unconditionally, not gated on isEnable() - see
      * this method's caller), since "Archive State: Disabled" is itself the useful signal.
      * getArchiveDest() covers both the C++'s archive.u.formName and archive.u.dirPath union members
@@ -992,9 +1008,10 @@ public final class SchemaDetailPage {
      * numeric ID as plain text otherwise (matches every one of {@link #permissionsInfo}'s three
      * permission tables' cell content). This is NOT a row-inclusion filter - permissionsInfo's own
      * Group Permissions loop applies the separate ValidateGroup row-skip before ever calling this
-     * for a negative ID; this method itself never omits anything, only chooses link-vs-text.
-     * Resolves the real name via groupsById, from a cheap early identity.listGroups() call - see
-     * Main.java.
+     * for a negative ID; this method itself never omits anything, only chooses link-vs-text. Fixed
+     * via user report to resolve the real name (groupsById, from a cheap early identity.
+     * listGroups() call - see Main.java) instead of the generic literal "Group N" this used to show
+     * regardless of the group's actual name.
      */
     private String groupRef(int groupId, String appRefName, int rootLevel) {
         if (groupId < 0) {
@@ -1017,15 +1034,17 @@ public final class SchemaDetailPage {
     /**
      * Java port of DocSchemaDetails.cpp's ShowResultListProperties/ShowSortListProperties/
      * ShowIndexProperties each calling pInside->AddFieldReference(schema, field, CRefItem(schema,
-     * REFM_SCHEMA_RESULTLIST/REFM_SCHEMA_SORTLIST/REFM_SCHEMA_INDEX)) - a field used in its own
-     * schema's Result List/Sort List/an Index shows up in that field's own "Referenced By" table.
-     * detail matches RefItem.cpp's "Field in ResultList"/"Field in SortList"/"Field in {indexName}"
-     * text, with the "ResultList"/"SortList"/index-name portion itself wrapped in a link too,
-     * matching CRefItem::LinkToSchemaResultList/SortList/Index - FileNaming.cpp's
-     * SchemaResultList/SchemaSortList/SchemaIndexes classes all resolve to the exact same URL as
-     * the schema's own index.htm (there's no per-section anchor fragment in the real tool either -
-     * it's a same-target link alongside the "Server object" column's own link, but the real tool
-     * always renders it, so this does too).
+     * REFM_SCHEMA_RESULTLIST/REFM_SCHEMA_SORTLIST/REFM_SCHEMA_INDEX)) - previously entirely missing
+     * here, so a field used in its own schema's Result List/Sort List/an Index never showed up in
+     * that field's own "Referenced By" table. detail matches RefItem.cpp's "Field in ResultList"/
+     * "Field in SortList"/"Field in {indexName}" text, with the "ResultList"/"SortList"/index-name
+     * portion itself wrapped in a link too, matching CRefItem::LinkToSchemaResultList/SortList/
+     * Index exactly - confirmed by reading FileNaming.cpp's SchemaResultList/SchemaSortList/
+     * SchemaIndexes classes: all three resolve to the exact same URL as the schema's own index.htm
+     * (there's no per-section anchor fragment in the real tool either, despite the "took you to that
+     * section of the page" framing this looked like at first - it's a same-target, at-first-glance-
+     * redundant link with the "Server object" column's own link, but the real tool always renders
+     * it, so this does too).
      */
     private void addSchemaFieldReference(String formName, boolean isOverlaid, int fieldId, String detail) {
         FieldReferenceIndex.Ref ref = new FieldReferenceIndex.Ref(formName, "Schema", ImageTag.Id.Schema,
@@ -1034,9 +1053,10 @@ public final class SchemaDetailPage {
     }
 
     /**
-     * Java port of DocSchemaDetails.cpp's ShowIndexProperties - one separate table per index, each
-     * field a real link to its own detail page plus Field ID/Datatype/Modified/By columns matching
-     * the C++ exactly. Reuses the same table id "indexTbl" across every
+     * Java port of DocSchemaDetails.cpp's ShowIndexProperties - one separate table per index (not a
+     * single summary table with a comma-joined, unlinked field list, which this port previously
+     * simplified it down to), each field a real link to its own detail page plus Field ID/Datatype/
+     * Modified/By columns matching the C++ exactly. Reuses the same table id "indexTbl" across every
      * index on the page - a real, harmless C++ quirk (duplicate ids across sibling tables), not
      * something this port needs to work around.
      */
@@ -1154,13 +1174,15 @@ public final class SchemaDetailPage {
      * over C++'s raw-name caption), but is now wrapped in the same hyperlink C++ produces when a
      * matching VUI is found.
      *
-     * <p>Labels aren't unique - e.g. locale variants of the same VUI (399990344, 399990344_de,
-     * 399990344_fr, ...) can share identical Label text - so "first match wins" is only
-     * deterministic if scanned in the SAME order the real tool scans it. CARVUIList sorts its own
-     * vuiList by name (`std::sort(sortedList..., SortByName(...))` in ARVUIList.cpp) before
+     * <p>Labels aren't unique - e.g. every locale variant of a "Best Practice View" VUI (399990344,
+     * 399990344_de, 399990344_fr, ...) shares the identical Label text - so "first match wins" is
+     * only deterministic if scanned in the SAME order the real tool scans it. CARVUIList sorts its
+     * own vuiList by name (`std::sort(sortedList..., SortByName(...))` in ARVUIList.cpp) before
      * CARVui's label-search loop walks it in that order, so the real tool always resolves the
-     * alphabetically-first name among same-labeled VUIs. {@code vuis} isn't guaranteed to already be
-     * in that order, so it's sorted here by name to match.
+     * alphabetically-first name among same-labeled VUIs (confirmed via live comparison: C++ links to
+     * "399990344", the alphabetically-first of the ten "Best Practice View"-labeled VUIs on
+     * HPD:Help Desk). {@code vuis} isn't guaranteed to already be in that order, so it's sorted here
+     * by name to match.
      */
     private String defaultViewCell(String formName, boolean isOverlaid, String defaultVui, List<View> vuis, int rootLevel) {
         if (defaultVui == null || defaultVui.isEmpty()) return "";

@@ -222,9 +222,11 @@ public final class GroupDetailPage {
     /**
      * Java port of CAREnum::ObjectPermission - whole-object (group/container/schema-level)
      * permission values: None/Visible/Hidden. AR_PERMISSIONS_VISIBLE and AR_PERMISSIONS_HIDDEN share
-     * their raw numeric values (1/2) with AR_PERMISSIONS_VIEW/AR_PERMISSIONS_CHANGE respectively, so
-     * this must NOT be used for field-level permissions (see {@link #fieldPermissionLabel}) or a
-     * real "Hidden" object permission silently mislabels as "Change".
+     * their raw numeric values (1/2) with AR_PERMISSIONS_VIEW/AR_PERMISSIONS_CHANGE respectively -
+     * confirmed via the arapi jar's actual Constants values, not assumed - so this must NOT be used
+     * for field-level permissions (see {@link #fieldPermissionLabel}) or a real "Hidden" object
+     * permission silently mislabels as "Change", which is exactly the bug found via user report and
+     * fixed here (previously one shared function served both contexts).
      */
     static String objectPermissionLabel(int permissionValue) {
         if (permissionValue == Constants.AR_PERMISSIONS_VISIBLE) return "Visible";

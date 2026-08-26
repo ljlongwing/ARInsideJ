@@ -15,25 +15,31 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Genuinely offline parser for the real AR System Administrator {@code .def} export format -
- * mirrors {@code arinside.ar.xmlfile.ArsXmlFileParser}'s role (produce a plain {@link
- * ParsedObjects}, reusing the existing {@code XmlFile*Repository} classes unchanged) but for the
- * packed line-oriented format instead of XML. {@link DefLineReader} does the tag/value tokenizing
- * (including the continuation-line logic), this class does the top-level {@code begin X ... end}
- * struct dispatch and {@code field {}/vui {}} clause nesting for schemas.
+ * mirrors {@code arinside.ar.xmlfile.ArsXmlFileParser}'s role (produce a plain {@link ParsedObjects},
+ * reusing the existing {@code XmlFile*Repository} classes unchanged - see the approved plan) but for
+ * the packed line-oriented format instead of XML. Architecture ported from the AR Server's own .def import handlers (): {@link DefLineReader} does
+ * the tag/value tokenizing (including the real continuation-line logic), this class does the
+ * top-level {@code begin X ... end} struct dispatch (mirrors {@code ParseListenerImpl}) and
+ * {@code field {}/vui {}} clause nesting for schemas (mirrors {@code FormParseEventHandler}'s own
+ * dispatch, folded in here rather than as a separate listener object since this port drives the
+ * whole pipeline procedurally instead of via an event-listener interface).
  *
  * <p><b>Scope: Form/Field/View, ActiveLink/Filter/Escalation, Menu, Container, and Image</b> - the
  * full vocabulary {@link ParsedObjects} itself carries (matching {@code arinside.ar.xmlfile.
  * ArsXmlFileParser}'s own identical scope). {@code Association} objects are deliberately out of
  * scope - {@link ParsedObjects} has no associations map at all, and the C++'s own file-mode
- * never populates associations either, so there is nothing downstream that would render them. The
- * rare standalone {@code begin vui} form-merge struct and the multi-object-bundle {@code begin
- * application} struct (a different, rarer top-level export shape than the {@code Container}-subtype
- * "Applications" this port documents) are recognized and their content correctly skipped so they
- * don't desync the parser for what follows, but are not built into {@link ParsedObjects}.
+ * (`ARInside.cpp::LoadFromFile`) never populates associations either, so there is nothing downstream
+ * that would render them. The rare standalone {@code begin vui} form-merge struct and the
+ * multi-object-bundle {@code begin application}/{@code ApplicationParseEventHandler} struct (a
+ * different, rarer top-level export shape than the {@code Container}-subtype "Applications" this
+ * port documents - confirmed by reading both handlers directly) are recognized and their content
+ * correctly skipped so they don't desync the parser for what follows, but are not built into {@link
+ * ParsedObjects}.
  *
- * <p>Per-object error recovery: an exception while building one schema's fields/properties is
- * logged and swallowed, with further events for that same object ignored until its {@code end} -
- * one bad object never aborts the whole file.
+ * <p>Per-object error recovery mirrors the real {@code DefParserImpl}'s {@code errorParsingObject}
+ * flag: an exception while building one schema's fields/properties is logged and swallowed, with
+ * further events for that same object ignored until its {@code end} - one bad object never aborts
+ * the whole file.
  */
 public final class DefFileParser {
     private DefFileParser() {}
@@ -154,8 +160,9 @@ public final class DefFileParser {
                 } else if (currentStruct == DefStructLabel.ESCALATION && escBuilder != null) {
                     parseWorkflowEvent(tag, tv, charset, escBuilder::beginAction, escBuilder::beginElse, escBuilder::endActionClause, escBuilder::item);
                 } else if (currentStruct == DefStructLabel.CHAR_MENU && menuBuilder != null) {
-                    // Menu structs have no valid clauses, so items are dispatched directly with no
-                    // clause routing needed.
+                    // Menu structs have no valid clauses at all (confirmed via source - the real
+                    // handler throws on any non-STRUCT/ITEM event type), so items are dispatched
+                    // directly with no clause routing needed.
                     DefItemLabel item = DefItemLabel.of(tag);
                     if (item != null) menuBuilder.item(item, tv.value(), charset);
                 } else if (currentStruct == DefStructLabel.CONTAINER && containerBuilder != null) {
@@ -171,7 +178,7 @@ public final class DefFileParser {
                         if (item != null) containerBuilder.item(item, tv.value(), charset);
                     }
                 } else if (currentStruct == DefStructLabel.IMAGE_OBJECT && imageBuilder != null) {
-                    // Image structs have no clauses either (mirrors Menu).
+                    // Image structs have no clauses either (mirrors Menu - confirmed via source).
                     DefItemLabel item = DefItemLabel.of(tag);
                     if (item != null) imageBuilder.item(item, tv.value(), charset);
                 }
@@ -201,7 +208,7 @@ public final class DefFileParser {
             return;
         }
         DefItemLabel item = DefItemLabel.of(tag);
-        if (item == null) return; // unrecognized tag - ignore
+        if (item == null) return; // unrecognized tag - ignore, matches the real parser's own tolerance
         Object decoded = item == DefItemLabel.CHANGE_DIARY ? decodeDiary(tv.value(), charset) : null;
         formBuilder.item(item, tv.value(), decoded, charset);
     }
@@ -221,11 +228,11 @@ public final class DefFileParser {
             return;
         }
         DefItemLabel item = DefItemLabel.of(tag);
-        if (item == null) return; // unrecognized tag - ignore
+        if (item == null) return; // unrecognized tag - ignore, matches the real parser's own tolerance
         itemSink.accept(item, tv.value(), charset);
     }
 
-    /** change-diary: {@code <len>\<raw diary text>\} - decoded via {@code DiaryListValue.decode}. */
+    /** change-diary: {@code <len>\<raw diary text>\} - decoded via the client API's own real static decoder. */
     private static DiaryListValue decodeDiary(String raw, Charset charset) {
         DefValueDecoder d = new DefValueDecoder(raw, charset);
         int len = d.readInt();

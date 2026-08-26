@@ -4,8 +4,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * The {@code begin X}/{@code end} top-level block markers. See {@link DefItemLabel}'s javadoc for
- * the tag-lookup convention (trimmed label string).
+ * Java port of {@code com.bmc.arsys.server.domain.export.def.DefStructLabel} - the
+ * {@code begin X}/{@code end} top-level block markers. See {@link DefItemLabel}'s javadoc for the
+ * tag-lookup convention (trimmed label string).
  */
 public enum DefStructLabel {
     ACTIVE_LINK("begin active link\n"),

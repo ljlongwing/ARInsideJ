@@ -8,24 +8,29 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Builds a {@code com.bmc.arsys.api.Field} from a {@code field { ... }} clause. One instance per
- * clause. A field starts as a plain {@link CharacterField} (the format's default before {@code
- * DATA_TYPE} arrives) and gets replaced wholesale once the real datatype is known, carrying over
- * whatever name/id/owner/lastChangedBy were already set - tag order within a field isn't
- * guaranteed, so {@code DATA_TYPE} may not arrive first.
+ * Java port of {@code com.bmc.arsys.server.domain.imports.def.impl.FieldParseEventHandler}, targeting {@code com.bmc.arsys.api.Field} directly
+ * (not the server-internal per-datatype domain subclasses the real class builds).
  *
- * <p>{@code com.bmc.arsys.api.CharacterField}/{@code IntegerField}/{@code RealField}/{@code
- * AttachmentField} etc. carry no type-specific methods of their own (no {@code setMaxLength}/
- * {@code setCharMenu}/{@code setHighRange}/...) - every limit-shaped value (max length, range,
- * precision, menu name, pattern, attach size/type, enum items) lives exclusively on the separate
- * {@link FieldLimit} subtype, attached via {@code Field.setFieldLimit(FieldLimit)}. This class
- * accumulates limit data into a lazily-created {@code pendingLimit} (typed once the datatype is
- * known) rather than the Field object itself.
+ * <p>One instance per {@code field { ... }} clause. Mirrors the real handler's own quirk: a field
+ * starts as a plain {@link CharacterField} (the DEF format's default before {@code DATA_TYPE}
+ * arrives) and gets replaced wholesale once the real datatype is known, carrying over whatever
+ * name/id/owner/lastChangedBy were already set - ported faithfully rather than assuming
+ * {@code DATA_TYPE} always arrives first (real exports don't guarantee tag order within a field).
  *
- * <p>Field-limit scope matches {@code arinside.ar.xmlfile.FieldLimitXmlBuilder}
+ * <p><b>Real API-shape correction made while writing this</b> (confirmed via {@code javap}, not
+ * assumed from the XML-mode template alone): {@code com.bmc.arsys.api.CharacterField}/{@code
+ * IntegerField}/{@code RealField}/{@code AttachmentField} etc. carry NO type-specific
+ * methods of their own (no {@code setMaxLength}/{@code setCharMenu}/{@code setHighRange}/...) -
+ * every limit-shaped value (max length, range, precision, menu name, pattern, attach size/type,
+ * enum items) lives exclusively on the separate {@link FieldLimit} subtype, attached via {@code
+ * Field.setFieldLimit(FieldLimit)}. This class accumulates limit data into a lazily-created
+ * {@code pendingLimit} (typed once the datatype is known) rather than the Field object itself.
+ *
+ * <p>Field-limit scope matches {@code arinside.ar.xmlfile.FieldLimitXmlBuilder} exactly
  * (character/integer/real/decimal/currency/attachment/enumeration) - the datatypes
  * {@code FieldDetailPage} actually renders limits for; everything else (date/dateTime/diary/
- * timeOfDay/table/column/display/view) is left with no {@link FieldLimit}.
+ * timeOfDay/table/column/display/view) is left with no {@link FieldLimit}, matching that
+ * established, disclosed scope cut.
  */
 final class DefFieldBuilder {
     private Field field = new CharacterField();
@@ -101,7 +106,7 @@ final class DefFieldBuilder {
             case ATTACH_TYPE -> withLimit(AttachmentFieldLimit.class, AttachmentFieldLimit::new, l -> l.setAttachType(ParseUtil.intValue(raw)));
             case ENUM_VALUE -> addEnumValue(raw);
             case ENUM_VALUE_NUM -> addEnumValueNum(raw);
-            default -> { /* not rendered anywhere in this port's doc/ layer */ }
+            default -> { /* not rendered anywhere in this port's doc/ layer - see class javadoc for the confirmed scope */ }
         }
     }
 
@@ -141,10 +146,10 @@ final class DefFieldBuilder {
 
     private void setDefaultValue(String raw, Charset charset) {
         if (raw == null || raw.isEmpty()) return;
-        // A leading "$-" marks a keyword default ($USER$-style) - not resolved to a Keyword by
-        // name here (this port's value decoder only knows the int-id form used by CURRENCY
-        // defaults below); rare in practice since most keyword defaults are field-level, not a
-        // per-field DEFAULT tag.
+        // A leading "$-" marks a keyword default ($USER$-style, matching the real handler's own
+        // check) - not resolved to a Keyword by name here (this port's value decoder only knows
+        // the int-id form used by CURRENCY defaults below), a small disclosed scope gap; rare in
+        // practice since most keyword defaults are field-level, not a per-field DEFAULT tag.
         if (raw.startsWith("$-")) return;
         Value value = dataType == Constants.AR_DATA_TYPE_CURRENCY
             ? new DefValueDecoder(raw, charset).decodeValue()

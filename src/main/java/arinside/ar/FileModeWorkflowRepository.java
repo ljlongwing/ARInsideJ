@@ -19,8 +19,10 @@ import java.util.Map;
  * types are pre-loaded once in the constructor (one *FromDef RPC per type), unlike the live
  * WorkflowRepository which fetches per-object on demand - a def file is expected to hold a small,
  * hand-picked object set, so loading everything up front is cheap and simpler than lazy per-name
- * lookups against a file-backed source. No live per-object calls remain after construction, so
- * file mode's write pool needs no connection-sharing synchronization at all.
+ * lookups against a file-backed source. No live per-object calls remain after construction (the
+ * former expandMenu() live call - see MenuDetailPage's javadoc for why it was removed entirely -
+ * was the last one), so unlike an earlier round of this port, file mode's write pool no longer
+ * needs any connection-sharing synchronization at all.
  */
 public final class FileModeWorkflowRepository implements WorkflowSource {
     private final Map<String, ActiveLink> activeLinksByName = new HashMap<>();

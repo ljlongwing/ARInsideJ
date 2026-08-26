@@ -13,8 +13,8 @@ import java.util.List;
 /**
  * Java port of CDocMain::ImageList-equivalent + output/ImageTable.{h,cpp} - includes the jQuery
  * letter-filter/JSON-search widget (see ActiveLinkOverviewPage's javadoc) - imageList.js's JSON row
- * layout is [name, type, modifiedDateStr, lastChangedBy, link, overlayType], matching
- * createImageRowHtml().
+ * layout is [name, type, modifiedDateStr, lastChangedBy, link, overlayType], confirmed against the
+ * real createImageRowHtml().
  */
 public final class ImageOverviewPage {
     private final ImageSource repo;

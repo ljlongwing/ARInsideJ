@@ -53,8 +53,12 @@ public final class ActionSummaryTable {
      * qr may be null (no field-reference context available) - falls back to plain, unlinked "Field N" text and skips "only if" rendering entirely, matching the old scoped-down behavior. currentServerName is this run's connected AR server (AppConfig.serverName) - see serverInfoLink's javadoc for why it's needed.
      *
      * <p>Renders two independent tables (If-Actions, then Else-Actions) rather than one combined
-     * table with a branch column, matching the original tool's layout - one table per branch, each
-     * with its own "If-Actions"/"Else-Actions" heading.
+     * table with a branch column - matches DocAlActionStruct.cpp/DocFilterActionStruct.cpp's own
+     * CDocAlActionStruct::Get(), which is called once per branch (IES_IF, IES_ELSE) and each call
+     * produces its own "tblListAlAction"-id table with its own "If-Actions"/"Else-Actions" heading.
+     * An earlier version of this port combined both branches into one table with an "If/Else"
+     * column purely as a simplification - reverted per explicit user preference for the original
+     * two-table layout.
      */
     public static <A> String render(List<A> ifActions, List<A> elseActions, Function<A, Integer> typeOf, Function<Integer, String> label,
                                      String primaryForm, QualificationRenderer qr, String currentServerName) {
@@ -91,7 +95,15 @@ public final class ActionSummaryTable {
     private static <A> int addRows(Table tbl, List<A> actions, String ifElse, Function<A, Integer> typeOf, Function<Integer, String> label,
                                     String primaryForm, QualificationRenderer qr, String currentServerName) {
         if (actions == null) return 0;
-        // Action index is 0-based (matches the "#" column and every REFM_* reference label), not 1-based.
+        // Java port bug fix, found via a real C++-vs-Java field-reference-label comparison
+        // (2026-08-18): DocAlActionStruct.cpp's real "#" column AND every REFM_* label's
+        // ActionIndex() both use the same 0-based nAction (the C++'s for-loop starts at 0, and the
+        // exact same variable is passed both to CTableCell(nAction) and into the action-specific
+        // renderer that builds the ref item) - this port previously pre-incremented before first
+        // use, producing a 1-based "Action 1" for the first row where the real tool shows
+        // "Action 0". Confirmed on a real dense field (HPD:Help Desk's Incident Number,
+        // fld_1000000161.htm): counts matched exactly once shifted by one (e.g. "Change Field
+        // If-Action 0" x3 in C++ == "Change Field If-Action 1" x3 in the pre-fix Java output).
         int count = 0;
         for (A action : actions) {
             int position = count;
@@ -153,8 +165,9 @@ public final class ActionSummaryTable {
 
     /**
      * Java port of DocAlMessageAction.cpp/DocFilterActionStruct.cpp's FilterActionMessage - Message
-     * Number/Type/Text, with real "$fieldId$" field substitution. showPromptingPaneCheckbox is
-     * Active-Link-only (FilterMessageAction has no
+     * Number/Type/Text (with real "$fieldId$" field substitution, previously missing entirely: this
+     * port used to just HTML-escape the raw message text with no Number/Type rows and no field
+     * resolution at all). showPromptingPaneCheckbox is Active-Link-only (FilterMessageAction has no
      * such field) - the C++ additionally gates this behind a server-version check
      * (CompareServerVersion(7,6)) this port doesn't replicate (no server-version context is
      * threaded into ActionSummaryTable), so it always shows once server version 7.6+ features start
@@ -234,11 +247,12 @@ public final class ActionSummaryTable {
     }
 
     /**
-     * Java port of DocAlActionStruct.cpp's ActionSetChar (139 lines) - renders field + menu plus
-     * all real sub-fields (access/font/visibility/focus/label color/refresh-table-field/field
-     * label). All of these come from ChangeFieldAction's own getOption()/getAccessOption()/
-     * getFocus()/getProps() (a DisplayPropertyMap of AR_DPROP_* - font/visibility/color/refresh/
-     * label are display-property overrides, not plain fields).
+     * Java port of DocAlActionStruct.cpp's ActionSetChar (139 lines) - this port previously only
+     * rendered the field + menu, dropping 7 of 9 real sub-fields (access/font/visibility/focus/
+     * label color/refresh-table-field/field label). All of these come from ChangeFieldAction's own
+     * getOption()/getAccessOption()/getFocus()/getProps() (a DisplayPropertyMap of AR_DPROP_* -
+     * font/visibility/color/refresh/label are display-property overrides, not plain fields), so no
+     * new fetch is needed - this was a rendering gap, not a data gap.
      */
     private static String changeFieldOf(ChangeFieldAction a, String primaryForm, QualificationRenderer qr) {
         int rootLevel = qr == null ? 1 : qr.rootLevel();
@@ -303,7 +317,7 @@ public final class ActionSummaryTable {
         return WebUtil.validate(s);
     }
 
-    /** Java port of DocAlActionStruct.cpp's ActionAutomation - Action/Server Name/CLS Id lines plus an Id+Name method table. */
+    /** Java port of DocAlActionStruct.cpp's ActionAutomation - Action/Server Name/CLS Id lines plus an Id+Name method table (this port previously dropped CLS Id and the method Id column, showing only a comma-joined list of method names). */
     private static String oleAutomation(OleAutomationAction a) {
         StringBuilder sb = new StringBuilder();
         if (a.getAction() != null && !a.getAction().isEmpty()) sb.append("Action: ").append(WebUtil.validate(a.getAction())).append("<br/>");
@@ -327,14 +341,16 @@ public final class ActionSummaryTable {
     }
 
     /**
-     * Java port of core/ARAssignHelper.cpp's AssignValue. Quoting matches the original tool's own
-     * rules: double-quotes for CHAR/enum labels, no quotes at all for REAL/ULONG numbers, and a
-     * KEYWORD value ($NEWLINE$ etc.) renders as "$value$" rather than being quoted. An INTEGER/ENUM
-     * literal being assigned to an enum-typed target field resolves to that field's real enum label
-     * ("Yes") via GlobalFieldIndex.enumLabel(targetForm, targetFieldId, intVal), falling back to the
-     * raw int only when the field isn't a recognized enum (or targetFieldId is -1, e.g. a Filter API
-     * positional input with no target field at all) - matching the C++'s "print the raw int if
-     * GetFieldEnumValue comes back empty" fallback.
+     * Java port of core/ARAssignHelper.cpp's AssignValue - this port previously just quoted
+     * String.valueOf(v) in single quotes for every data type, which happened to look plausible but
+     * was wrong in three ways found via a live C++-vs-Java comparison: (1) real quoting is
+     * double-quotes for CHAR/enum labels, no quotes at all for REAL/ULONG numbers; (2) a KEYWORD
+     * value ($NEWLINE$ etc.) needs its own "$value$" form, not quotes; (3) most importantly, an
+     * INTEGER/ENUM literal being assigned to an enum-typed target field must resolve to that
+     * field's real enum label ("Yes") via GlobalFieldIndex.enumLabel(targetForm, targetFieldId,
+     * intVal) - falling back to the raw int only when the field isn't a recognized enum (or
+     * targetFieldId is -1, e.g. a Filter API positional input with no target field at all) -
+     * matching the C++'s "print the raw int if GetFieldEnumValue comes back empty" fallback.
      */
     private static String assignValueOf(Value value, String enumForm, int targetFieldId, QualificationRenderer qr) {
         DataType type = value.getDataType();
@@ -381,12 +397,15 @@ public final class ActionSummaryTable {
     }
 
     /**
-     * The "$fieldId" runtime-substitution literal AR System uses for CallGuideAction's
-     * serverName/guideName and several OpenWindowAction fields - a negative id is a keyword, a
-     * positive one a real field on the calling form; anything else is plain literal text. Strips an
-     * optional trailing "$" before parsing - most of these raw fields use a single-leading-"$"
-     * convention, but OpenWindowAction.ReportInfo's string fields (getType/getName/getDestination/
-     * etc.) come back from the jar as the fully-delimited "$fieldId$" display form instead.
+     * Java port of the "$fieldId" runtime-substitution literal AR System uses for CallGuideAction's
+     * serverName/guideName and several OpenWindowAction fields - a negative id is a keyword
+     * (CAREnum::Keyword), a positive one a real field on the calling form; anything else is plain
+     * literal text. Strips an optional trailing "$" before parsing - most of these raw fields use
+     * the C++'s single-leading-"$" convention, but OpenWindowAction.ReportInfo's string fields
+     * (getType/getName/getDestination/etc.) come back from the jar as the fully-delimited
+     * "$fieldId$" display form instead (confirmed via live data: a real Report Name field showed
+     * up as the literal, unresolved text "$1000003607$" before this fix, instead of resolving via
+     * fieldRef like the same field ID does correctly elsewhere on the same page).
      */
     private static String dollarFieldOrText(String raw, String primaryForm, QualificationRenderer qr, String detail) {
         if (raw != null && raw.length() > 1 && raw.charAt(0) == '$') {
@@ -412,10 +431,12 @@ public final class ActionSummaryTable {
 
     /**
      * Java port of DocAlActionStruct.cpp's ActionService/DocFilterActionStruct.cpp's equivalent -
-     * renders Server Name (with the same "$field$ (Sample Server: link)" indirection every other
-     * action type gets), a linked Request Id field, and Input/Output Mapping as real 2-column
-     * tables. Also registers a REFM_SERVICE_CALL schema reference on the resolved service form -
-     * see SchemaReferenceIndex's javadoc.
+     * this port previously showed only the raw unlinked service-form name plus a flat comma-joined
+     * field list, dropping Server Name (with the same "$field$ (Sample Server: link)" indirection
+     * every other action type already gets), the Request Id field link, and rendering Input/Output
+     * Mapping as real 2-column tables instead of inline text. Also registers a
+     * REFM_SERVICE_CALL schema reference on the resolved service form - see SchemaReferenceIndex's
+     * javadoc.
      */
     private static String serviceOf(ServiceAction a, String primaryForm, QualificationRenderer qr, String currentServerName) {
         int rootLevel = qr == null ? 1 : qr.rootLevel();
@@ -476,12 +497,13 @@ public final class ActionSummaryTable {
     }
 
     /**
-     * Java port of doc/actions/DocOpenWindowAction.cpp (~450 lines) - renders every real sub-field:
-     * window/display type, target location, inline form, server/form/view with $field$-sample
-     * indirection, the report sub-block, qualification, close-button/suppress-empty-list/
-     * set-to-defaults checkboxes, the sort-order table, report extras, polling interval. Section
-     * visibility is gated by window mode exactly like the C++'s ActionOpenDlg*() predicate family
-     * (see the has*() helpers below).
+     * Java port of doc/actions/DocOpenWindowAction.cpp (~450 lines) - this port previously rendered
+     * only "Open &lt;form&gt;" plus flat input/output field lists, dropping every other real
+     * sub-field (window/display type, target location, inline form, server/form/view with
+     * $field$-sample indirection, the report sub-block, qualification, close-button/suppress-
+     * empty-list/set-to-defaults checkboxes, the sort-order table, report extras, polling
+     * interval). Section visibility is gated by window mode exactly like the C++'s
+     * ActionOpenDlg*() predicate family (see the has*() helpers below).
      *
      * Unlike the C++'s MappingContext (which gives input mapping's *value*-side "@" a
      * different default form than its *target*-side), this only varies the target side (opened
@@ -539,7 +561,11 @@ public final class ActionSummaryTable {
             sb.append(fieldAssignments(a.getInputValueFieldPairs(), targetSchema, qr, "Target in 'Open Window'", "Value in 'Open Window'"));
         }
         if (hasOutputMapping(mode)) {
-            // Output/close mapping fields are labeled "Close Window", not "Open Window" - they apply when the dialog closes.
+            // Java port bug fix, found via a real C++-vs-Java field-reference-label comparison
+            // (2026-08-18): DocOpenWindowAction.cpp calls OpenWindowAssignment with OWM_CLOSE for
+            // the output/close mapping specifically (OWM_OPEN for input) - OpenClose() then reports
+            // "Close Window" instead of "Open Window" for these fields. Previously hardcoded "Open
+            // Window" for both directions.
             sb.append("On Dialog Close Action:<br/>").append(fieldAssignments(a.getOutputValueFieldPairs(), primaryForm, qr, "Target in 'Close Window'", "Value in 'Close Window'"));
         }
         sb.append("</p>");
@@ -668,9 +694,11 @@ public final class ActionSummaryTable {
     }
 
     /**
-     * An empty name or the "@" (current server/current screen) literal both link to this run's
-     * actual connected server (AppConfig.serverName) with that real name/address as link text, not
-     * the literal "@".
+     * Java port of CARInside::LinkToServerInfo - an empty name or the "@" (current server/current
+     * screen) literal both link to this run's actual connected server (AppConfig.serverName) with
+     * that real name/address as link text, not the literal "@". Confirmed via a live C++-vs-Java
+     * comparison: the real tool showed "the test server" as link text for a raw serverName of "@";
+     * this port previously showed the literal "@" unconditionally.
      */
     private static String serverInfoLink(String serverName, String currentServerName, int rootLevel) {
         if (serverName == null || serverName.isEmpty() || serverName.equals("@")) {
@@ -724,10 +752,12 @@ public final class ActionSummaryTable {
     }
 
     /**
-     * Report-specific message-block extras (EntryIDs/Query Override/Report Operation/Character
-     * Encoding), shown only under hasMessage() alongside the sort-order table. Query Override
-     * intentionally renders the literal text "null" when unset - matches the original C++ tool's
-     * output, not a bug to normalize away.
+     * Java port of DocOpenWindowAction.cpp's report-specific message-block extras (EntryIDs/Query
+     * Override/Report Operation/Character Encoding), shown only under hasMessage() alongside the
+     * sort-order table. Query Override literally rendering the text "null" when unset (via
+     * dollarFieldOrText's plain WebUtil.validate(nullToEmpty(...)) fallback) matches the real C++
+     * exactly - confirmed via a live C++-vs-Java comparison of the same real action, where the real
+     * tool's own output also shows the literal "Query Override: null" - not a bug to normalize away.
      */
     private static String reportExtras(OpenWindowAction.ReportInfo r, String primaryForm, QualificationRenderer qr) {
         StringBuilder sb = new StringBuilder("<p>EntryIDs: ").append(dollarFieldOrText(r.getEntryIds(), primaryForm, qr, qualDetail("Window Open EntryIDs", qr))).append("<br/>");
@@ -762,24 +792,36 @@ public final class ActionSummaryTable {
     }
 
     /**
-     * Dispatches a Set Fields action on its real Java subtype (SetFieldsFromForm/FromSQL/
-     * FromCurrentScreen/FromFilterAPI/FromWebService/FromRESTWebService). Any type that reads from
-     * somewhere other than the current screen renders the server/form being queried, a two-schema
-     * "Set Field If" qualification (primaryForm=this action's own form, secondaryForm=the form being
-     * read from), and the No-Match/Multi-Match behavior. FilterAPI gets the Plugin-Name/
-     * Input-Mapping/Output-Mapping treatment (see filterApiPluginDetail). WebService gets the
+     * Java port of doc/DocActionSetFieldsHelper.cpp's ToStream - dispatches on the action's real
+     * Java subtype (SetFieldsFromForm/FromSQL/FromCurrentScreen/FromFilterAPI/FromWebService/
+     * FromRESTWebService replace the C++'s single struct + SetFieldType enum tag) and, for any type
+     * that reads from somewhere other than the current screen, renders the server/form being
+     * queried, a two-schema "Set Field If" qualification (primaryForm=this action's own form,
+     * secondaryForm=the form being read from - same pattern as the menu/Push-Fields fix), and the
+     * No-Match/Multi-Match behavior - all of which the C++ always shows for these types but this
+     * port previously rendered as a flat "target = value" list with no query context at all.
+     * FilterAPI gets the real Plugin-Name/Input-Mapping/Output-Mapping treatment (see
+     * filterApiPluginDetail) matching SFT_FILTERAPI exactly. WebService gets the real
      * XML-embedded-content-parsed WSDL/Operation/URI/Input-Output-Mapping treatment (see
-     * webServiceDetail). RESTWebService gets its own treatment (see restWebServiceDetail).
-     * AtriumOrchestrator isn't its own Java subtype - it's a SetFieldsFromWebService in disguise
-     * (see isAtriumOrchestrator), detected and given a distinct rendering.
+     * webServiceDetail) matching SFT_WEBSERVICE exactly. RESTWebService (no C++ equivalent at all -
+     * added to the AR Java API after the C++ was last maintained) gets its own real treatment too
+     * (see restWebServiceDetail), matched against AR System Developer Studio's own
+     * REST action editor rather than the C++. AtriumOrchestrator isn't its own Java subtype at all -
+     * it's a SetFieldsFromWebService in disguise (see isAtriumOrchestrator) - so there was never a
+     * missing dispatch branch to add for it, contrary to an earlier version of this comment: the
+     * real gap was that it was silently mis-rendered as a WSDL-based Web Service, now detected and
+     * given a (currently partial) distinct rendering instead.
      */
     private static String setFieldsOf(SetFieldsAction a, String primaryForm, QualificationRenderer qr, String currentServerName) {
         int rootLevel = qr == null ? 1 : qr.rootLevel();
         StringBuilder sb = new StringBuilder();
         if (a instanceof SetFieldsFromCurrentScreen || !(a instanceof SetFieldsFromForm) && !(a instanceof SetFieldsFromSQL)
             && !(a instanceof SetFieldsFromFilterAPI) && !(a instanceof SetFieldsFromWebService) && !(a instanceof SetFieldsFromRESTWebService)) {
-            // "Current screen" still has a server (it's always this run's connected server), even
-            // though there's no cross-form "From:" line to go with it.
+            // Java port of DocActionSetFieldsHelper.cpp's SFT_CURRENT case - always shows Server:
+            // (linked to this run's actual connected server, unconditionally - "current screen"
+            // still has a server, it's just always *this* one) even though there's no cross-form
+            // "From:" line to go with it. Confirmed via a live C++-vs-Java comparison; this port
+            // previously rendered nothing but the Data Source line for this branch.
             sb.append("Data Source: CURRENT SCREEN<br/>");
             sb.append("Server: ").append(serverInfoLink(null, currentServerName, rootLevel)).append("<br/>");
         } else if (a instanceof SetFieldsFromForm sf) {
@@ -849,12 +891,16 @@ public final class ActionSummaryTable {
 
     /**
      * A "Web Service" Set Fields action (SetFieldsFromWebService) is ALSO how BMC Atrium
-     * Orchestrator actions are stored - not a distinct class. The two are distinguished by checking
-     * index 18 (WS_TYPE) against the literal string "BMC ATRIUM ORCHESTRATOR"; if it matches, the
-     * same positional slots that otherwise hold WSDL Location/Operation/etc. (indices 4-11) instead
-     * hold Atrium-specific config unrelated to WSDL (Alias Name at index 19, plus Grid Name, Mode,
-     * Processes, Execute Mode, Username, Password whose exact index layout isn't mapped here). Only
-     * the Alias Name is currently rendered.
+     * Orchestrator actions are stored - not a distinct class. AR System Developer Studio 23.3's own
+     * editor (SetFieldsFromWebServiceController) distinguishes the two purely by
+     * checking index 18 (WS_INPUTFIELDS.WS_TYPE) against the literal string
+     * "BMC ATRIUM ORCHESTRATOR"; if it matches, the SAME positional slots this class otherwise reads
+     * as WSDL Location/Operation/etc. (indices 4-11) instead hold Atrium-specific config entirely
+     * unrelated to WSDL (Alias Name at index 19/WS_ALIAS, Grid Name, Mode, Processes, Execute Mode,
+     * Username, Password - via a separate BAOWebservicesTransformer whose exact index layout wasn't
+     * fully traced). Detected here so an Atrium action doesn't get silently mis-rendered as a
+     * WSDL-based Web Service with wrong/blank fields; only the Alias Name is rendered until the
+     * remaining BAO-specific indices are confirmed.
      */
     private static boolean isAtriumOrchestrator(SetFieldsFromWebService fa) {
         return "BMC ATRIUM ORCHESTRATOR".equals(webServiceCharValue(fa.getInputAssignList(), 18));
@@ -867,21 +913,28 @@ public final class ActionSummaryTable {
     }
 
     /**
-     * A genuine Web Service Set Fields action stores its config as a positional input-assignment
-     * list (the same shape every FilterAPI subtype exposes via getInputAssignList()); specific slots
-     * hold CHAR values that are themselves small XML documents (WSDL/operation metadata, and the
-     * input/output field-mapping trees). Index 6 is itself XML:
-     * {@code <operation><inputMapping name="OperationName">...</inputMapping>...</operation>} - only
-     * the inputMapping's own "name" attribute is used. Indices 9/10 are each
-     * {@code <arDocMapping><formMapping><form formName="..."/>...<element name="..."><fieldMapping
-     * arFieldId="N"/></element>...</formMapping></arDocMapping>} - walked recursively by
+     * Java port of DocActionSetFieldsHelper.cpp's SFT_WEBSERVICE case (lines 171-274) - the same
+     * positional-input list every FilterAPI subtype exposes via getInputAssignList(), but for a
+     * genuine Web Service action specific slots hold CHAR values that are themselves small XML
+     * documents (WSDL/operation metadata, and the input/output field-mapping trees), matching the
+     * C++'s TinyXML parse of assignment.u.filterApi->inputValues[N].u.value.u.charVal at fixed
+     * indices. index 6 is itself XML: <operation><inputMapping name="OperationName">...</inputMapping>
+     * ...</operation> - only the inputMapping's own "name" attribute is used. indices 9/10 are each
+     * <arDocMapping><formMapping><form formName="..."/>...<element name="..."><fieldMapping
+     * arFieldId="N"/></element>...</formMapping></arDocMapping> - walked recursively by
      * {@link #walkWebServiceMapping}, tracking the nearest enclosing element name (the "Element"
      * column) and form name (which schema the field id resolves against) as it descends.
      *
-     * <p>Index layout: WS_URL=4, WS_NAME=5, WS_OPERATION_DOC=6, WS_ENDPOINT_URI=7, WS_TARGETNS=8,
-     * WS_INPUT_MAP=9, WS_OUTPUT_MAP=10, WS_PORT=11. AUTH_TYPE(14) and three empty slots (15-17) are
-     * never populated for a genuine WSDL-based action and aren't rendered here; see
-     * isAtriumOrchestrator for what indices 18/19 are reserved for on this same class.
+     * <p>These indices were originally taken from the C++'s own source comments ("populate operation
+     * string from input #6" / "0 = Unknown, 1 = Unknown, ..., 4 = WSDL Location, ..."), which read
+     * as a reverse-engineered layout rather than a documented one even in the original tool -
+     * cross-checked since against AR System Developer Studio 23.3's real
+     * WSDLWebService$WS_INPUTFIELDS enum (com.bmc.arsys.studio.model), whose plain
+     * ordinal()-returning getAssignmentPosition() matches these indices exactly (WS_URL=4, WS_NAME=5,
+     * WS_OPERATION_DOC=6, WS_ENDPOINT_URI=7, WS_TARGETNS=8, WS_INPUT_MAP=9, WS_OUTPUT_MAP=10,
+     * WS_PORT=11). That same enum also has AUTH_TYPE(14) and three EMPTY slots(15-17)
+     * not rendered here (never populated for a genuine WSDL-based action; see isAtriumOrchestrator
+     * for what index 18/19 are reserved for on this same class).
      */
     private static String webServiceDetail(SetFieldsFromWebService fa, QualificationRenderer qr) {
         List<AssignInfo> inputs = fa.getInputAssignList();
@@ -903,33 +956,50 @@ public final class ActionSummaryTable {
     }
 
     /**
-     * SetFieldsFromRESTWebService (added to the AR Java API more recently than the other Set
-     * Fields data sources) reads/writes the same positional getInputAssignList() every FilterAPI
-     * subtype uses. Index layout: 0=Base URI, 1=Static Body, 2=Http Method, 3=Auth Type, 4=Auth
-     * Param, 5=Custom Headers, 6=Content Type, 7=Query Param, 8=Path Param, 9=Request Mapping,
-     * 10=Response Mapping, 11=Multipart Info - all plain CHAR values (unlike WebService, nothing
-     * here is itself XML). Base URI/Static Body/Http Method/Auth Type/Content Type/Path Param are
-     * plain strings. Auth Param/Custom Headers/Query Param/Multipart Info are each a
+     * SetFieldsFromRESTWebService has no C++ equivalent at all (REST Web Service was added to the
+     * AR Java API after the C++ was last maintained), so unlike every other data source in this
+     * file there's no DocActionSetFieldsHelper.cpp case to port from. Ground truth instead comes
+     * from AR System Developer Studio 23.3's real REST action editor -
+     * com.bmc.arsys.studio.ui's SetFieldsFromRestWebserviceController - which reads/writes the
+     * exact same positional getInputAssignList() every FilterAPI subtype uses. Its nested
+     * FilterAPIPartTransformer.Type enum gives the real index layout (plain ordinal-style
+     * getAssignmentPosition(), same pattern already confirmed correct for
+     * WSDLWebService$WS_INPUTFIELDS): 0=Base URI, 1=Static Body, 2=Http Method, 3=Auth Type,
+     * 4=Auth Param, 5=Custom Headers, 6=Content Type, 7=Query Param, 8=Path Param,
+     * 9=Request Mapping, 10=Response Mapping, 11=Multipart Info - all plain CHAR values (unlike
+     * WebService, nothing here is itself XML). Base URI/Static Body/Http Method/Auth Type/Content
+     * Type/Path Param are plain strings (confirmed by the controller's own transform branching,
+     * which explicitly groups BASE_URI/PATH_PARAM/BODY together as bare strings, separately from
+     * the key-value-table types). Auth Param/Custom Headers/Query Param/Multipart Info are each a
      * "key#COLSEP#value" row list joined by "#ARSEP#" (only the first two columns of each row are
      * read even though the encoder writes exactly two). Request/Response Mapping use the same
      * separators but with the richer 10-or-11-column {@link #REST_MAPPING_COLUMNS} row shape,
-     * rendered as per-cell field hyperlinks (Field ID validates against the row's own Current Form;
-     * Primary Key against Parent Form; Foreign Key and Distinguishing Key against Current Form
-     * again). The literal string "null" marks an unset cell in the underlying encoding - rendered
+     * confirmed from RestInputOutputMappingModel's constructor args and the field-existence
+     * validator's own per-column form context (Field ID validates against the row's own Current
+     * Form; Primary Key against Parent Form; Foreign Key and Distinguishing Key against Current
+     * Form again) - ported into per-cell field hyperlinks accordingly. The literal string "null"
+     * marks an unset cell in the real encoding (RestInputOutputMappingWidget.NULL_VALUE) - rendered
      * as an empty cell here, not the literal text.
      *
      * <p>Base URI/Path Param/Static Body and the key-value tables' values (not their keys) are free
-     * text typed directly into the editor, and get AR's classic "$fieldId$"/"$fieldName$"
+     * text the user types directly into the editor, and get AR's classic "$fieldId$"/"$fieldName$"
      * keyword-substitution treatment via {@link TextFieldSubstitution} (same mechanism as Message
-     * text/Run Process command lines).
+     * text/Run Process command lines) - confirmed necessary, not assumed, against a real REST
+     * filter on the test server whose Base URI contained an unresolved raw "$304475211$" token
+     * before this was added.
      */
     private static String restWebServiceDetail(SetFieldsFromRESTWebService fa, String primaryForm, QualificationRenderer qr) {
         List<AssignInfo> inputs = fa.getInputAssignList();
         StringBuilder sb = new StringBuilder();
-        // Base URI/Path Param/Static Body are free text typed directly into the editor - AR's
-        // classic "$fieldId$"/"$fieldName$" keyword-substitution syntax applies here, same as
-        // Message text/Run Process command lines. "Value in REST Web Service" is a clearly-labeled
-        // placeholder detail string, not a ported reference label.
+        // Base URI/Path Param/Static Body are free text the user typed directly (confirmed by the
+        // controller grouping these three together as plain strings, unlike the structured
+        // AssignInfo-based values elsewhere in this file) - AR's classic "$fieldId$"/"$fieldName$"
+        // keyword-substitution syntax applies here exactly like Message text/Run Process command
+        // lines do, confirmed against real data: a live REST filter's Base URI contained an
+        // unresolved raw "$304475211$" token before this fix.
+        // No C++ REFM_* equivalent exists for REST fields (genuinely new functionality, see this
+        // method's own javadoc) - "Value in REST Web Service" is this port's own, clearly-labeled
+        // placeholder rather than a real ported label.
         String restDetail = qualDetail("Value in REST Web Service", qr);
         sb.append("Base URI: ").append(TextFieldSubstitution.substitute(webServiceCharValue(inputs, 0), primaryForm, qr, restDetail)).append("<br/>");
         sb.append("Path Param: ").append(TextFieldSubstitution.substitute(webServiceCharValue(inputs, 8), primaryForm, qr, restDetail)).append("<br/>");
@@ -1031,9 +1101,14 @@ public final class ActionSummaryTable {
     }
 
     /**
-     * The operation name lives on the root &lt;operation&gt; element's own "name" attribute, not on
-     * the &lt;inputMapping&gt; child's "name" (a separate, per-parameter-mapping name) - falls back
-     * to the inputMapping-based read only if the root element somehow has none.
+     * The C++ read this from the &lt;inputMapping&gt; child's own "name" attribute (a separate,
+     * per-parameter-mapping name - WSDLOperation.setInputMapName() in BMC's own Dev Studio source),
+     * not the operation's own name. AR System Developer Studio's WSDLOperation.processXML()
+     * (com.bmc.arsys.studio.model, the code that actually reads this XML format back for the AR
+     * System Web Service Wizard) shows the true operation name lives on the root &lt;operation&gt;
+     * element's own "name" attribute instead - confirmed as the more accurate source per explicit
+     * user guidance, so read from there, falling back to the old inputMapping-based read only if
+     * the root element somehow has none (defensive; the modern writer always sets it).
      */
     private static String webServiceOperationName(List<AssignInfo> inputs) {
         String xml = webServiceCharValue(inputs, 6);
@@ -1115,12 +1190,13 @@ public final class ActionSummaryTable {
      * pushFieldValue=true is passed for a reason unrelated to "push": it makes assignmentOf's
      * AR_ASSIGN_TYPE_FIELD branch resolve a field id directly against primaryForm via
      * qr.fieldRef(), with no "(on server:form)" cross-form annotation - matching
-     * CARAssignHelper::AssignField, which always resolves against a single schema
-     * (schemaInsideId1, or schemaInsideId2 only when pushFieldFlag is false and the two differ) and
-     * never reads/shows a per-field form/server, unlike fieldRefOf's annotation, which doesn't apply
-     * here. FilterApiInputAssignment's caller constructs its CARAssignHelper with
-     * schema1==schema2==the attached form, so plain primaryForm resolution is correct - no
-     * "(on OtherForm)" suffix should appear for this table.
+     * CARAssignHelper::AssignField exactly (confirmed by reading it: it always resolves against a
+     * single schema - schemaInsideId1, or schemaInsideId2 only when pushFieldFlag is false and the
+     * two differ - and never reads/shows a per-field form/server, unlike fieldRefOf's annotation,
+     * which doesn't apply here). FilterApiInputAssignment's caller constructs its CARAssignHelper
+     * with schema1==schema2==the attached form, so plain primaryForm resolution is exactly right -
+     * confirmed against real data (a real Filter API input previously showed an invented
+     * "(on OtherForm)" suffix the real C++ never shows for this table).
      */
     private static String filterApiInputTable(List<AssignInfo> inputs, String primaryForm, QualificationRenderer qr) {
         Table tbl = new Table("setFieldsList", "TblObjectList");
@@ -1229,9 +1305,10 @@ public final class ActionSummaryTable {
 
     /**
      * Java port of core/ARAssignHelper.cpp's SetFieldsAssignment/OpenWindowAssignment/
-     * ServiceAssignment - a real 2-column "Field Name"/"Value" table (id="setFieldsList"). Target
-     * fields belong to the owning object's own form (primaryForm) - used for
-     * setFields/openWindow/service field lists.
+     * ServiceAssignment - a real 2-column "Field Name"/"Value" table (id="setFieldsList") rather
+     * than the flat "Field = Value&lt;br/&gt;" text this port previously rendered (confirmed wrong
+     * via a live C++-vs-Java comparison). Target fields belong to the owning object's own form
+     * (primaryForm) - used for setFields/openWindow/service field lists.
      */
     private static String fieldAssignments(List<FieldAssignInfo> list, String primaryForm, QualificationRenderer qr, String targetLabel, String valueLabel) {
         if (list == null || list.isEmpty()) return "";
@@ -1267,8 +1344,9 @@ public final class ActionSummaryTable {
             // pushFieldValue=true: matches core/ARAssignHelper.cpp's AssignField, which for a Push
             // Fields action (pushFieldFlag) always resolves a value-side AR_ASSIGN_TYPE_FIELD
             // against the action's own primary/source form, ignoring AssignFieldInfo's server/form
-            // entirely - the value side's literal "*"/"*" server/form (not "@") is not a genuine
-            // cross-form pointer, and must not be treated as one.
+            // entirely - real data confirmed this port's earlier cross-form heuristic wrongly
+            // treated the value side's literal "*"/"*" server/form (not "@") as a genuine cross-form
+            // pointer, producing an unresolved "Field N (on *:*)" instead of a real hyperlinked name.
             // AssignValue's own enum-lookup form is different again (matches AssignHelper's
             // schemaInsideId2 for pushFieldFlag=true) - the *push-target* form, not primaryForm -
             // passed separately as pushForm since AssignField/AssignValue disagree on which form to
@@ -1327,9 +1405,9 @@ public final class ActionSummaryTable {
     /**
      * Field id, plus cross-form (server:form) and currency-part detail when present -
      * AssignFieldInfo carries more than just a bare field id. AR System uses the literal token
-     * "@" for both server and form to mean "current server"/"current form" ("@:@" for a same-form
-     * reference, "@:OtherForm" for a genuine cross-form one), so the "(on ...)" suffix is only
-     * shown when the form isn't just that placeholder. The field itself
+     * "@" for both server and form to mean "current server"/"current form" - confirmed via real
+     * data ("@:@" for a same-form reference, "@:OtherForm" for a genuine cross-form one) - so the
+     * "(on ...)" suffix is only shown when the form isn't just that placeholder. The field itself
      * is hyperlinked+tracked against whichever form it actually resolves to (primaryForm for a
      * same-form reference, the named form for a genuine cross-form one) via
      * QualificationRenderer.fieldRef, which already knows how to look up any named form, not just
@@ -1476,7 +1554,7 @@ public final class ActionSummaryTable {
         }
     }
 
-    /** Java port of core/ARAssignHelper.cpp's AssignDDE - Command/Item/Path to Program/Server Name/Topic, one per non-null field, in that exact order. */
+    /** Java port of core/ARAssignHelper.cpp's AssignDDE - Command/Item/Path to Program/Server Name/Topic, one per non-null field, in that exact order (this port previously showed serviceName|topic|item on one line with no Path to Program at all). */
     private static String ddeOf(DDEAction dde) {
         StringBuilder sb = new StringBuilder();
         if (dde.getCommand() != null) sb.append("Command: ").append(WebUtil.validate(dde.getCommand())).append("<br/>");

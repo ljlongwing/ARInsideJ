@@ -3,9 +3,9 @@ package arinside.output;
 /**
  * Java port of output/LetterFilterControl.{h,cpp} - the "abcdefghijklmnopqrstuvwxyz0123456789#"
  * jump-bar shown above the large object-list overview pages (Active Links/Filters/Escalations/
- * Forms). Purely a rendering aid for the client-side filtering JS (object_list.js + one per-type
- * *List.js, shipped as web-assets resources) - clicking a letter sets that page's search box to
- * "^&lt;letter&gt;" and
+ * Forms). Purely a rendering aid for the pre-bundled client-side filtering JS (object_list.js +
+ * one per-type *List.js, already shipped as web-assets resources since Phase 1 but never wired up
+ * server-side until now) - clicking a letter sets that page's search box to "^&lt;letter&gt;" and
  * re-filters the already-embedded JSON row array; see e.g. filterList.js's
  * "$('#formLetterFilter a').click(...)" handler, identical across every type's *List.js.
  */

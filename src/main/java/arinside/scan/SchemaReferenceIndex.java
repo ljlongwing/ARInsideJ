@@ -42,11 +42,17 @@ import java.util.function.Function;
  *   <li>A doc/-phase side effect, mutated live as AL/Filter/Escalation pages render (matching how
  *       {@link FieldReferenceIndex} is populated the same way, for the same reason: Schema pages
  *       render last - see Main.java - specifically so these are complete by the time they're read).
- *       Four reference sub-tables are populated this way: "writing data to this form"
- *       (REFM_PUSHFIELD_TARGET), "deleting data" (REFM_DELETE_ENTRY_ACTION), "executing services"
- *       (REFM_SERVICE_CALL, including the "$-5$"/current-schema-keyword fallback branch), and
- *       "open window" (REFM_OPENWINDOW_FORM, Active-Link-only - OpenWindowAction isn't available to
- *       Filter/Escalation action lists). All four ported here as {@link #pushFieldTargets}/
+ *       An earlier version of this class's javadoc claimed the C++'s "writing data to this form"
+ *       (REFM_PUSHFIELD_TARGET), "deleting data" (REFM_DELETE_ENTRY_ACTION), and "executing
+ *       services" (REFM_SERVICE_CALL) sub-tables were "confirmed dead" - that grep only covered
+ *       scan/; a second pass over doc/ found real, live schema.AddReference() calls for all three
+ *       (DocAlActionStruct.cpp/DocFilterActionStruct.cpp for the first two, DocTextReferences.cpp's
+ *       processForm() for the third - including its "$-5$"/current-schema-keyword fallback branch),
+ *       so the original claim was wrong, not just unported. A fourth type, REFM_OPENWINDOW_FORM
+ *       (DocOpenWindowAction.cpp's own schema.AddReference() call, feeding
+ *       DocSchemaDetails.cpp's separate AlWindowOpenReferences() method - an Active-Link-only
+ *       reference, OpenWindowAction not being available to Filter/Escalation action lists), is
+ *       ported the same way. All four ported here as {@link #pushFieldTargets}/
  *       {@link #deleteEntryCallers}/{@link #serviceCallers}/{@link #openWindowTargets}, populated
  *       via {@link SchemaReferenceSink} (see QualificationRenderer).</li>
  * </ul>
@@ -76,8 +82,8 @@ public final class SchemaReferenceIndex {
         SchemaReferenceIndex idx = new SchemaReferenceIndex();
 
         // Join Form References: DocSchemaDetails.cpp's JoinFormReferences() is a live O(schemaCount)
-        // scan at render time in the original tool - built once here instead, amortizing the full
-        // scan across every form. Cheap regardless of ReadPool availability:
+        // scan at render time in the real C++ - built once here instead (matching this session's
+        // established "amortize the full scan" pattern). Cheap regardless of ReadPool availability:
         // getForm() is backed by SchemaBulkCache when one was built (see Main.java), so this is an
         // in-memory-only pass, not a fresh live fetch per form.
         //

@@ -6,8 +6,12 @@ public final class WebUtil {
 
     /**
      * Java port of stdafx.cpp's global {@code const char* EmptyValue = "(null)"} - the placeholder
-     * text shown for an empty/not-applicable cell throughout the whole tool. Distinct from
-     * {@link #EMPTY_RUN_IF} (a different sentinel, for empty qualifications specifically).
+     * text shown for an empty/not-applicable cell throughout the whole tool (35 call sites across 8
+     * doc/*.cpp files, confirmed via a full grep, not assumed to be SchemaDetailPage-specific).
+     * Distinct from {@link #EMPTY_RUN_IF} (a different sentinel, for empty qualifications
+     * specifically). Found missing via a live C++-vs-Java comparison (a References-tab cell showed a
+     * genuinely blank {@code <td></td>} where the real C++ shows {@code <td>(null)</td>}) - most
+     * call sites in this port were returning {@code ""} instead.
      */
     public static final String EMPTY_VALUE = "(null)";
 

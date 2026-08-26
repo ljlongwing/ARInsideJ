@@ -173,7 +173,8 @@ public final class Naming {
 
     /**
      * Matches output/FileNaming.cpp's per-ARCON_* directory selection for containers.
-     * ARCON_ALL=0, ARCON_GUIDE=1, ARCON_APP=2, ARCON_PACK=3, ARCON_FILTER_GUIDE=4,
+     * Values confirmed via the real Constants class (NOT sequential from 0 - verify before
+     * touching): ARCON_ALL=0, ARCON_GUIDE=1, ARCON_APP=2, ARCON_PACK=3, ARCON_FILTER_GUIDE=4,
      * ARCON_WEBSERVICE=5.
      */
     private static String containerDir(int containerType) {
@@ -310,19 +311,29 @@ public final class Naming {
      * object is an overlaid base object being displayed under the overlay's name (see
      * IsObjectOverlaid in the C++ for the overlayMode semantics).
      *
-     * <p>Deviation from the C++ that's intentional, not a bug: a trailing space or dot in a path
+     * **Corrected 2026-08-14** after diffing real output against the actual C++ binary: this
+     * originally escaped in decimal (e.g. ':' / ASCII 58 -> "~58"), not hex ("~3a") - confirmed by
+     * comparing a real form directory name byte-for-byte (C++ produced "AAS~3aActivity", Java
+     * produced "AAS~58Activity" for the same "AAS:Activity" form). Decimal vs. hex only look the
+     * same for escaped characters 0-9, so this was silently wrong for every non-ASCII-alphanumeric
+     * character with a hex representation using a-f - i.e. most of them - across every object type
+     * in the whole tool. Comparing against a real baseline caught what code review of the port
+     * alone did not.
+     *
+     * Deviation from the C++ that's intentional, not a bug: a trailing space or dot in a path
      * segment is legal on Linux but rejected outright by Windows (the OS silently strips it;
-     * java.nio.file.Path validates and throws InvalidPathException instead of silently stripping it
-     * like the C++'s Windows build does via _mkdir/CreateFile). Escaping trailing space/dot runs
-     * keeps this deterministic on every platform instead of inheriting the C++'s latent, silently
+     * java.nio.file.Path validates and throws InvalidPathException instead of silently stripping
+     * it like the C++'s Windows build does via _mkdir/CreateFile) - found via a real object name
+     * ("...ModifySet ") on the test server. Escaping trailing space/dot runs keeps this
+     * deterministic on every platform instead of inheriting the C++'s latent, silently
      * platform-dependent behavior.
      */
     /**
      * Flat-file variant (everything except schema): the C++'s CWebUtil::DocName just appends
      * ".htm" with no further sanitization, so a name ending in space/dot (e.g. "ENT:PED:ModifySet ")
-     * comes through unescaped in the output ("ENT~3aPED~3aModifySet .htm"). Only schemaDetail's
-     * directory-component variant below needs the trailing-space/dot escape, since a bare trailing
-     * space/dot is invalid
+     * comes through unescaped in the real output ("ENT~3aPED~3aModifySet .htm") - confirmed by
+     * diffing against the real C++ baseline (2026-08-14). Only schemaDetail's directory-component
+     * variant below needs the trailing-space/dot escape, since a bare trailing space/dot is invalid
      * as a Windows *directory name* (java.nio.file.Path rejects it outright, whereas C++'s Win32
      * _mkdir silently strips it - see schemaDetail's escaping variant).
      */
@@ -358,9 +369,9 @@ public final class Naming {
      * The C++'s letter-filtered overview/ navigation system (output/FileNaming.cpp's
      * ObjectName*Overview classes under DIR_OVERVIEW) - a second, alternate landing page per
      * workflow-object type that the nav template links to, alongside the `<type>/index.htm` pages
-     * this port already builds. Only `users` actually splits into separate per-letter files
-     * (overview/users_a.htm etc.) - every other type (active links, filters, escalations, menus,
-     * containers, images) renders as a
+     * this port already builds. Confirmed against the real C++ baseline that only `users` actually
+     * splits into separate per-letter files on this server (overview/users_a.htm etc.) - every
+     * other type (active links, filters, escalations, menus, containers, images) renders as a
      * single overview/<name>.htm page despite FileNaming.cpp declaring a *LetterOverview class for
      * each of them too; likely client-side JS filtering for the large types in the real tool, not
      * reproduced here - these are static, single-page duplicates of the same list content

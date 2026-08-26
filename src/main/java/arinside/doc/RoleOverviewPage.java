@@ -12,9 +12,10 @@ import java.util.List;
 
 /**
  * Java port of CDocMain::RoleList + output/RoleTable.{h,cpp} - real columns are Role Name/RoleID/
- * Application/Modified/By. Includes the jQuery letter-filter/JSON-search widget (see
+ * Application/Modified/By (this port previously had Application/Role Name/ID only, wrong order and
+ * missing Modified/By). Includes the jQuery letter-filter/JSON-search widget (see
  * ActiveLinkOverviewPage's javadoc) - roleList.js's JSON row layout is [roleId, name, appName,
- * modifiedDateStr, lastChangedBy, link, appLink], matching createRoleRowHtml().
+ * modifiedDateStr, lastChangedBy, link, appLink], confirmed against the real createRoleRowHtml().
  * Unlike the C++ (CARContainer app(role.GetApplicationName()); if (app.Exists()) ...), the app link
  * is emitted whenever an application name is present without a separate existence check - this port
  * doesn't have a container lookup wired into this page and every other "link to an application by

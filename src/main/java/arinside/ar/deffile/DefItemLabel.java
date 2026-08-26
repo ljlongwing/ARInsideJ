@@ -4,11 +4,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * The fixed-width {@code "   label          : "}-style tag vocabulary used by every {@code .def}
- * export line. A tag is matched by trimming the raw line's tag portion and looking it up here by
- * the label string's own trimmed form (leading/trailing whitespace only - internal padding before
- * the colon is significant and part of the lookup key, since several labels share a short prefix
- * at different indentation widths, e.g. {@code ID} vs {@code ID_2}).
+ * Java port of {@code com.bmc.arsys.server.domain.export.def.DefItemLabel} (ported from the
+ * real AR Server) - the fixed-width
+ * {@code "   label          : "}-style tag vocabulary used by every {@code .def} export line. A
+ * tag is matched by trimming the raw line's tag portion and looking it up here by the label
+ * string's own trimmed form (leading/trailing whitespace only - internal padding before the colon
+ * is significant and part of the lookup key, since several labels share a short prefix at
+ * different indentation widths, e.g. {@code ID} vs {@code ID_2}).
  */
 public enum DefItemLabel {
     ENCRYPT_CHAR_SET("  encrypt-char-set:  "),

@@ -24,10 +24,12 @@ public final class ContainerRepository implements ContainerSource {
     }
 
     /**
-     * The 3rd param is undocumented in the AR System Java API (no javadoc, no parameter names in
-     * bytecode); passing {@code true} is required to get the full container list, matching the
-     * original tool's behavior - {@code false} silently omits containers this session doesn't
-     * directly own or isn't a subadmin for.
+     * The 3rd param (undocumented in this jar - no javadoc, no parameter names in bytecode)
+     * confirmed empirically against the real C++ baseline count: false returned 37/101 real
+     * applications on the test server, true returned all 101 (matching the C++ exactly). Guessing
+     * this is something like "include containers this session doesn't directly own/isn't a
+     * subadmin for" given the name pattern of ContainerOwner (the next param), but that's inferred
+     * from the count-matching behavior, not confirmed from documentation.
      */
     public List<String> listContainerNames(int containerType) throws ARException {
         List<String> names = client.raw().getListContainer(0L, new int[]{containerType}, true, null, (ObjectPropertyMap) null);

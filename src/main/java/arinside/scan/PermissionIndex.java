@@ -22,15 +22,17 @@ import java.util.function.Function;
  * AL/container). This builds the same information as one index, keyed by group/role ID, in a
  * single pass instead - roles use the same index as groups since AR System stores role-based
  * permissions as negative group IDs in the exact same ARPermissionList/getAssignedGroup() entries
- * as regular groups (see RoleRecord's javadoc), so no separate role-side scan is needed.
+ * as regular groups (confirmed empirically - see RoleRecord's javadoc), so no separate role-side
+ * scan is needed.
  *
  * Costs one more full fetch pass over every form+field+active link+container (on top of the passes
- * SchemaDetailPage/GlobalFieldIndex/WorkflowReferenceIndex/container doc pages already do) - a
- * known, accepted tradeoff. The VUI/view portion of that redundant fetch is consolidated: views are
- * read from GlobalFieldIndex.views(formName) (built earlier, once, in Main.java) instead of this
- * class's own schemaRepo.getViews(formName) call, cutting three full-server VUI fetch passes down
- * to one. Field/form/AL/container fetches still happen independently here since only the VUI fetch
- * was actually triplicated across GlobalFieldIndex/PermissionIndex/SchemaDetailPage.
+ * SchemaDetailPage/GlobalFieldIndex/WorkflowReferenceIndex/container doc pages already do) - same
+ * known, accepted tradeoff as those two indexes (see their javadocs). The VUI/view portion of that
+ * redundant fetch is now consolidated: this is the "Phase 7+ pass" the javadoc used to say might
+ * happen - views are read from GlobalFieldIndex.views(formName) (built earlier, once, in Main.java)
+ * instead of this class's own schemaRepo.getViews(formName) call, cutting three full-server VUI
+ * fetch passes down to one. Field/form/AL/container fetches still happen independently here since
+ * only the VUI fetch was actually triplicated across GlobalFieldIndex/PermissionIndex/SchemaDetailPage.
  */
 public final class PermissionIndex {
 
@@ -297,9 +299,9 @@ public final class PermissionIndex {
         // directly (they're a member of the app's own content, like forms); GUIDE/FILTER_GUIDE
         // containers derive it from their owner form's app (via ContainerOwner, the reverse of
         // schema.GetActLinkGuides()/GetFilterGuides()). APP/WEBSERVICE never get an app assigned -
-        // SearchContainer's switch has no case for either, a genuine gap in the original tool (a
-        // role's Webservice Permission page is always empty for any role with a real application
-        // name), not something to "fix" beyond replicating it faithfully.
+        // confirmed via source that SearchContainer's switch has no case for either, a genuine gap
+        // in the original tool (a role's Webservice Permission page is always empty for any role
+        // with a real application name), not something to "fix" beyond replicating it faithfully.
         String app = null;
         if (containerType == Constants.ARCON_PACK) {
             app = appIndex.packApp(name);

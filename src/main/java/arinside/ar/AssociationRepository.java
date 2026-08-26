@@ -17,9 +17,9 @@ public final class AssociationRepository implements AssociationSource {
 
     @Override
     public List<String> listAssociationNames() throws ARException {
-        // (formName, changedSince, propList, firstRetrieve, maxRetrieve, sortOrder) all null/0
-        // lists every association server-wide, matching every other getListX-with-a-changedSince
-        // call in this jar.
+        // Confirmed via spike against a real server: (formName, changedSince, propList, firstRetrieve,
+        // maxRetrieve, sortOrder) all null/0 lists every association server-wide, matching the
+        // convention every other getListX-with-a-changedSince-param call in this jar follows.
         List<String> names = client.raw().getListAssociation(null, 0L, null, 0, 0, 0);
         List<String> sorted = names == null ? new ArrayList<>() : new ArrayList<>(names);
         Collections.sort(sorted, String.CASE_INSENSITIVE_ORDER);

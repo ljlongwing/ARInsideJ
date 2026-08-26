@@ -144,9 +144,9 @@ public final class ActiveLinkDetailPage {
      * table (no tabs; the real C++ has no "Actions" tab at all for active links), with one
      * "[schema link] -&gt; Control Field / Focus Field / Run If / Actions" row PER form the AL is
      * attached to (an AL's IfActions/ElseActions/Qualifier/ControlField/FocusField are one shared
-     * set of field IDs, but those IDs mean something different per attached form, so the original
-     * tool re-resolves and re-renders them once per form rather than once for a single "primary"
-     * form).
+     * set of field IDs, but those IDs mean something different per attached form, so the C++
+     * re-resolves and re-renders them once per form rather than once for a single "primary" form -
+     * a real architectural difference from this port's earlier single-form rendering).
      */
     private String generalInfo(ActiveLink al, String name, String appRefName, int rootLevel, QualificationRenderer.FieldReferenceSink sink) {
         Table tbl = new Table("alGeneral", "TblObjectList");
@@ -208,8 +208,9 @@ public final class ActiveLinkDetailPage {
 
     /**
      * Java port of DocAlDetails.cpp's Permissions() - the real CGroupTable rendering (Name/ID/Type/
-     * Category/Modified/By, or the Role-row variant for negative ids) - see GroupPermissionTable's
-     * own javadoc for the full C++ shape.
+     * Category/Modified/By, or the Role-row variant for negative ids), previously simplified here to
+     * a bare `groupRef()` link list with a hardcoded "Group N"/"Role N" fallback text regardless of
+     * the group/role's real name (see GroupPermissionTable's own javadoc for the full C++ shape).
      */
     private String permissions(List<Integer> groupIds, String appRefName, int rootLevel) {
         return GroupPermissionTable.render("groupList", groupIds, appRefName, roleIndex, groupsById, knownUserNames, rootLevel).toXHtml();

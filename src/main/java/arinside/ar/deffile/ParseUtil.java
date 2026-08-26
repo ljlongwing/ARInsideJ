@@ -2,8 +2,10 @@ package arinside.ar.deffile;
 
 import java.math.BigDecimal;
 
-/** Lenient numeric-token parsing shared by every {@code Def*Builder} - returns a zero value on
- * garbage input rather than throwing, so one malformed token doesn't abort the whole object. */
+/** Lenient numeric-token parsing shared by every {@code Def*Builder} - matches the real
+ * {@code com.bmc.arsys.server.domain.imports.def.impl.ParseUtil}'s own "return 0 on garbage rather
+ * than abort the whole object" tolerance (confirmed via the real handlers' own
+ * {@code ParseUtil.getIntValue(x, false)} calls - the {@code false} means "don't throw"). */
 final class ParseUtil {
     private ParseUtil() {}
 

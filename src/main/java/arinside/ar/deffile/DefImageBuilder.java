@@ -7,10 +7,12 @@ import com.bmc.arsys.api.ObjectPropertyMap;
 import java.nio.charset.Charset;
 
 /**
- * Builds a {@code com.bmc.arsys.api.Image} from a {@code begin image ... end} block. The client
- * type has no {@code setHelpText}/{@code setDiary} (matching {@code arinside.ar.xmlfile.
- * ImageXmlBuilder}'s identical scope), so {@code HELP}/{@code CHANGE_DIARY} tags are recognized
- * but have nothing to attach to and are dropped.
+ * Java port of {@code ImageObjectParseEventHandler}, targeting {@code com.bmc.arsys.api.
+ * Image} directly - confirmed via {@code javap} that the client type has no {@code setHelpText}/
+ * {@code setDiary} (matching {@code arinside.ar.xmlfile.ImageXmlBuilder}'s identical scope, which
+ * likewise never sets those two fields), so {@code HELP}/{@code CHANGE_DIARY} tags are recognized
+ * but have nothing to attach to and are dropped, same as several other object types' documented
+ * client-API gaps elsewhere in this port.
  */
 final class DefImageBuilder {
     private String name, type, owner, lastChangedBy, description, checkSum, imageContent;
@@ -45,12 +47,12 @@ final class DefImageBuilder {
     }
 
     /**
-     * Decodes the {@code .def} format's binary-content encoding: a byte is either the {@code '!'}
-     * sentinel for a literal 0x00, the {@code '~'} sentinel for a literal 0xFF, a printable
-     * pass-through literal (everything in the ranges 37-47 / 58-96 / 103-125 - deliberately
-     * excludes plain digits 0-9 and lowercase hex letters a-f, which only ever appear as the second
-     * half of a hex pair), or else consumed together with the following byte as one 2-hex-digit
-     * byte value.
+     * Java port of {@code com.bmc.arsys.domain.utils.ConversionUtil.getBytesForBinaryContentInHexFormat}
+     * (read directly): a byte is either the {@code '!'} sentinel for a
+     * literal 0x00, the {@code '~'} sentinel for a literal 0xFF, a hex-digit-adjacent pass-through
+     * literal (everything in the ranges 37-47 / 58-96 / 103-125 - deliberately excludes plain digits
+     * 0-9 and lowercase hex letters a-f, which only ever appear as the second half of a hex pair), or
+     * else consumed together with the following byte as one 2-hex-digit byte value.
      */
     private static byte[] decodeHexContent(String s) {
         byte[] in = s.getBytes(java.nio.charset.StandardCharsets.ISO_8859_1);

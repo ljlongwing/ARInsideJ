@@ -42,7 +42,6 @@ API is still actively maintained and doesn't have that problem.
 ## Building
 
 ```
-cd java-port
 mvn -o package
 ```
 

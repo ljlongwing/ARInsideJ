@@ -7,8 +7,10 @@ import arinside.config.AppConfig;
 import arinside.output.*;
 import arinside.scan.AppMembershipIndex;
 import arinside.scan.ContainerReferenceIndex;
+import arinside.scan.FieldReferenceIndex;
 import arinside.scan.GlobalFieldIndex;
 import arinside.scan.MenuAttachmentIndex;
+import arinside.scan.MissingFieldReferenceIndex;
 import arinside.scan.WorkflowReferenceIndex;
 import com.bmc.arsys.api.*;
 
@@ -16,20 +18,30 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Java port of doc/DocCharMenuDetails.cpp - renders each menu's real per-subtype definition
- * directly, matching the C++: {@link ListMenu} shows its static item tree, {@link QueryMenu}/
- * {@link SqlMenu} show their qualification/SQL command rendered once per form the menu is actually
- * attached to (see {@link MenuAttachmentIndex}), {@link FileMenu} shows its filename/location, and
+ * Java port of doc/DocCharMenuDetails.cpp - rewritten from an earlier, architecturally wrong
+ * approach (see below) to render each menu's real per-subtype definition directly, matching the
+ * C++ exactly: {@link ListMenu} shows its static item tree, {@link QueryMenu}/{@link SqlMenu} show
+ * their qualification/SQL command rendered once per form the menu is actually attached to (see
+ * {@link MenuAttachmentIndex}), {@link FileMenu} shows its filename/location, and
  * {@link DataDictionaryMenu} shows its form/field/license lookup config - no live server call
  * beyond the one `getMenu()` fetch (with `MenuCriteria.setRetrieveAll(true)`, see
  * WorkflowRepository's javadoc) is needed for any of this.
  *
- * <p>Query/SQL menu qualifications are rendered structurally against each attached form via a
- * two-schema qualifier (schema1=attached/calling form, schema2=menu's own query form), matching
- * how the C++ resolves them, via {@link QualificationRenderer}'s two-form constructor - not
- * resolved by actually running the query against the server, since a `$fieldId$` token in the
- * qualification may refer to a field on the calling form rather than the menu's own query-source
- * form.
+ * <p><b>What was here before, and why it was wrong</b>: an earlier round of this port called a
+ * live `ARServerUser.expandMenu(name)` RPC to resolve every menu's displayed content, having
+ * concluded (via an under-scoped spike) that `getMenu()`'s subtype accessors "always come back
+ * empty". That conclusion was itself the bug - it was caused by using default `MenuCriteria()`
+ * (see WorkflowRepository), not a real Java API limitation. Worse, `expandMenu()` is architecturally
+ * the wrong call for query/SQL menus: it asks the server to actually RUN the query with no runtime
+ * substitution context, so any `$fieldId$` token in the qualification that refers to a field on the
+ * *calling* form (not the menu's own query-source form - e.g. a menu on `WOI:WorkOrder` querying
+ * `CTM:...Join` with `'Parent Service Company*' = $1000003299$`, where 1000003299 is a real field
+ * on `WOI:WorkOrder`, not on the join form) fails server-side with "ERROR (314): Field does not
+ * exist on current form" - confirmed against real data, not a hypothetical. The C++ never had this
+ * problem because it never calls a live expand API at all for any menu type - it renders the
+ * qualification structurally against each attached form via a two-schema qualifier
+ * (schema1=attached/calling form, schema2=menu's own query form), exactly what this rewrite does
+ * via {@link QualificationRenderer}'s existing two-form constructor.
  */
 public final class MenuDetailPage {
     private final WorkflowSource repo;
@@ -42,10 +54,13 @@ public final class MenuDetailPage {
     private final arinside.ar.ContainerSource containers;
     private final AppMembershipIndex appIndex;
     private final ContainerReferenceIndex containerRefs;
+    private final FieldReferenceIndex fieldRefs;
+    private final MissingFieldReferenceIndex missingFieldRefs;
 
     public MenuDetailPage(WorkflowSource repo, AppConfig appConfig, int serverOverlayMode, Set<String> knownUserNames,
                            WorkflowReferenceIndex workflowIndex, GlobalFieldIndex globalFields, MenuAttachmentIndex attachments,
-                           arinside.ar.ContainerSource containers, AppMembershipIndex appIndex, ContainerReferenceIndex containerRefs) {
+                           arinside.ar.ContainerSource containers, AppMembershipIndex appIndex, ContainerReferenceIndex containerRefs,
+                           FieldReferenceIndex fieldRefs, MissingFieldReferenceIndex missingFieldRefs) {
         this.repo = repo;
         this.appConfig = appConfig;
         this.serverOverlayMode = serverOverlayMode;
@@ -56,6 +71,8 @@ public final class MenuDetailPage {
         this.containers = containers;
         this.appIndex = appIndex;
         this.containerRefs = containerRefs;
+        this.fieldRefs = fieldRefs;
+        this.missingFieldRefs = missingFieldRefs;
     }
 
     public record MenuData(String name, Menu menu) {}
@@ -90,7 +107,20 @@ public final class MenuDetailPage {
         tbl.addRow(new TableRow().addCellList("Refresh", AREnumLabels.menuRefresh(menu.getRefreshCode())));
         webPage.addContent(tbl.toXHtml());
 
-        webPage.addContent(definition(name, menu, page.rootLevel()));
+        // Java port of ScanFields.cpp/ScanActiveLinks.cpp's AddMenuReference() direction reversed:
+        // this menu is the REFERENCING object here (a query/SQL/data-dictionary menu pointing AT a
+        // field on its attached/query form), matching REFM_CHARMENU_LABELFIELD/REFM_CHARMENU_VALUE/
+        // REFM_CHARMENU_QUALIFICATION/REFM_CHARMENU_SQL/REFM_CHARMENU_FORM/REFM_CHARMENU_SERVER
+        // (RefItem.cpp:572-697) - feeds FieldDetailPage's "Referenced By" table so a field shows
+        // "used by Menu X" the same way it already shows Active Link/Filter/Escalation references.
+        PagePath menuLink = Naming.menuDetail(name, false);
+        QualificationRenderer.FieldReferenceSink sink = (formName, fieldId, fieldExists, detail) -> {
+            FieldReferenceIndex.Ref ref = new FieldReferenceIndex.Ref(name, "Menu", ImageTag.Id.Menu, menuLink, detail);
+            fieldRefs.add(formName, fieldId, ref);
+            if (!fieldExists) missingFieldRefs.add(formName, fieldId, ref);
+        };
+
+        webPage.addContent(definition(name, menu, page.rootLevel(), sink));
         webPage.addContent(relatedFields(name, page.rootLevel()));
         webPage.addContent(relatedActiveLinks(name, page.rootLevel()));
         webPage.addContent(containerReferences(name, page.rootLevel()));
@@ -104,18 +134,21 @@ public final class MenuDetailPage {
     }
 
     /** Dispatches on the real menu subtype - matches DocCharMenuDetails.cpp's switch on menuType. */
-    private String definition(String menuName, Menu menu, int rootLevel) {
+    private String definition(String menuName, Menu menu, int rootLevel, QualificationRenderer.FieldReferenceSink sink) {
         if (menu instanceof ListMenu lm) return listMenuDefinition(lm);
-        if (menu instanceof QueryMenu qm) return perAttachedForm(menuName, rootLevel, form -> queryMenuRow(qm, form, rootLevel));
-        if (menu instanceof SqlMenu sm) return perAttachedForm(menuName, rootLevel, form -> sqlMenuRow(sm, form, rootLevel));
+        if (menu instanceof QueryMenu qm) return perAttachedForm(menuName, rootLevel, form -> queryMenuRow(qm, form, rootLevel, sink));
+        if (menu instanceof SqlMenu sm) return perAttachedForm(menuName, rootLevel, form -> sqlMenuRow(sm, form, rootLevel, sink));
         if (menu instanceof FileMenu fm) return fileMenuDefinition(fm);
-        if (menu instanceof DataDictionaryMenu ddm) return perAttachedForm(menuName, rootLevel, form -> dataDictMenuRow(ddm, form, rootLevel));
+        if (menu instanceof DataDictionaryMenu ddm) return perAttachedForm(menuName, rootLevel, form -> dataDictMenuRow(ddm, form, rootLevel, sink));
         return "";
     }
 
     /**
      * Java port of DocCharMenuDetails.cpp's CharMenuDetails - a flat, non-recursive table of the
-     * menu's top-level items only (Type/Label/Value columns), matching the C++.
+     * menu's top-level items only (Type/Label/Value columns), matching the C++ exactly rather than
+     * an earlier version of this method which recursively expanded sub-menus into a nested list and
+     * never showed each item's Type (Label vs Value) at all - a real content divergence, not just
+     * cosmetic, caught by the source-verification audit.
      */
     private String listMenuDefinition(ListMenu lm) {
         Table tbl = new Table("menuItems", "TblObjectList");
@@ -182,10 +215,10 @@ public final class MenuDetailPage {
         return URLLink.to(attachedForm, Naming.schemaDetail(attachedForm, isOverlaid), ImageTag.Id.Schema, rootLevel).toHtml();
     }
 
-    /** Java port of DocCharMenuDetails.cpp's SearchMenuDetails - two-schema qualifier (attachedForm=calling form, qm.getForm()=the menu's own query source form), matching CARQualification's schema1/schema2 resolution rule. */
-    private TableRow queryMenuRow(QueryMenu qm, String attachedForm, int rootLevel) {
+    /** Java port of DocCharMenuDetails.cpp's SearchMenuDetails - two-schema qualifier (attachedForm=calling form, qm.getForm()=the menu's own query source form), matching CARQualification's real schema1/schema2 resolution rule (confirmed by reading core/ARQualification.cpp). */
+    private TableRow queryMenuRow(QueryMenu qm, String attachedForm, int rootLevel, QualificationRenderer.FieldReferenceSink sink) {
         String querySchema = nullToEmpty(qm.getForm());
-        QualificationRenderer qr = new QualificationRenderer(attachedForm, querySchema, rootLevel, globalFields, (f, id, exists, detail) -> {});
+        QualificationRenderer qr = new QualificationRenderer(attachedForm, querySchema, rootLevel, globalFields, sink);
 
         StringBuilder sb = new StringBuilder();
         sb.append("Server: ").append(WebUtil.validate(nullToEmpty(qm.getServer()))).append("<br/>\n");
@@ -196,14 +229,14 @@ public final class MenuDetailPage {
             for (int i = 0; i < labelFields.size(); i++) {
                 int fieldId = labelFields.get(i);
                 if (fieldId == 0) continue;
-                sb.append("Label Field (").append(i).append(") : ").append(qr.fieldRef(querySchema, fieldId))
+                sb.append("Label Field (").append(i).append(") : ").append(qr.fieldRef(querySchema, fieldId, "Menu Label Field"))
                     .append(" (FieldId: ").append(fieldId).append(")<br/>\n");
             }
         }
         sb.append("Sort On Label: ").append(qm.isSortOnLabel() ? "Yes" : "No").append("<br/>\n");
-        sb.append("Value Field: ").append(qr.fieldRef(querySchema, qm.getValueField())).append("<br/>\n");
+        sb.append("Value Field: ").append(qr.fieldRef(querySchema, qm.getValueField(), "Menu Value Field")).append("<br/>\n");
 
-        String qualText = qm.getQualification() != null ? qr.render(qm.getQualification()) : "";
+        String qualText = qm.getQualification() != null ? qr.render(qm.getQualification(), "Search Menu Qualification") : "";
         if (!qualText.isEmpty()) {
             sb.append("Qualification:<br/>\n").append(qualText).append("\n");
         } else {
@@ -214,8 +247,8 @@ public final class MenuDetailPage {
     }
 
     /** Java port of DocCharMenuDetails.cpp's SqlMenuDetails - the SQL command itself is free text potentially containing $fieldId$ tokens, resolved via TextFieldSubstitution against the attached (calling) form, same mechanism ActionSummaryTable's Run Process fix uses. */
-    private TableRow sqlMenuRow(SqlMenu sm, String attachedForm, int rootLevel) {
-        QualificationRenderer qr = new QualificationRenderer(attachedForm, rootLevel, globalFields, (f, id, exists, detail) -> {});
+    private TableRow sqlMenuRow(SqlMenu sm, String attachedForm, int rootLevel, QualificationRenderer.FieldReferenceSink sink) {
+        QualificationRenderer qr = new QualificationRenderer(attachedForm, rootLevel, globalFields, sink);
 
         StringBuilder sb = new StringBuilder();
         sb.append("Server: ").append(WebUtil.validate(nullToEmpty(sm.getServer()))).append("<br/>\n");
@@ -238,8 +271,8 @@ public final class MenuDetailPage {
     }
 
     /** Java port of DocCharMenuDetails.cpp's DataDictMenuDetails - dispatches on the real subtype (Form/Field/License) rather than a struct union tag, matching what FormDataDictionaryMenu/FieldDataDictionaryMenu/LicenseDataDictionaryMenu already give directly. */
-    private TableRow dataDictMenuRow(DataDictionaryMenu ddm, String attachedForm, int rootLevel) {
-        QualificationRenderer qr = new QualificationRenderer(attachedForm, rootLevel, globalFields, (f, id, exists, detail) -> {});
+    private TableRow dataDictMenuRow(DataDictionaryMenu ddm, String attachedForm, int rootLevel, QualificationRenderer.FieldReferenceSink sink) {
+        QualificationRenderer qr = new QualificationRenderer(attachedForm, rootLevel, globalFields, sink);
         StringBuilder sb = new StringBuilder();
         String server = ddm.getServer();
         String serverText = server != null && server.startsWith("$") ? TextFieldSubstitution.substitute(server, attachedForm, qr, "Server-Value in Menu") : WebUtil.validate(nullToEmpty(server));

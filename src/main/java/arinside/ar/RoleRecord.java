@@ -8,9 +8,10 @@ import java.util.List;
  * Java port of a CARRole row (lists/ARRoleList.cpp) - loaded via RawEntryQuery against the "Roles"
  * admin form, since roles aren't a real AR object type with a convenience API (see
  * IdentityRepository's javadoc). roleId is the raw AR_RESERV_ROLE_MAPPING_ROLE_ID field value -
- * negative, matching how role-based permissions are stored in ARPermissionList.groupId entries -
- * permission matching just compares this raw value directly against a schema/field/AL/container's
- * group IDs, no sign conversion needed.
+ * negative, matching how role-based permissions are stored in ARPermissionList.groupId entries
+ * (confirmed empirically: field 1702 came back as e.g. -4870051 on the live test server) - permission
+ * matching just compares this raw value directly against a schema/field/AL/container's group IDs,
+ * no sign conversion needed.
  */
 public final class RoleRecord {
     public final String requestId;

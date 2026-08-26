@@ -14,8 +14,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Java port of output/WebPage.{h,cpp}. Supports the C++'s optional GZip output
- * (ARINSIDE_ENABLE_ZLIB_SUPPORT / AppConfig.gzCompression) - see save()'s javadoc.
+ * Java port of output/WebPage.{h,cpp}. GZip output (ARINSIDE_ENABLE_ZLIB_SUPPORT /
+ * AppConfig.gzCompression) is deferred to Phase 6 (cross-cutting correctness) - this always
+ * writes plain .htm files for now.
  */
 public final class WebPage {
 
@@ -153,7 +154,7 @@ public final class WebPage {
         w.write("<td>" + URLLink.linkToTop(rootLevel) + "</td>\n");
         w.write("<td>&nbsp;</td>\n");
         w.write("<td>Page created " + DateTimeFormat.currentToHtmlString()
-            + " by <a href=\"https://github.com/ljlongwing/ARInsideJ\" target=\"_blank\">"
+            + " by <a href=\"https://github.com/gabeluci/ARInside\" target=\"_blank\">"
             + Version.PRODUCT_NAME + " v" + Version.APP_VERSION + "</a></td>");
         w.write("</tr></table>\n");
     }

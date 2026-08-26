@@ -80,9 +80,12 @@ public final class WorkflowRepository implements WorkflowSource {
     /**
      * `new MenuCriteria()` (default, no flags set) never populates the subtype-specific definition
      * data - `getMenu()` comes back as the base type with every QueryMenu/SqlMenu/ListMenu/FileMenu/
-     * DataDictionaryMenu accessor empty. `setRetrieveAll(true)` is the fix: with it, `getMenu()`
-     * returns the real typed subtype with real qualification/SQL/items/filename data populated, no
-     * separate definition-resolving call needed.
+     * DataDictionaryMenu accessor empty, which an earlier round of this port mistook for a genuine
+     * Java-API limitation and worked around via the separate live `expandMenu()` RPC instead (now
+     * removed - see MenuDetailPage's javadoc for why that approach was architecturally wrong and
+     * caused real ERROR 314 failures for query/SQL menus). `setRetrieveAll(true)` is the fix,
+     * confirmed via spike: with it, `getMenu()` returns the real typed subtype with real
+     * qualification/SQL/items/filename data populated, no live definition-resolving call needed.
      */
     public Menu getMenu(String name) throws ARException {
         MenuCriteria criteria = new MenuCriteria();

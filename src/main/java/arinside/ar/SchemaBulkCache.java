@@ -14,14 +14,18 @@ import java.util.Set;
  * Java port of the real C++'s default "fast" object loading (lists/ARSchemaList.cpp's
  * LoadFromServer(), which calls ARGetMultipleSchemas) - one bulk getListFormObjects() RPC instead of
  * this port's original one-getForm(name)-call-per-object pattern. Mirrors {@link WorkflowBulkCache}'s
- * shape: {@code FormCriteria} inherits {@code setRetrieveAll(boolean)} from its {@code
- * CriteriaFlags} grandparent (via {@code ObjectBaseCriteria}) without redeclaring it, so {@code
- * criteria.setRetrieveAll(true)} must be called explicitly - a bare {@code new FormCriteria()} (the
- * default, retrieveAll unset) returns zero forms from {@code getListFormObjects()}.
+ * shape and the same lesson learned there: a first pass at this call (0L, AR_LIST_SCHEMA_ALL |
+ * AR_HIDDEN_INCREMENT, null, null, `new FormCriteria()`) silently returned 0 forms against the live
+ * test server despite 4,684 real forms existing, and was wrongly written off as a jar quirk - the
+ * real cause was that `FormCriteria` inherits `setRetrieveAll(boolean)` from its `CriteriaFlags`
+ * grandparent (via ObjectBaseCriteria) but doesn't redeclare it, so `javap` on `FormCriteria` alone
+ * never surfaced it. With `criteria.setRetrieveAll(true)` explicitly called, the exact same call
+ * returns all 4,684 forms in ~525ms with fields (helpText/properties/owner) matching a direct
+ * getForm() fetch exactly - confirmed via spike.
  *
  * AR_LIST_SCHEMA_ALL | AR_HIDDEN_INCREMENT matches lists/ARSchemaList.cpp's own ARGetListSchema
- * flags exactly - hidden forms are included by default in the real C++, so this bulk fetch must
- * include them too.
+ * flags exactly (confirmed by reading it) - hidden forms are included by default in the real C++, so
+ * this bulk fetch must include them too.
  */
 public final class SchemaBulkCache {
     private final Map<String, Form> forms;

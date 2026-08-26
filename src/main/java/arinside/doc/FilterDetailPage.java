@@ -82,10 +82,12 @@ public final class FilterDetailPage {
             // order populated so WorkflowRefLabel can append " (Order)" to this reference's link,
             // matching WorkflowReferenceTable::LinkToFilterRef. enabled is populated too - Filter is
             // one of the three types (Filter/Active Link/Escalation) RefItem::GetObjectEnabled sets
-            // supportsEnabled=true for, so the general Workflow Reference table (not just the
-            // Active-Link-only Attached Workflow one) shows an Enabled cell for Filter rows.
-            // executeOn stays unset - unused by the general table (Execute On is
-            // Attached-Workflow-only, and Filters never appear there).
+            // supportsEnabled=true for, so the real tool's general Workflow Reference table (not
+            // just the Active-Link-only Attached Workflow one) shows an Enabled cell for Filter rows
+            // - previously left null here (a real gap, confirmed via live comparison against
+            // DocFieldDetails.cpp's field showing a blank/missing Enabled column). executeOn stays
+            // unset - unused by the general table (Execute On is Attached-Workflow-only, and Filters
+            // never appear there - that part of the original comment was correct).
             FieldReferenceIndex.Ref ref = new FieldReferenceIndex.Ref(name, "Filter", ImageTag.Id.Filter, filterLink, detail, filter.getOrder(), filter.isEnable(), null);
             fieldRefs.add(formName, fieldId, ref);
             if (!fieldExists) missingFieldRefs.add(formName, fieldId, ref);
@@ -160,10 +162,12 @@ public final class FilterDetailPage {
 
     /**
      * Java port of DocFilterDetails.cpp's WorkflowReferences() (227-280) - every OTHER filter that
-     * selected this one as its Error Handler, sourced from FilterErrorHandlerIndex (a port of
-     * CARFilter::ErrorCallers()/scan/ScanFilters.cpp; see FilterErrorHandlerIndex's own javadoc).
-     * Link text carries the same " (Order)" suffix WorkflowReferenceTable::LinkToFilterRef appends
-     * to every Filter reference (see WorkflowRefLabel).
+     * selected this one as its Error Handler, sourced from FilterErrorHandlerIndex (a genuine port
+     * of CARFilter::ErrorCallers()/scan/ScanFilters.cpp, confirmed by a live re-read of that file -
+     * an earlier version of this comment wrongly claimed the mechanism was "confirmed dead" in the
+     * real tool; see FilterErrorHandlerIndex's own javadoc for the correction). Link text carries
+     * the same " (Order)" suffix WorkflowReferenceTable::LinkToFilterRef appends to every Filter
+     * reference (see WorkflowRefLabel) - previously missing here specifically.
      */
     private String workflowReferences(String filterName, int rootLevel) {
         List<FilterErrorHandlerIndex.Caller> callers = errorHandlers.callers(filterName);

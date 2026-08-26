@@ -102,7 +102,7 @@ public final class RoleDetailPage {
         return URLLink.to(role.applicationName, Naming.containerDetail(Constants.ARCON_APP, role.applicationName, isOverlaid), ImageTag.Id.Application, rootLevel).toHtml();
     }
 
-    /** Java port of DocRoleDetails.cpp's Test/Production Group rows - defaults to group id 0 ("Public") when the role has no test/production group configured at all, matching the C++'s own "int testId = 0;"/"int prodId = 0;" default exactly. */
+    /** Java port of DocRoleDetails.cpp's Test/Production Group rows - defaults to group id 0 ("Public") when the role has no test/production group configured at all, matching the C++'s own "int testId = 0;"/"int prodId = 0;" default exactly (previously showed nothing in that case). */
     private String groupCell(List<Integer> groupIds, int rootLevel) {
         int groupId = groupIds.isEmpty() ? 0 : groupIds.get(0);
         String name = groupNamesById.get(groupId);

@@ -13,36 +13,38 @@ import java.util.Set;
  * Java port of the overlay-support pieces of ARInside.cpp/core/ARServerObject.cpp (7.6.04+
  * overlay feature): CARInside::SetupOverlaySupport, IsVisibleObject, IsObjectOverlaid.
  *
- * <p>The C++'s {@code ARSetSessionConfiguration(AR_SESS_CONTROL_PROP_API_OVERLAYGROUP,
- * AR_OVERLAY_CLIENT_MODE_FULL)} step maps to {@code ApiUserContextBase.setOverlayGroup(String)}
- * (inherited by {@code ARServerUser}), called with the sentinel string {@code "-2"}
- * ({@code ar.h}'s {@code AR_OVERLAY_CLIENT_MODE_FULL}). Key behavior of this mode:
- * <ul>
- * <li>{@code server.setOverlayGroup("-2")} can be toggled mid-session, no re-login needed;
- *   {@code setOverlayGroup(null)} (or {@code ""}) resets to default behavior.</li>
- * <li>With it active, {@code getListForm()} (and getListActiveLink/getListFilter/
- *   getListEscalation) returns every name from the default list plus one extra entry per object
- *   with a hidden base layer, suffixed by the server itself with the same "__o" marker the C++
- *   computes client-side for file naming (e.g. "HPD:Help Desk__o") - a real AR System naming
- *   convention.</li>
- * <li>Lookup semantics flip while in "-2" mode: the plain name (no suffix) now resolves to the
- *   hidden base layer ({@code AR_SMOPROP_OVERLAY_PROPERTY}=1, AR_OVERLAID_OBJECT) instead of the
- *   active/overlay layer; fetching the "__o"-suffixed name explicitly gives back the active/overlay
- *   layer (=2) instead - the reverse of default-mode lookup. Only objects that actually have a
- *   hidden base layer are affected; everything else is unchanged.</li>
- * </ul>
+ * SOLVED (2026-08-15, after three rounds of investigation): the C++'s
+ * ARSetSessionConfiguration(AR_SESS_CONTROL_PROP_API_OVERLAYGROUP, AR_OVERLAY_CLIENT_MODE_FULL)
+ * step - property 13 set to the string "-2" (`ar.h`'s AR_OVERLAY_CLIENT_MODE_FULL, not an int/bool
+ * as earlier rounds assumed) - maps directly to ApiUserContextBase's `setOverlayGroup(String)`,
+ * inherited by ARServerUser. **The earlier rounds tried setOverlayFlag(boolean)/setBaseOverlayFlag
+ * (boolean), which are a different, unrelated pair of flags - setOverlayGroup(String) was never
+ * tried with the "-2" sentinel until this round.** Confirmed empirically against the live server
+ * (`arinside.spike.OverlayGroupSpike*`, deleted after use):
+ * - `server.setOverlayGroup("-2")` can be toggled on/off **mid-session**, no re-login needed;
+ *   `setOverlayGroup(null)` (or `""`) resets to default behavior.
+ * - With it active, `getListForm()` (and presumably getListActiveLink/getListFilter/
+ *   getListEscalation) returns every name from the default list **plus** one extra entry per
+ *   object with a hidden base layer, already suffixed by the *server itself* with the same "__o"
+ *   marker the C++ computes client-side for file naming (e.g. "HPD:Help Desk__o") - this is a
+ *   real AR System naming convention, not something ARInside invented.
+ * - **The lookup semantics flip while in "-2" mode**: the *plain* name (no suffix) now resolves to
+ *   the hidden BASE layer (`AR_SMOPROP_OVERLAY_PROPERTY`=1, AR_OVERLAID_OBJECT) instead of the
+ *   active/overlay layer; fetching the "__o"-suffixed name explicitly gives back the
+ *   active/overlay layer (=2) instead - the reverse of default-mode lookup. Confirmed on a
+ *   non-overlaid form too (`getForm("User")` normally, vs the same call with "-2" active) - only
+ *   objects that actually have a hidden base layer are affected; everything else is unchanged.
  *
- * <p><b>How this is wired up (see {@code Main.java}</b>): {@code discoverOverlayBaseNames()} below
- * diffs the default-mode name list against the "-2"-mode name list to find which plain names have a
+ * **Net effect / how this is wired up (see `Main.java`)**: `discoverOverlayBaseNames()` below diffs
+ * the default-mode name list against the "-2"-mode name list to find which plain names have a
  * hidden base layer (stripping the server's own "__o" suffix). For just those names, the existing
- * {@code SchemaDetailPage}/{@code ActiveLinkDetailPage}/{@code FilterDetailPage}/
- * {@code EscalationDetailPage.render(name)} methods are called again with {@code
- * setOverlayGroup("-2")} active - no changes needed to those classes at all, since they already
- * independently re-fetch the object and compute {@code isOverlaidForNaming} from whatever {@code
- * overlayType} comes back on that fetch (correctly 1 for these names while the session is in "-2"
- * mode) - the correct "__o"-suffixed page falls out of the existing code path automatically.
- * {@code setOverlayGroup} must be reset to {@code null} immediately after this second pass so it
- * doesn't affect the rest of the run's normal fetches.
+ * `SchemaDetailPage`/`ActiveLinkDetailPage`/`FilterDetailPage`/`EscalationDetailPage.render(name)`
+ * methods are called AGAIN with `setOverlayGroup("-2")` active - no changes needed to those classes
+ * at all, since they already independently re-fetch the object and compute `isOverlaidForNaming`
+ * from whatever `overlayType` comes back on that fetch (previously always 2 in practice, now
+ * correctly 1 for these names since the session is in "-2" mode) - the correct "__o"-suffixed page
+ * falls out of the existing code path automatically. `setOverlayGroup` must be reset to `null`
+ * immediately after this second pass so it doesn't affect the other ~100,000 normal fetches.
  */
 public final class OverlaySupport {
     private OverlaySupport() {}

@@ -38,14 +38,22 @@ final class FieldLimitXmlBuilder {
         while (c.nextTag() == START_ELEMENT) {
             switch (c.localName()) {
                 case "maximumLength" -> limit.setMaxLength(c.intText());
-                // "byte" is the only real lengthUnit value this format uses - still must consume
-                // the element's text via elementText(), even though the value is discarded, or the
-                // cursor is left mid-element and every sibling after it desyncs silently.
+                // "byte" confirmed as the only real value found (strings-scanned the real server's
+                // libarxmlutil.so - no "char" token anywhere in its whole string table), so this
+                // stays a single safe default rather than a guessed two-way split - still must
+                // consume the element's text via elementText(), even though the value is discarded,
+                // or the cursor is left mid-element and every sibling after it desyncs silently.
                 case "lengthUnit" -> { c.elementText(); limit.setLengthUnits(0); }
                 case "fullTextOption" -> limit.setFullTextOption(XmlEnums.fullTextOption(c.elementText()));
                 case "queryByExample" -> limit.setQBEMatch(XmlEnums.qbeMatch(c.elementText()));
+                // Confirmed real values (same string-scan): append/overwrite - "replace" was a guess and never actually appears.
                 case "menuStyle" -> limit.setMenuStyle("overwrite".equals(c.elementText()) ? 1 : 0);
                 case "clobStorageOption" -> limit.setStorageOptionForCLOB(clobStorageOption(c.elementText()));
+                // Confirmed against the real full.xml export (byte search): the tag is
+                // <menuNameReference>, not <charMenu> - the earlier guess never actually matched
+                // anything, so every character field's menu attachment silently parsed as absent
+                // until this was caught by MenuOverviewPage's new "used in workflow" marker showing
+                // 100% of menus as unused on a real dataset where that's implausible.
                 case "menuNameReference" -> limit.setCharMenu(c.elementText());
                 case "pattern" -> limit.setPattern(c.elementText());
                 default -> c.skipSubtree();
@@ -54,7 +62,7 @@ final class FieldLimitXmlBuilder {
         return limit;
     }
 
-    /** No public AR_STORAGE_OPTION_* constant exists to reference; ordinal ints (Default/InRow/OutRow) are this port's own numbering since no documented constant exposes the real ones. */
+    /** No public AR_STORAGE_OPTION_* constant exists to reference; values (Default/InRow/OutRow) confirmed via string-scanning the real server's libarxmlutil.so, ordinal ints are this port's own best-effort numbering since no documented constant exposes the real ones. */
     private static int clobStorageOption(String s) {
         return switch (s) {
             case "InRow" -> 1;

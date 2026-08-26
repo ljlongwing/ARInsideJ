@@ -63,9 +63,10 @@ public class AppConfig {
      * threads for local page rendering+writing. {@code <= 0} means "unlimited" - no hard-coded
      * cap, size gated only by how fast work is submitted (see ReadPool/WritePool javadoc for what
      * "unlimited" actually means for the read side, since a literal one-connection-per-task
-     * reading is neither practical nor what the setting intends). Default 8/16 gives good
-     * throughput without overwhelming the server with connections on most setups; explicitly
-     * override to 1/1 in settings.ini to reproduce the old fully-sequential behavior.
+     * reading is neither practical nor what the setting intends). Default 8/16 - the concurrency
+     * level verified against the live test server to give the
+     * best throughput without overwhelming the server with connections; explicitly override to 1/1
+     * in settings.ini to reproduce the old fully-sequential behavior.
      */
     public int readConcurrency = 8;
     public int writeConcurrency = 16;
@@ -91,9 +92,12 @@ public class AppConfig {
      * settles the overlay-support flag from the (string-valued, ini-compatible) overlayMode setting.
      *
      * Server/login are required unless {@link #connectionless} ends up true (file mode pointed at a
-     * recognized {@code .xml} or {@code .def} export, both parsed genuinely offline) - a file mode
-     * pointed at neither format (e.g. a corrupt/unrecognized file, caught later at connection time)
-     * still needs a live, logged-in session, same as every other mode.
+     * real .xml export) - every other mode/format combination in this port still needs a live,
+     * logged-in session even when the object data itself comes from disk. Was true of BOTH formats
+     * until arinside.ar.deffile.DefFileParser shipped - .def exports are now also genuinely offline
+     * (a full line-format parser for the AR Server .def format - see its javadoc), so this
+     * now only applies to a file mode pointed at neither a recognized .xml nor .def export (e.g. a
+     * corrupt/unrecognized file, caught later at connection time).
      */
     public void validate(arinside.cli.CommandLineArgs cmdLine) {
         overrideSettingsByCommandLine(cmdLine);

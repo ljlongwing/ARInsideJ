@@ -14,8 +14,11 @@ import java.util.List;
 /**
  * Java port of the schema-loading portion of CARInside::LoadForms + CARSchemaList/CARFieldList
  * (ARInside.cpp, lists/ARSchemaList.cpp). See {@link SchemaBulkCache}'s javadoc for the bulk-fetch
- * details. With that cache, listFormNames()/getForm() are fast; without it (cache == null, e.g.
- * bulk load failed), they fall back to the original per-object live calls.
+ * story: getListFormObjects() looked broken on a first pass (silently returned 0 forms no matter the
+ * filter params tried) but was actually just missing an explicit `setRetrieveAll(true)` - inherited
+ * from FormCriteria's CriteriaFlags grandparent, not visible via javap on FormCriteria in isolation,
+ * so easy to miss. With that cache, listFormNames()/getForm() are fast; without it (cache == null,
+ * e.g. bulk load failed), they fall back to the original per-object live calls.
  */
 public final class SchemaRepository implements SchemaSource {
     private final ArClient client;
@@ -37,9 +40,12 @@ public final class SchemaRepository implements SchemaSource {
     /**
      * Matches CARInside::InBlacklist filtering applied in CScanSchema/LoadForms - excluded forms
      * never appear in any listing. The live fallback path explicitly passes AR_LIST_SCHEMA_ALL |
-     * AR_HIDDEN_INCREMENT, matching lists/ARSchemaList.cpp's own ARGetListSchema call exactly, so
-     * hidden forms are included regardless of the plain no-arg getListForm() overload's own default
-     * behavior on a given server.
+     * AR_HIDDEN_INCREMENT, matching lists/ARSchemaList.cpp's own ARGetListSchema call exactly
+     * (confirmed by reading it) - the plain no-arg getListForm() empirically already returned every
+     * form including hidden ones on the live test server (measured: identical 4684-form count either
+     * way), but that's this server's own default behavior, not a documented guarantee of the no-arg
+     * overload across every server/config, so the explicit flag is the robust fix rather than
+     * relying on an unverified default.
      */
     public List<String> listFormNames() throws ARException {
         List<String> names;
@@ -74,11 +80,14 @@ public final class SchemaRepository implements SchemaSource {
 
     /**
      * Full VUI objects for the per-VUI detail page (Naming.schemaVuiDetail) - the Java API
-     * identifies VUIs by numeric VUIId, not a name (see Naming's javadoc). {@code ViewCriteria}
-     * inherits {@code setRetrieveAll(boolean)} from {@code CriteriaFlags} without redeclaring it,
-     * so {@code criteria.setRetrieveAll(true)} must be set explicitly - a bare {@code new
-     * ViewCriteria()} returns an empty list even when the form has real VUIs. One bulk call per
-     * form instead of one getView() call per VUI.
+     * identifies VUIs by numeric VUIId, not a name (see Naming's javadoc). A first pass at
+     * getListViewObjects(formName, 0L, new ViewCriteria()) looked broken (returned an empty list
+     * even when getListView(formName, 0L) returned real VUI IDs for the same form) - same root
+     * cause as SchemaBulkCache/WorkflowBulkCache's forms/escalations story: ViewCriteria inherits
+     * setRetrieveAll(boolean) from CriteriaFlags but doesn't redeclare it, so a bare `new
+     * ViewCriteria()` (retrieveAll unset) returns nothing while `criteria.setRetrieveAll(true)`
+     * returns every real VUI with fields matching a direct getView() fetch exactly (confirmed via
+     * spike). One bulk call per form instead of one getView() call per VUI.
      */
     public List<View> getViews(String formName) throws ARException {
         long t0 = arinside.util.Timing.start();

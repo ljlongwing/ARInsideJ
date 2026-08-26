@@ -12,11 +12,11 @@ import java.util.List;
 
 /**
  * Java port of CDocMain::GroupList + output/GroupTable.{h,cpp} - real columns are Name/ID/Type/
- * Category/Modified/By. Includes the jQuery letter-filter/JSON-search widget plus the
- * Regular/Dynamic/Computed category-restriction checkboxes (see ActiveLinkOverviewPage's javadoc
- * for the general pattern) - groupList.js's JSON row layout is [groupId, name, type, category,
- * modifiedDateStr, lastChangedBy, link], matching createGroupRowHtml(); category values (0/1/2)
- * match AR_GROUP_CATEGORY_*.
+ * Category/Modified/By (this port previously dropped Modified/By). Includes the jQuery
+ * letter-filter/JSON-search widget plus the Regular/Dynamic/Computed category-restriction
+ * checkboxes (see ActiveLinkOverviewPage's javadoc for the general pattern) - groupList.js's JSON
+ * row layout is [groupId, name, type, category, modifiedDateStr, lastChangedBy, link], confirmed
+ * against the real createGroupRowHtml(); category values (0/1/2) match AR_GROUP_CATEGORY_*.
  */
 public final class GroupOverviewPage {
     private final IdentityRepository repo;

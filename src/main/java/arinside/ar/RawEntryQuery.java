@@ -11,14 +11,15 @@ import java.util.List;
  * raw query against a reserved admin form (User/Group/Roles) rather than the convenience
  * getListUser/getListGroup/getListRole calls: those convenience calls don't carry the same field
  * set (no Full Name/Group List for users, no Category for groups) and, for roles, don't work as a
- * catalog listing at all - getListRole is a per-user membership lookup, not a roles catalog.
- * Centralized here since users/groups/roles all follow the identical shape: parseQualification +
- * getListEntryObjects against a configurable form/query (AppConfig's userForm/userQuery/groupForm/
- * groupQuery/roleForm/roleQuery, defaults "User"/"Group"/"Roles", all "1=1").
+ * catalog listing at all (see IdentityRepository's prior javadoc - getListRole is a per-user
+ * membership lookup, confirmed empirically). Centralized here since users/groups/roles all follow
+ * the identical shape: parseQualification + getListEntryObjects against a configurable form/query
+ * (AppConfig's userForm/userQuery/groupForm/groupQuery/roleForm/roleQuery, defaults "User"/"Group"/
+ * "Roles", all "1=1").
  *
  * Handles server-side result chunking the same way the C++'s offset loop does (maxRetrieve=0 means
- * "no limit" in a single call in practice on most servers, but the loop below is kept for servers
- * that do chunk).
+ * "no limit" in a single call in practice - confirmed via spike against the live test server, which
+ * returned all 457 Roles rows in one call - but the loop below is kept for servers that do chunk).
  */
 public final class RawEntryQuery {
     private RawEntryQuery() {}

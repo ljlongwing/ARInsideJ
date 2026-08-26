@@ -2,7 +2,7 @@ package arinside.ar.xmlfile;
 
 import com.bmc.arsys.api.*;
 
-/** Maps a &lt;definition xsi:type="..."&gt; value to the concrete {@link Field} subtype the AR Java API expects - see ArsXmlFileParser's javadoc. */
+/** Maps a &lt;definition xsi:type="..."&gt; value to the concrete {@link Field} subtype the AR Java API expects - vocabulary confirmed against a real form export sample, see ArsXmlFileParser's javadoc. */
 final class FieldXsiType {
     private FieldXsiType() {}
 

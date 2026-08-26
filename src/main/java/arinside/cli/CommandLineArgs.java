@@ -58,7 +58,7 @@ public class CommandLineArgs {
 
     public static void printUsage() {
         System.out.println("""
-            ARInsideJ -- https://github.com/ljlongwing/ARInsideJ
+            ARInside (Java) -- https://github.com/gabeluci/ARInside
             Copyright (C) 2014 Stefan Nerlich, LJ Longwing, John Luthgers
             This program comes with ABSOLUTELY NO WARRANTY, is free software, and you are welcome to
             redistribute it under certain conditions; see COPYING file for more details.

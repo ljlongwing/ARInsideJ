@@ -35,8 +35,9 @@ import java.util.function.Function;
  * not duplicated here.
  *
  * Costs one extra full fetch pass over every active link/filter/escalation (in addition to the
- * overview+detail passes those pages already do) - a known, accepted tradeoff; the three fetches
- * could be consolidated into one if the extra time on a large server becomes a problem.
+ * overview+detail passes those pages already do) - a real, known inefficiency, not an oversight;
+ * left as-is for now since correctness came first and a Phase 7 pass can consolidate all three
+ * fetches into one if the extra ~3 minutes on a server this size becomes a real problem.
  */
 public final class WorkflowReferenceIndex {
 
@@ -170,8 +171,8 @@ public final class WorkflowReferenceIndex {
         boolean isOverlaid = OverlaySupport.isOverlaidForNaming(esc.getProperties(), serverOverlayMode);
         // Escalation has no Order concept (matches the C++'s item.PushBack("", alloc) for this slot)
         // - escalationTmType is 1 for interval-based, 0 for specific-time-based (EscalationInterval
-        // vs EscalationTime, the two EscalationTimeCriteria subtypes, matching AREscalationTMType's
-        // "val==1 ? Interval : Time" client-side).
+        // vs EscalationTime, the two real EscalationTimeCriteria subtypes - confirmed via the arapi
+        // jar's class list, matching AREscalationTMType's "val==1 ? Interval : Time" client-side).
         int tmType = esc.getEscalationTm() instanceof com.bmc.arsys.api.EscalationInterval ? 1 : 0;
         Ref ref = new Ref(name, "Escalation", ImageTag.Id.Escalation, Naming.escalationDetail(name, isOverlaid),
             null, esc.isEnable(), tmType, size(esc.getActionList()), size(esc.getElseList()),

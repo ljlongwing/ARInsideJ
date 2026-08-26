@@ -20,10 +20,12 @@ import java.util.function.Function;
  * Java port of the error-handler half of scan/ScanFilters.cpp (CScanFilters::Start/Scan) - for
  * every filter with error handling enabled (errorFilterOptions == AR_ERRHANDLER_ENABLE) and a
  * named target filter that actually exists (CScanFilters::Scan's own "if (errFlt.Exists())" gate -
- * see {@link #callers}), records the reverse mapping target-filter-name -&gt; calling-filter-names,
- * which is exactly what FilterErrorHandlersPage needs to answer "which filters does the server
- * actually use as an error handler". Same fetch-once-per-object-then-index pattern as
- * GlobalFieldIndex/WorkflowReferenceIndex.
+ * confirmed via a live re-check of scan/ScanFilters.cpp: CARFilter::ErrorCallers() genuinely IS
+ * populated by the real tool, contrary to this class's own earlier javadoc, which incorrectly
+ * claimed it was "confirmed dead" - see {@link #callers}), records the reverse mapping
+ * target-filter-name -&gt; calling-filter-names, which is exactly what FilterErrorHandlersPage
+ * needs to answer "which filters does the server actually use as an error handler". Same
+ * fetch-once-per-object-then-index pattern as GlobalFieldIndex/WorkflowReferenceIndex.
  */
 public final class FilterErrorHandlerIndex {
     public record Caller(String name, boolean enabled, int order) {}
@@ -80,12 +82,16 @@ public final class FilterErrorHandlerIndex {
     }
 
     /**
-     * Every other filter that selected filterName as its Error Handler - a port of
+     * Every other filter that selected filterName as its Error Handler - a genuine port of
      * DocFilterDetails.cpp's WorkflowReferences() (CARFilter::ErrorCallers(), populated by
-     * scan/ScanFilters.cpp's CScanFilters::Start/Scan): Start()'s errCalls map is built during the
-     * scan phase and copied into each target filter's ErrorCallers() vector. The real C++'s table
-     * id/columns/heading ("Workflow Reference:", Type/Server object/Enabled/Description, "Selected
-     * as Error Handler") match what FilterDetailPage.workflowReferences() renders from this index.
+     * scan/ScanFilters.cpp's CScanFilters::Start/Scan), not a new post-C++ capability. An earlier
+     * version of this javadoc (and of FilterDetailPage's own comment on its caller) claimed this
+     * mechanism was "confirmed dead" in the real tool - that was wrong: a second, closer read of
+     * ScanFilters.cpp found the real population site (Start()'s errCalls map, built during the
+     * scan phase and copied into each target filter's ErrorCallers() vector), missed by whatever
+     * grep the original claim was based on. The real C++'s table id/columns/heading ("Workflow
+     * Reference:", Type/Server object/Enabled/Description, "Selected as Error Handler") already
+     * match what FilterDetailPage.workflowReferences() renders from this index.
      */
     public List<Caller> callers(String filterName) {
         return callersByHandler.getOrDefault(filterName, List.of());

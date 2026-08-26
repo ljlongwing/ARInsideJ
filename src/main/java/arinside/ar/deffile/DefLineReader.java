@@ -5,16 +5,20 @@ import java.io.IOException;
 import java.io.Reader;
 
 /**
- * Tokenizes a {@code .def} export into a stream of (tag, value) pairs; per-object-type meaning is
- * layered on top by {@link DefFileParser}.
+ * Java port of {@code com.bmc.arsys.server.domain.imports.def.impl.DefParserImpl}'s outer
+ * tokenizer,
+ * ported almost line-for-line rather than "simplified" - this is the one genuinely non-trivial
+ * piece of the {@code .def} format and subtle to get wrong. Produces a stream of (tag, value)
+ * pairs; per-object-type meaning is layered on top by {@link DefFileParser}.
  *
- * <p>Two independent continuation layers:
+ * <p>Two independent continuation layers, confirmed by reading the real source directly:
  * <ol>
- * <li><b>Raw physical-line joining</b> ({@link #nextJoinedLine()}) - a single logical line's bytes
- * can be hard-wrapped across multiple physical lines. A continuation physical line is signalled by
- * starting with an embedded-newline marker (ASCII 0x01, substituted back to a literal {@code '\n'}
- * once per joined line) or the continuation char {@code '&'}. Blank lines (bare {@code "\n"} or
- * {@code "\r\n"}) are skipped before a logical line starts.</li>
+ * <li><b>Raw physical-line joining</b> ({@link #nextJoinedLine()}) - a real export can hard-wrap a
+ * single logical line's bytes across multiple physical lines. A continuation physical line is
+ * signalled by starting with {@code DefCharacter.EMBEDDED_RETURN} (ASCII 0x01, an internal
+ * embedded-newline marker later substituted back to a literal {@code '\n'} once per joined line)
+ * or {@code DefCharacter.CONT_CHAR} ({@code '&'}). Blank lines (bare {@code "\n"} or {@code "\r\n"})
+ * are skipped before a logical line starts.</li>
  * <li><b>Tag-repeat continuation</b> ({@link #nextTagValue()}) - after one joined line is split into
  * a (tag, value) pair, the SAME tag can repeat on subsequent joined lines to continue accumulating
  * one logical value, in one of 3 modes keyed by which {@link DefItemLabel} the tag is: <i>explicit</i>
@@ -26,13 +30,16 @@ import java.io.Reader;
  * prefixes match). A handful of tags (ENUM_VALUE/ENUM_VALUE_NUM/NAME/OBJECT) never continue at all.</li>
  * </ol>
  *
- * <p>Not handled: the legacy {@code export-version <= 3} explicit-continuation-char variant (not
- * relevant to modern exports) and per-tag typed value decoding, which is deferred to {@link
- * DefFileParser}'s per-object builders - this class stays a pure tag/value tokenizer.
+ * <p>Not ported: the legacy {@code export-version <= 3} explicit-continuation-char check inside the
+ * implicit branch (a pre-historic format quirk with no real AR Server 20+ export to verify against -
+ * {@code full.def} is export-version 12, see its header) and the qualification-type-specific
+ * {@code parseValue} dispatch the real class also does inline (this port defers all typed decoding
+ * to {@link DefFileParser}'s per-object builders instead, keeping this class a pure tag/value
+ * tokenizer).
  */
 final class DefLineReader implements AutoCloseable {
     private static final char CONT_CHAR = '&';
-    /** ASCII 0x01, an internal embedded-newline marker in the raw export bytes. Written via (char) 1 rather than a character-literal escape to avoid tooling that silently rewrites unicode escapes into raw control bytes in source files. */
+    /** DefCharacter.EMBEDDED_RETURN - ASCII 0x01, an internal embedded-newline marker in the raw export bytes. Written via (char) 1 rather than a character-literal escape to avoid tooling that silently rewrites unicode escapes into raw control bytes in source files. */
     private static final char EMBEDDED_RETURN = (char) 1;
     private static final char FILE_SEPARATOR = '\\';
 
@@ -52,7 +59,7 @@ final class DefLineReader implements AutoCloseable {
         reader.close();
     }
 
-    /** Null at EOF. */
+    /** Java port of DefParserImpl.getNextTagValuePair(). Null at EOF. */
     TagValue nextTagValue() throws IOException {
         TagValue pair;
         if (pushedBackTagValue != null) {
@@ -81,7 +88,7 @@ final class DefLineReader implements AutoCloseable {
                     value.deleteCharAt(value.length() - 1);
                 }
                 if (next == null) break;
-                current = next; // advance even on a mismatched tag, so the mismatched pair is re-parsed as the next call's starting pair
+                current = next; // matches the real code's unconditional `newPair = this.parseLine(next)` reassignment, mismatched-tag case included
             } else if (implicit) {
                 TagValue next = parseLine(nextJoinedLine());
                 if (next == null) break;
@@ -157,7 +164,7 @@ final class DefLineReader implements AutoCloseable {
         };
     }
 
-    /** Splits one already-joined logical line at the first ':' (tag includes the colon, value starts right after ": "). */
+    /** Java port of DefParserImpl.parseLine() - splits one already-joined logical line at the first ':' (tag includes the colon, value starts right after ": "). */
     private TagValue parseLine(String line) {
         if (line == null) return null;
         String tag;
@@ -187,7 +194,7 @@ final class DefLineReader implements AutoCloseable {
         return new TagValue(tag, value);
     }
 
-    /** Joins raw physical lines into one logical line, substituting embedded-newline markers back to '\n' once at the end. Null at EOF. */
+    /** Java port of DefParserImpl.getNextLine() - joins raw physical lines into one logical line, substituting embedded EMBEDDED_RETURN markers back to '\n' once at the end. Null at EOF. */
     private String nextJoinedLine() throws IOException {
         String line = nextRawLine();
         while (line != null && (line.length() == 1 || line.equals("\r\n"))) {

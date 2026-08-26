@@ -23,6 +23,19 @@ import java.util.List;
  * the original C++ (FUNCTION/CASE/VALUE_SET/QUERY_INFO/LOCAL_VARIABLE/FIELD_ALIAS/LITERAL_ALIAS/
  * REGULAR_COMPLEX_QUERY), render as a generic "&lt;Type&gt;" placeholder rather than crashing - the
  * C++ has no reference behavior to match here since it predates these operand types entirely.
+ *
+ * <p>Actively searched for an alternate ground truth rather than assuming none exists: ported
+ * BMC AR System Developer Studio 23.3's com.bmc.arsys.studio.model jar looking for a
+ * "render this operand to text" helper - found {@code ARQualifierUtil} (used for the Named-Searches
+ * packed-string format, a different feature), which itself only switches on the same classic
+ * operand types this class already handles (FIELDID family/STATUS_HISTORY/ARITHMETIC_OP/VALUE) - it does
+ * NOT handle FUNCTION/CASE/VALUE_SET/etc. either. Also checked the Documenter plugin's
+ * ARWorkFlowActions.xsl (the stylesheet Dev Studio itself uses to generate readable workflow
+ * documentation) - it has no qualification-rendering templates at all (only raw action-field
+ * dumps). No dedicated handler class for these operand types was found anywhere searched. Given
+ * neither the original C++ nor Dev Studio has behavior to match, this
+ * remains a genuine, currently-unresolved gap rather than an unattempted one - inventing untested
+ * rendering rules here would violate this whole port's practice of only porting verified behavior.
  */
 public final class QualificationRenderer {
 
@@ -35,9 +48,9 @@ public final class QualificationRenderer {
          * "Control Field", "Set Fields If-Action 3") a caller supplied via {@link #render(QualifierInfo, String)}/
          * {@link #fieldRef(String, int, String)}/{@link #fieldRefWithText(String, int, String, String)} -
          * see CRefItem::GetDescription (util/RefItem.cpp) for the real C++'s full label vocabulary
-         * this is meant to approximate. Each field reference on a page is attributed the specific
-         * detail label for the action/parameter that discovered it, not a single fixed label per
-         * page.
+         * this is meant to approximate. Every field reference on a page used to be attributed the
+         * single fixed label the page's sink lambda was built with, regardless of which action/
+         * parameter actually discovered it - see the class javadoc note on this fix.
          */
         void reference(String formName, int fieldId, boolean fieldExists, String detail);
     }
@@ -271,10 +284,10 @@ public final class QualificationRenderer {
     }
 
     /**
-     * getValue() on a FIELDID-family/CURRENCY_FLD-family operand can be either a plain Integer (the
-     * field ID directly - the common case) or a FieldOperandInfo/CurrencyPartInfo wrapper
-     * (aliased/joined-query field references) - handles both rather than assuming one shape and
-     * crashing on the other.
+     * getValue() on a FIELDID-family/CURRENCY_FLD-family operand can be either a plain Integer (the field ID
+     * directly - the common case, confirmed via spike against real filter qualifications) or a
+     * FieldOperandInfo/CurrencyPartInfo wrapper (presumably for aliased/joined-query field
+     * references) - handles both rather than assuming one shape and crashing on the other.
      */
     private static int fieldIdOf(Object value) {
         if (value instanceof Integer i) return i;

@@ -176,7 +176,8 @@ public final class FieldDetailPage {
      * the C++'s own "only rendered when non-empty" behavior. The Server-object cell's link also
      * carries the redundant " (Order)" suffix WorkflowReferenceTable::LinkToAlRef appends to every
      * AL reference site-wide (see WorkflowRefLabel) - redundant with the Order column here, but
-     * matches the original C++ output.
+     * matching the real C++ output byte-for-byte, confirmed via a live comparison on this exact
+     * table.
      */
     private String attachedWorkflow(String schemaName, int fieldId, int rootLevel) {
         List<FieldReferenceIndex.Ref> refs = new java.util.ArrayList<>();
@@ -253,10 +254,12 @@ public final class FieldDetailPage {
     }
 
     /**
-     * Java port of CAREnum::FieldPermission - None/View/Change. Field-level permission labels
-     * (View/Change) are a distinct enum from object-level Visible/Hidden labels, even though
-     * AR_PERMISSIONS_VIEW and AR_PERMISSIONS_VISIBLE share the same raw value (1) - see
-     * GroupDetailPage.objectPermissionLabel's javadoc for the object-level equivalent.
+     * Java port of CAREnum::FieldPermission - None/View/Change. Previously used the WRONG enum
+     * (object-level Visible/Hidden wording) - AR_PERMISSIONS_VIEW and AR_PERMISSIONS_VISIBLE share
+     * the same raw value (1, confirmed against the arapi jar), so the bug never affected which STATE
+     * showed, only the word used for it. See GroupDetailPage.objectPermissionLabel's javadoc for the
+     * full story (found via user report on the schema page's Group Permissions, whose "Hidden"
+     * (value 2) really did mislabel as "Change" under the old shared function).
      */
     private static String permissionLabel(int permissionValue) {
         if (permissionValue == Constants.AR_PERMISSIONS_VIEW) return "View";
@@ -333,9 +336,10 @@ public final class FieldDetailPage {
             tbl.addRow(new TableRow().addCellList("Low Range", String.valueOf(l.getLowRange())));
             tbl.addRow(new TableRow().addCellList("High Range", String.valueOf(l.getHighRange())));
             tbl.addRow(new TableRow().addCellList("Precision", Integer.toString(l.getPrecision())));
-            // Java port of DocFieldDetails.cpp's AR_DATA_TYPE_CURRENCY case's two extra sections:
-            // Allowable Types (currency codes the field accepts, or "all allowed" when the list is
-            // empty) and Functional Types (code + precision pairs).
+            // Java port of DocFieldDetails.cpp's AR_DATA_TYPE_CURRENCY case's two extra sections
+            // this port previously dropped entirely - Allowable Types (currency codes the field
+            // accepts, or "all allowed" when the list is empty) and Functional Types (code +
+            // precision pairs).
             List<CurrencyDetail> allowable = l.getAllowable();
             StringBuilder allowableSb = new StringBuilder();
             if (allowable == null || allowable.isEmpty()) {
@@ -392,8 +396,9 @@ public final class FieldDetailPage {
             String colSourceForm = columnSourceForm(colLimit, schemaName, allFields);
             // Type resolves via allFields when the source is on this same schema (Display/Control
             // Field), or via GlobalFieldIndex's cross-schema field-data-type map when it's on the
-            // table's own target schema (Data Field - the common case, resolving to
-            // "Selection"/"Character"/etc. matching the C++).
+            // table's own target schema (Data Field - the common case, confirmed missing via a live
+            // C++-vs-Java comparison: the real C++ resolves "Selection"/"Character"/etc. here even
+            // for Data Field columns, this port previously left Type blank for that entire case).
             Integer colSourceType = null;
             if (colSourceForm != null) {
                 if (colSourceForm.equals(schemaName)) {
@@ -480,7 +485,7 @@ public final class FieldDetailPage {
         return tableServerLink(raw, rootLevel);
     }
 
-    /** Empty or "@" (current server) both link to this run's actual connected server - see ActionSummaryTable.serverInfoLink's javadoc for why. */
+    /** Empty or "@" (current server) both link to this run's actual connected server - see ActionSummaryTable.serverInfoLink's javadoc for why (confirmed via a live C++-vs-Java comparison that this port's "no ServerInfo hyperlink" behavior was a stale assumption, not deliberate). */
     private String tableServerLink(String serverName, int rootLevel) {
         if (serverName == null || serverName.isEmpty() || serverName.equals("@")) {
             if (appConfig.serverName == null || appConfig.serverName.isEmpty()) return "";

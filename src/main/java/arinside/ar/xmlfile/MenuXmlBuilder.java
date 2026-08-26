@@ -10,8 +10,8 @@ import static javax.xml.stream.XMLStreamConstants.START_ELEMENT;
 
 /**
  * Builds {@link Menu} (dispatching on the xsi:type attribute to the matching concrete subtype -
- * characterMenu/queryMenu/sqlMenu/fileMenu/dataDictionaryMenu, see ArsXmlFileParser's javadoc)
- * from a &lt;menu&gt; top-level element.
+ * characterMenu/queryMenu/sqlMenu/fileMenu/dataDictionaryMenu, vocabulary confirmed against real
+ * export samples of each, see ArsXmlFileParser's javadoc) from a &lt;menu&gt; top-level element.
  */
 final class MenuXmlBuilder {
     private MenuXmlBuilder() {}

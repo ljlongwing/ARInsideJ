@@ -151,7 +151,8 @@ final class WorkflowXmlBuilder {
         // DocEscalationDetails renders monthDays/weekDays/hours unconditionally (calling .size() on
         // each), so all three need a non-null BitSet even when the export omits the corresponding
         // element entirely (an escalation not restricted by weekday, for instance, has no
-        // <daysOfWeek> element at all).
+        // <daysOfWeek> element at all - confirmed via the real tag name string-scanned out of the
+        // server's own libarxmlutil.so, not otherwise seen in any sampled export).
         t.setMonthDays(new java.util.BitSet());
         t.setWeekDays(new java.util.BitSet());
         t.setHours(new java.util.BitSet());
@@ -180,7 +181,7 @@ final class WorkflowXmlBuilder {
         return bits;
     }
 
-    /** &lt;daysOfWeek&gt; is space-separated day *names* (e.g. "sunday monday"), unlike daysOfMonth/hoursOfDay which are numeric - sunday=bit0, matching AR's usual weekday-mask convention. */
+    /** Confirmed against a real export: &lt;daysOfWeek&gt; is space-separated day *names* (e.g. "sunday monday"), unlike daysOfMonth/hoursOfDay which are numeric - sunday=bit0, matching AR's usual weekday-mask convention. */
     private static BitSet parseWeekDayBitSet(String spaceSeparated) {
         BitSet bits = new BitSet();
         for (String tok : spaceSeparated.trim().split("\\s+")) {

@@ -7,14 +7,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Builds a {@code com.bmc.arsys.api.Escalation}'s object-level (non-action) fields from a {@code
- * begin escalation ... end} block, matching {@code
- * arinside.ar.xmlfile.WorkflowXmlBuilder.buildEscalation}'s target shape. Action-body tags are
- * delegated to {@link DefActionBuilder}.
+ * Java port of {@code EscalationParseEventHandler}'s object-level (non-action) tag handling, targeting {@code com.bmc.arsys.api.Escalation}
+ * directly (the exact shape {@code arinside.ar.xmlfile.WorkflowXmlBuilder.buildEscalation} already
+ * builds). Action-body tags are delegated to {@link DefActionBuilder}.
  *
  * <p>ESCALATION_TMTYPE (1=interval/2=calendar) picks which {@link EscalationTimeCriteria} subtype
- * to build. {@link EscalationInterval#setValue(long)} accepts the format's raw packed value
- * directly.
+ * to build, matching the real handler's own {@code switch(type){case 1: EscalationInterval; case 2:
+ * EscalationTime}} - but the client {@link EscalationInterval#setValue(long)} accepts the DEF's raw
+ * packed value directly, unlike the domain model's separate day/hour/minute decomposition (confirmed
+ * via javap - a genuine simplification).
  */
 final class DefEscalationBuilder {
     private enum ClauseState { NONE, ACTION, ELSE }
@@ -64,7 +65,7 @@ final class DefEscalationBuilder {
                 forms.add(raw);
                 esc.setPrimaryForm(forms.get(0));
             }
-            default -> { /* CHANGE_DIARY/TIMESTAMP - no client setter */ }
+            default -> { /* CHANGE_DIARY/TIMESTAMP - no client setter, matches Form's identical documented gap */ }
         }
     }
 
@@ -84,7 +85,7 @@ final class DefEscalationBuilder {
 
     void endActionClause() {
         if (actionBuilder != null) {
-            FilterAction action = (FilterAction) actionBuilder.build(); // EscalationAction has no distinct client type - Escalation.setActionList takes the same FilterAction-implementing types
+            FilterAction action = (FilterAction) actionBuilder.build(); // EscalationAction has no distinct client type - Escalation.setActionList takes the same FilterAction-implementing types, confirmed via WorkflowXmlBuilder.buildEscalation
             if (action != null) {
                 if (state == ClauseState.ACTION) {
                     List<FilterAction> list = esc.getActionList();

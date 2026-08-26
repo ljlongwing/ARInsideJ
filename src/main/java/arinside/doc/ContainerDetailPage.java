@@ -188,14 +188,16 @@ public final class ContainerDetailPage {
     }
 
     /**
-     * Java port of DocContainerHelper.cpp's SubadminList - PACK/GUIDE/APP only. Full CGroupTable
-     * rendering (Name/ID/Type/Category/Modified/By) - see GroupPermissionTable's javadoc for the
-     * full C++ shape.
+     * Java port of DocContainerHelper.cpp's SubadminList - PACK/GUIDE/APP only. Real CGroupTable
+     * rendering (Name/ID/Type/Category/Modified/By), previously simplified to a bare "Group" column
+     * (see GroupPermissionTable's javadoc for the full C++ shape) - matches the fix applied to
+     * ActiveLinkDetailPage's own Permissions() the same session.
      */
     private String subadminList(Container c, String appRefName, int rootLevel) {
-        // Table id is "groupList" (matching PermissionList's own table above) - the C++'s
-        // CGroupTable always hardcodes that id regardless of which caller uses it, same pattern as
-        // "indexTbl"/"referenceList" being reused elsewhere in this codebase.
+        // Table id is "groupList" (matching PermissionList's own table above) - the real C++'s
+        // CGroupTable always hardcodes that id regardless of which caller uses it (confirmed by
+        // reading GroupTable.cpp's constructor directly - a real, confirmed id-reuse quirk, same
+        // pattern as "indexTbl"/"referenceList" being reused elsewhere in this codebase).
         return GroupPermissionTable.render("groupList", c.getAdminGroupList(), appRefName, roleIndex, groupsById, knownUserNames, rootLevel).toXHtml();
     }
 
@@ -270,9 +272,11 @@ public final class ContainerDetailPage {
      * forms (via SchemaWorkflowIndex - the reverse of what CARSchemaList's GetActiveLinks/GetFilters/
      * GetEscalations/GetActLinkGuides/GetFilterGuides already gave the C++ for free), member packing
      * lists (direct content), Web Services, and menus (via a member form's charMenu limit). The Web
-     * Services row is always empty - the original C++ tool's SearchContainer has no ARCON_WEBSERVICE
-     * case at all despite the type being in the loop range; this is a genuine, permanent gap in the
-     * original tool, replicated here rather than "fixed".
+     * Services row is always empty - confirmed by reading SearchContainer's switch, which has cases
+     * for ARCON_GUIDE/ARCON_FILTER_GUIDE/ARCON_PACK only, no ARCON_WEBSERVICE case at all despite the
+     * type being in the loop range - a genuine, permanent gap in the original tool, replicated here
+     * rather than "fixed", matching this session's established practice of preserving confirmed real
+     * C++ behavior even when it looks like an oversight.
      */
     private String applicationContent(String appName, Container app, int rootLevel) {
         Table tbl = new Table("specificPropList", "TblObjectList");
@@ -369,7 +373,7 @@ public final class ContainerDetailPage {
      * WS_PROPERTIES/WS_OPERATION/WS_ARXML_MAPPING/WS_WSDL/WS_PUBLISHING_LOC/WS_XML_SCHEMA_LOC content
      * reference. The Java API's {@code Reference} base class has no extRef payload at all (unlike the
      * C++'s ARReferenceStruct union) - the raw XML/text content only exists on the
-     * {@link com.bmc.arsys.api.ExternalReference} subtype's getValue().
+     * {@link com.bmc.arsys.api.ExternalReference} subtype's getValue(), confirmed via javap.
      */
     private String webserviceContent(Container ws, int rootLevel) {
         Table tbl = new Table("specificPropList", "TblObjectList");
@@ -483,7 +487,7 @@ public final class ContainerDetailPage {
         return tbl.toXHtml();
     }
 
-    /** Java port of CARInside::LinkToGroup - see SchemaDetailPage.groupRef's identical javadoc for why this resolves the real name/link instead of a generic "Group N"/"Role N" literal. */
+    /** Java port of CARInside::LinkToGroup - see SchemaDetailPage.groupRef's identical javadoc for why this resolves the real name/link instead of a generic "Group N"/"Role N" literal (found and fixed the same way, same session). */
     private String groupRef(int groupId, String appRefName, int rootLevel) {
         if (groupId < 0) {
             arinside.ar.RoleRecord role = roleIndex == null ? null : roleIndex.find(groupId, appRefName);

@@ -23,9 +23,16 @@ import arinside.output.URLLink;
  *       left completely unchanged, matching CARParseField::tag==0's passthrough.</li>
  * </ol>
  *
- * <p>Neither pass HTML-escapes anything, matching the original tool's behavior - literal quote
- * characters (e.g. from a hardcoded '"' in an <code>Application-Parse-Qual "$...$" $...$</code>
- * message) show up unescaped in the output, not as "&amp;quot;".
+ * <p>Neither pass HTML-escapes anything, matching the real C++ exactly (confirmed by reading every
+ * line of DocTextReferences.cpp and its DocAlMessageAction.cpp call site - no validating/escaping
+ * call appears anywhere in this path) - directly confirmed against real data too: a real
+ * "Application-Parse-Qual" active link's literal quote characters (from processForm's own
+ * hardcoded '"' quoting, not user data) show up unescaped in the real C++ output
+ * (<code>Application-Parse-Qual "$...$" $...$</code>), not as "&amp;quot;". An earlier version of
+ * this class escaped literal text via WebUtil.validate(), which happened to never surface as a
+ * mismatch only because none of the real "$...$" free-text values exercised so far contained a
+ * literal &lt;/&gt;/&amp;/" character outside of a token - this real Parse-Qual example proved the
+ * escaping wrong, not merely unverified, so it was removed rather than special-cased around.
  *
  * <p>Currency-field and status-history pseudo-tokens inside a "$...$" token (CARParseField's other
  * two tag types) are treated as non-numeric and left as-is in pass 2 - a small scope cut kept from

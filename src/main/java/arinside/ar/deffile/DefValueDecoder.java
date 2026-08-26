@@ -9,16 +9,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The shared primitive every packed {@code .def} field builds on: a byte-cursor over one
- * already-extracted tag value, tokenized on a single-byte delimiter ({@code '\'}), with {@link
- * #decodeValue()} as a small tagged-union decoder for a single {@link Value} (field default
- * values, and - repeated many times in a row - every entry of an object/display property list,
- * see {@link DefPropertyDecoder}).
+ * Java port of {@code com.bmc.arsys.server.domain.util.decode.Decoder} (ported from the real
+ * AR Server). This is the shared primitive
+ * every packed {@code .def} field builds on: a byte-cursor over one already-extracted tag value,
+ * tokenized on a single-byte delimiter ({@code '\'}, same char as {@link DefItemLabel#FILE_SEPARATOR}'s
+ * own use as a field separator - confirmed via {@code DELIMITER = DefItemLabel.FILE_SEPARATOR}
+ * in the real source), with {@link #decodeValue()} as a small tagged-union decoder for a single
+ * {@link Value} (field default values, and - repeated many times in a row - every entry of an
+ * object/display property list, see {@link DefPropertyDecoder}).
+ *
+ * <p>Ported directly onto {@code com.bmc.arsys.api.*} client types (not the server-internal
+ * {@code com.bmc.arsys.domain.value.*} model the real class builds) - constructors/DataTypes
+ * confirmed via {@code javap} against the real 23.3.002 jar.
  *
  * <p>Tag 9 (byte-list/BYTES), 13 (DATE), 14 (TIME_OF_DAY), and 41 (COORDS) are real but rare types
- * with no rendering path anywhere in this port's {@code Doc*Page} classes ({@code
- * ValueFormat.format()} only switches on NULL/KEYWORD/INTEGER/ENUM/REAL/DECIMAL/CHAR/DIARY/TIME/
- * CURRENCY, falling back to a generic {@code toString()} for everything else) - decoded
+ * with no rendering path anywhere in this port's {@code Doc*Page} classes (confirmed:
+ * {@code ValueFormat.format()} only switches on NULL/KEYWORD/INTEGER/ENUM/REAL/DECIMAL/CHAR/DIARY/
+ * TIME/CURRENCY, falling back to a generic {@code toString()} for everything else) - decoded
  * best-effort as a plain string-tagged {@link Value} rather than precisely reconstructed, since
  * nothing downstream distinguishes them further.
  */
@@ -47,7 +54,7 @@ final class DefValueDecoder {
         return pos >= bytes.length;
     }
 
-    /** Reads up to (not including) the next delimiter byte, trimmed. */
+    /** Reads up to (not including) the next delimiter byte, trimmed - matches Decoder.readString(). */
     String readString() {
         if (isEmpty()) return "";
         int start = pos;
@@ -65,7 +72,7 @@ final class DefValueDecoder {
         return s;
     }
 
-    /** Reads exactly `size` raw bytes (not delimiter-terminated), then skips one trailing delimiter if present. */
+    /** Reads exactly `size` raw bytes (not delimiter-terminated), then skips one trailing delimiter if present - matches Decoder.readString(int). */
     String readString(int size) {
         if (isEmpty()) return "";
         int end = Math.min(pos + Math.max(size, 0), bytes.length);
@@ -110,7 +117,7 @@ final class DefValueDecoder {
         }
     }
 
-    /** A plain count-prefixed run of decodeValue() calls, used by qualification VALUE_SET operands. */
+    /** Java port of Decoder.decodeValueList() - a plain count-prefixed run of decodeValue() calls, used by qualification VALUE_SET operands. */
     List<Value> decodeValues() {
         int size = readInt();
         List<Value> values = new ArrayList<>(Math.max(size, 0));
@@ -118,7 +125,7 @@ final class DefValueDecoder {
         return values;
     }
 
-    /** The tagged-union field-value decoder. Null if nothing left to read. */
+    /** Java port of Decoder.decodeValue() - the tagged-union field-value decoder. Null if nothing left to read. */
     Value decodeValue() {
         if (isEmpty()) return null;
         int tag = readInt();
@@ -161,11 +168,13 @@ final class DefValueDecoder {
     }
 
     /**
-     * BYTES(9): {@code <subtype>\<byteLen>\<hex-bytes>\}. A common carrier for embedded VUI icon
-     * images. The client API's {@code Value(String, DataType)} constructor rejects
-     * DataType.BYTES, and this port has no rendering path for raw icon bytes either, so the bytes
-     * are consumed (to keep the cursor aligned for whatever follows in the same property list) but
-     * discarded, returning null so the caller simply omits this one property.
+     * BYTES(9): {@code <subtype>\<byteLen>\<hex-bytes>\}. Real, common carrier for embedded VUI
+     * icon images (confirmed against real full.def data - the client jar's own {@code
+     * Value(String, DataType)} constructor rejects DataType.BYTES with an IllegalArgumentException,
+     * there is no rendering path anywhere in this port for
+     * raw icon bytes either) - the bytes are consumed (to keep the cursor aligned for whatever
+     * follows in the same property list) but discarded, returning null so the caller simply omits
+     * this one property rather than storing a placeholder.
      */
     private Value decodeByteList() {
         readInt(); // byte-list subtype, discarded
@@ -174,7 +183,7 @@ final class DefValueDecoder {
         return null;
     }
 
-    /** COORDS(41): an effectively obsolete geographic-field type with no {@link Value} constructor that accepts it and no rendering path in this port - tokens consumed to keep the cursor aligned, value dropped. */
+    /** COORDS(41): a real but effectively obsolete geographic-field type with no {@link Value} constructor that accepts it (confirmed via the same ported constructor check as BYTES) and no rendering path in this port - tokens consumed to keep the cursor aligned, value dropped. */
     private Value decodeCoords() {
         int numPairs = readInt();
         if (numPairs == 0) {
@@ -188,7 +197,7 @@ final class DefValueDecoder {
         return null;
     }
 
-    /** VALUELIST(100): same story as BYTES/COORDS - DataType.VALUELIST is also rejected by {@code Value(String, DataType)}, and there's no rendering path in this port. Token consumed, value dropped. */
+    /** VALUELIST(100): same story as BYTES/COORDS - DataType.VALUELIST is also rejected by {@code Value(String, DataType)} (confirmed via the same ported check), no rendering path in this port. Token consumed, value dropped. */
     private Value decodeValueList() {
         readString();
         return null;
@@ -207,7 +216,7 @@ final class DefValueDecoder {
     }
 
     private CurrencyValue decodeCurrency() {
-        readInt(); // leading token, not used
+        readInt(); // matches the real decoder's own discarded leading token
         String currVal = readString(readInt());
         String currCode = readString(readInt());
         long timestamp = readLong();

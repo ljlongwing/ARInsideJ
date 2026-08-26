@@ -41,7 +41,8 @@ public final class ArClient implements AutoCloseable {
 
         // Java port of CARInside::SetupOverlaySupport (ARSetSessionConfiguration(AR_SESS_CONTROL_PROP_API_OVERLAYGROUP,
         // AR_OVERLAY_CLIENT_MODE_FULL) in the C++) - setOverlayFlag/setOverlayObjType are inherited from
-        // com.bmc.arsys.apitransport.ApiUserContextBase, not declared on ARServerUser itself.
+        // com.bmc.arsys.apitransport.ApiUserContextBase, not declared on ARServerUser itself, which is why an
+        // ARServerUser-only search missed them initially.
         server.setOverlayFlag(true);
 
         return new ArClient(server);
