@@ -230,3 +230,7 @@ Run with `-v` and redirect output to a file to capture detailed logs:
 ```
 java -jar arinsidej.jar -i settings.ini ... -v > arinside.log 2>&1
 ```
+
+## Changelog
+
+See [`RELEASE_NOTES.txt`](RELEASE_NOTES.txt) for the per-version change list.

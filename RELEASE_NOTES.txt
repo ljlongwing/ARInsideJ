@@ -1,0 +1,50 @@
+ARInsideJ
+https://github.com/ljlongwing/ARInsideJ
+
+A Java port of ARInside (https://github.com/gabeluci/ARInside). Versioning restarts at 4.x for the
+port; it does not track the C++ tool's 3.x line.
+
+Here are the changes between versions and the legend
+
+N - Note
+E - Enhancement
+D - Defect fixed
+
+
+[Unreleased]
+E - `mvn package` now also builds target/arinsidej-<version>.zip, a batteries-included release
+    bundle (fat jar + run-arinsidej.bat/.sh launchers + sample settings.ini + README/LICENSE).
+    Releases ship this alongside the bare arinsidej.jar.
+E - launcher scripts point at the GitHub releases page in their "jar not found" message
+
+
+2026-08-27
+[4.1.0]
+E - new "Changes from Base Layer" capability (no C++ precedent): an overlaid object's detail page
+    shows exactly what the overlay changed versus its hidden base layer
+    - Form/Field: added/changed/removed badges on Fields and Indexes; Permissions, Sort List,
+      Archive/Audit settings, Entry List and Views are diffed too
+    - ActiveLink/Filter/Escalation: diffs the Run If qualification and Action/Else List/Form List
+    - Menu: diffs list-menu items as well as properties
+    - Container: diffs its Reference list; Image: diffs image data/description/type
+E - every detail page shows a "Customization Type" row (Unmodified/Overlay/Custom, matching BMC
+    Dev Studio's wording)
+E - overview lists show the overlay/custom badge on each row immediately on page load instead of
+    only after using the page's filter box
+D - several real port gaps from the tracked gap list turned out to be genuine bugs and were fixed
+    (see commit e080302)
+
+
+2026-08-26
+[4.0.0]
+N - first release of the Java port; targets the BMC AR System Java API (com.bmc.arsys.api)
+    instead of the C++ tool's C API, which BMC stopped updating past 9.1.0 and whose bulk calls
+    fail against AR servers version 21+
+E - full object coverage: forms/fields/VUIs, active links, filters, escalations, menus,
+    containers (guides/applications/packing lists/filter guides/webservices), users/groups/roles,
+    images, plus the validator/analyzer/custom-workflow pages
+E - two offline import formats (.xml and .def AR System Administrator exports), both parsed fully
+    offline with no server connection
+E - overlay-aware (server 7.6.04+); blacklist (packing-list-based exclusion), gzip output, CSV
+    export, and a --scope mode for fast one-form-at-a-time iteration
+E - concurrent object fetching and page rendering, tunable via ReadConcurrency/WriteConcurrency
