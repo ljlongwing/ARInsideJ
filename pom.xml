@@ -72,6 +72,34 @@
           </execution>
         </executions>
       </plugin>
+
+      <!--
+        Packs the release bundle target/arinsidej-${project.version}.zip (fat jar + launcher
+        scripts + sample settings.ini + README/LICENSE). Declared after the shade plugin so it
+        runs later in the same `package` phase, once target/arinsidej.jar exists. Descriptor:
+        src/assembly/dist.xml.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <version>3.7.1</version>
+        <executions>
+          <execution>
+            <id>dist-zip</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+            <configuration>
+              <appendAssemblyId>false</appendAssemblyId>
+              <finalName>${project.artifactId}-${project.version}</finalName>
+              <descriptors>
+                <descriptor>src/assembly/dist.xml</descriptor>
+              </descriptors>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 </project>

@@ -10,7 +10,8 @@ set "SCRIPT_DIR=%~dp0"
 set "JAR=%SCRIPT_DIR%arinsidej.jar"
 
 if not exist "%JAR%" (
-    echo [ERR] %JAR% not found. Build it first with: mvn -o package
+    echo [ERR] %JAR% not found. Put it next to this script - download a release build from
+    echo       https://github.com/ljlongwing/ARInsideJ/releases/latest or build it with: mvn -o package
     exit /b 1
 )
 

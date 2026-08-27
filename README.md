@@ -13,10 +13,14 @@ API is still actively maintained and doesn't have that problem.
 
 ## Download
 
-Don't want to build it yourself? Grab `arinsidej.jar` from the
+Don't want to build it yourself? Grab a build from the
 [latest release](https://github.com/ljlongwing/ARInsideJ/releases/latest) - the proprietary
 `arapi`/`arlogger` jars (see "Requirements" below) are already bundled in, so it runs standalone
-with no extra setup:
+with no extra setup. Two assets:
+
+* **`arinsidej-<version>.zip`** - the fat jar plus the `run-arinsidej.bat`/`run-arinsidej.sh`
+  launcher scripts and a sample `settings.ini` to edit. Unzip and run the launcher for your OS.
+* **`arinsidej.jar`** - just the fat jar, for slotting into an existing setup.
 
 ```
 java -jar arinsidej.jar -i settings.ini -l Demo -p pass -s myserver
@@ -65,6 +69,9 @@ This produces two jars under `target/`:
   `arlogger`) merged in. This is the one you actually run - no classpath setup needed.
 * `original-arinsidej.jar` - the plain, unshaded jar (an artifact of the build, not meant to be run
   directly).
+
+It also packs `target/arinsidej-<version>.zip`, the release bundle (fat jar + launcher scripts +
+sample `settings.ini` + README/LICENSE) - see "Download" above for what's in it.
 
 `mvn -o compile` (without `package`) is enough if you're just iterating on source and running via
 an IDE or a manually-assembled classpath, but `package` is what you want for a distributable build.

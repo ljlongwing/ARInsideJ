@@ -10,7 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 JAR="$SCRIPT_DIR/arinsidej.jar"
 
 if [ ! -f "$JAR" ]; then
-    echo "[ERR] $JAR not found. Build it first with: mvn -o package" >&2
+    echo "[ERR] $JAR not found. Put it next to this script - download a release build from" >&2
+    echo "      https://github.com/ljlongwing/ARInsideJ/releases/latest or build it with: mvn -o package" >&2
     exit 1
 fi
 
