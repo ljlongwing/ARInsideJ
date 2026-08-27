@@ -63,9 +63,19 @@ public final class ActiveLinkActionPage {
 
         for (int actionType = FIRST_ACTION; actionType <= LAST_ACTION; actionType++) {
             int[] counts = detail(actionType, links, page.rootLevel());
-            TableRow row = new TableRow();
-            row.addCell(URLLink.to(AREnumLabels.activeLinkActionType(actionType), Naming.activeLinkActionDetail(actionType), ImageTag.Id.Document, page.rootLevel()).toHtml()
+            StringBuilder cell = new StringBuilder(URLLink.to(AREnumLabels.activeLinkActionType(actionType), Naming.activeLinkActionDetail(actionType), ImageTag.Id.Document, page.rootLevel()).toHtml()
                 + " (" + counts[0] + "/" + counts[1] + ")");
+            if (actionType == Constants.AR_ACTIVE_LINK_ACTION_FIELDS) {
+                for (SetFieldsSubtype st : SetFieldsSubtype.values()) {
+                    int[] sub = detailSubtype(actionType, st, links, page.rootLevel());
+                    if (sub[0] + sub[1] == 0) continue;
+                    cell.append("<br/>&nbsp;&nbsp;&nbsp;&nbsp;&#8627; ")
+                        .append(URLLink.to(st.label(), Naming.activeLinkActionSubtypeDetail(actionType, st.key()), ImageTag.Id.Document, page.rootLevel()).toHtml())
+                        .append(" (").append(sub[0]).append('/').append(sub[1]).append(')');
+                }
+            }
+            TableRow row = new TableRow();
+            row.addCell(cell.toString());
             tbl.addRow(row);
         }
 
@@ -120,11 +130,67 @@ public final class ActiveLinkActionPage {
         return new int[]{ifCount, elseCount};
     }
 
+    /** Like {@link #detail} but restricted to Set Fields actions of one {@link SetFieldsSubtype}. The page is written only when at least one active link matches, since the overview links to it only then. */
+    private int[] detailSubtype(int actionType, SetFieldsSubtype st, List<ActiveLink> links, int rootLevel) {
+        PagePath page = Naming.activeLinkActionSubtypeDetail(actionType, st.key());
+
+        Table tbl = new Table("alList", "TblObjectList");
+        tbl.description = URLLink.to("Active Links", Naming.activeLinkActionOverview(), ImageTag.Id.ActiveLink, rootLevel).toHtml()
+            + " with " + AREnumLabels.activeLinkActionType(actionType) + " action (" + st.label() + ")";
+        tbl.addColumn(25, "Active Link Name");
+        tbl.addColumn(8, "Enabled");
+        tbl.addColumn(8, "Order");
+        tbl.addColumn(24, "Execute On");
+        tbl.addColumn(6, "If");
+        tbl.addColumn(6, "Else");
+        tbl.addColumn(13, "Changed");
+        tbl.addColumn(10, "By");
+
+        int ifCount = 0, elseCount = 0, rows = 0;
+        for (ActiveLink al : links) {
+            int ifHits = countSubtype(al.getActionList(), st);
+            int elseHits = countSubtype(al.getElseList(), st);
+            ifCount += ifHits;
+            elseCount += elseHits;
+            if (ifHits + elseHits == 0) continue;
+
+            boolean isOverlaid = OverlaySupport.isOverlaidForNaming(al.getProperties(), serverOverlayMode);
+            TableRow row = new TableRow();
+            row.addCell(URLLink.to(al.getName(), Naming.activeLinkDetail(al.getName(), isOverlaid), ImageTag.Id.ActiveLink, rootLevel).toHtml());
+            row.addCell(new TableCell(AREnumLabels.objectEnable(al.isEnable()), al.isEnable() ? "" : "objStatusDisabled"));
+            row.addCell(new TableCell(al.getOrder()));
+            row.addCell(String.join(", ", al.getFormList()));
+            row.addCell(new TableCell(al.getActionList() == null ? 0 : al.getActionList().size()));
+            row.addCell(new TableCell(al.getElseList() == null ? 0 : al.getElseList().size()));
+            row.addCell(DateTimeFormat.toHtmlString(al.getLastUpdateTime().getValue()));
+            row.addCell(al.getLastChangedBy());
+            tbl.addRow(row);
+            rows++;
+        }
+        if (rows == 0) return new int[]{0, 0};
+        tbl.removeEmptyMessageRow();
+
+        WebPage webPage = new WebPage(page.fileName(), "Active Link Actions", rootLevel, appConfig);
+        webPage.addContent(tbl.toXHtml());
+        webPage.saveInFolder(page.path());
+
+        return new int[]{ifCount, elseCount};
+    }
+
     private static int count(List<ActiveLinkAction> actions, int actionType) {
         if (actions == null) return 0;
         int n = 0;
         for (ActiveLinkAction a : actions) {
             if (Action.getActionType((Action) a, true) == actionType) n++;
+        }
+        return n;
+    }
+
+    private static int countSubtype(List<ActiveLinkAction> actions, SetFieldsSubtype st) {
+        if (actions == null) return 0;
+        int n = 0;
+        for (ActiveLinkAction a : actions) {
+            if (a instanceof SetFieldsAction sf && SetFieldsSubtype.of(sf) == st) n++;
         }
         return n;
     }

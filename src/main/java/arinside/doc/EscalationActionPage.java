@@ -47,9 +47,19 @@ public final class EscalationActionPage {
 
         for (int actionType = FIRST_ACTION; actionType <= LAST_ACTION; actionType++) {
             int[] counts = detail(actionType, escalations, page.rootLevel());
-            TableRow row = new TableRow();
-            row.addCell(URLLink.to(AREnumLabels.filterActionType(actionType), Naming.escalationActionDetail(actionType), ImageTag.Id.Document, page.rootLevel()).toHtml()
+            StringBuilder cell = new StringBuilder(URLLink.to(AREnumLabels.filterActionType(actionType), Naming.escalationActionDetail(actionType), ImageTag.Id.Document, page.rootLevel()).toHtml()
                 + " (" + counts[0] + "/" + counts[1] + ")");
+            if (actionType == Constants.AR_FILTER_ACTION_FIELDS) {
+                for (SetFieldsSubtype st : SetFieldsSubtype.values()) {
+                    int[] sub = detailSubtype(actionType, st, escalations, page.rootLevel());
+                    if (sub[0] + sub[1] == 0) continue;
+                    cell.append("<br/>&nbsp;&nbsp;&nbsp;&nbsp;&#8627; ")
+                        .append(URLLink.to(st.label(), Naming.escalationActionSubtypeDetail(actionType, st.key()), ImageTag.Id.Document, page.rootLevel()).toHtml())
+                        .append(" (").append(sub[0]).append('/').append(sub[1]).append(')');
+                }
+            }
+            TableRow row = new TableRow();
+            row.addCell(cell.toString());
             tbl.addRow(row);
         }
 
@@ -101,11 +111,65 @@ public final class EscalationActionPage {
         return new int[]{ifCount, elseCount};
     }
 
+    /** Like {@link #detail} but restricted to Set Fields actions of one {@link SetFieldsSubtype}. The page is written only when at least one escalation matches, since the overview links to it only then. */
+    private int[] detailSubtype(int actionType, SetFieldsSubtype st, List<Escalation> escalations, int rootLevel) {
+        PagePath page = Naming.escalationActionSubtypeDetail(actionType, st.key());
+
+        Table tbl = new Table("escalationList", "TblObjectList");
+        tbl.description = URLLink.to("Escalations", Naming.escalationActionOverview(), ImageTag.Id.Escalation, rootLevel).toHtml()
+            + " with " + AREnumLabels.filterActionType(actionType) + " action (" + st.label() + ")";
+        tbl.addColumn(25, "Escalation Name");
+        tbl.addColumn(10, "Enabled");
+        tbl.addColumn(25, "Execute On");
+        tbl.addColumn(7, "If");
+        tbl.addColumn(7, "Else");
+        tbl.addColumn(13, "Changed");
+        tbl.addColumn(13, "By");
+
+        int ifCount = 0, elseCount = 0, rows = 0;
+        for (Escalation esc : escalations) {
+            int ifHits = countSubtype(esc.getActionList(), st);
+            int elseHits = countSubtype(esc.getElseList(), st);
+            ifCount += ifHits;
+            elseCount += elseHits;
+            if (ifHits + elseHits == 0) continue;
+
+            boolean isOverlaid = OverlaySupport.isOverlaidForNaming(esc.getProperties(), serverOverlayMode);
+            TableRow row = new TableRow();
+            row.addCell(URLLink.to(esc.getName(), Naming.escalationDetail(esc.getName(), isOverlaid), ImageTag.Id.Escalation, rootLevel).toHtml());
+            row.addCell(new TableCell(AREnumLabels.objectEnable(esc.isEnable()), esc.isEnable() ? "" : "objStatusDisabled"));
+            row.addCell(String.join(", ", esc.getFormList()));
+            row.addCell(new TableCell(esc.getActionList() == null ? 0 : esc.getActionList().size()));
+            row.addCell(new TableCell(esc.getElseList() == null ? 0 : esc.getElseList().size()));
+            row.addCell(DateTimeFormat.toHtmlString(esc.getLastUpdateTime().getValue()));
+            row.addCell(esc.getLastChangedBy());
+            tbl.addRow(row);
+            rows++;
+        }
+        if (rows == 0) return new int[]{0, 0};
+        tbl.removeEmptyMessageRow();
+
+        WebPage webPage = new WebPage(page.fileName(), "Escalation Actions", rootLevel, appConfig);
+        webPage.addContent(tbl.toXHtml());
+        webPage.saveInFolder(page.path());
+
+        return new int[]{ifCount, elseCount};
+    }
+
     private static int count(List<FilterAction> actions, int actionType) {
         if (actions == null) return 0;
         int n = 0;
         for (FilterAction a : actions) {
             if (Action.getActionType((Action) a, false) == actionType) n++;
+        }
+        return n;
+    }
+
+    private static int countSubtype(List<FilterAction> actions, SetFieldsSubtype st) {
+        if (actions == null) return 0;
+        int n = 0;
+        for (FilterAction a : actions) {
+            if (a instanceof SetFieldsAction sf && SetFieldsSubtype.of(sf) == st) n++;
         }
         return n;
     }

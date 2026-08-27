@@ -434,6 +434,11 @@ public final class Naming {
         return new PagePath(DIR_OVERVIEW, "actlinks_action_" + actionType, 1);
     }
 
+    /** Set Fields sub-type breakdown page (see {@link arinside.doc.SetFieldsSubtype}) - no C++ counterpart, hence no 1:1 file-name to match. */
+    public static PagePath activeLinkActionSubtypeDetail(int actionType, String subKey) {
+        return new PagePath(DIR_OVERVIEW, "actlinks_action_" + actionType + "_" + subKey, 1);
+    }
+
     public static PagePath filterActionOverview() {
         return new PagePath(DIR_OVERVIEW, "filters_action", 1);
     }
@@ -442,12 +447,20 @@ public final class Naming {
         return new PagePath(DIR_OVERVIEW, "filters_action_" + actionType, 1);
     }
 
+    public static PagePath filterActionSubtypeDetail(int actionType, String subKey) {
+        return new PagePath(DIR_OVERVIEW, "filters_action_" + actionType + "_" + subKey, 1);
+    }
+
     public static PagePath escalationActionOverview() {
         return new PagePath(DIR_OVERVIEW, "escalations_action", 1);
     }
 
     public static PagePath escalationActionDetail(int actionType) {
         return new PagePath(DIR_OVERVIEW, "escalations_action_" + actionType, 1);
+    }
+
+    public static PagePath escalationActionSubtypeDetail(int actionType, String subKey) {
+        return new PagePath(DIR_OVERVIEW, "escalations_action_" + actionType + "_" + subKey, 1);
     }
 
     public static PagePath filterErrorHandlers() {

@@ -1435,7 +1435,10 @@ public final class SchemaDetailPage {
                 .append(viewCount).append(",\"")
                 .append(WebUtil.jsString(DateTimeFormat.toPlainString(field.getLastUpdateTime().getValue()))).append("\",\"")
                 .append(WebUtil.jsString(field.getLastChangedBy())).append("\",\"")
-                .append(WebUtil.jsString(link)).append('"');
+                .append(WebUtil.jsString(link)).append("\",\"")
+                // index 7: "Field Type" label (see allFieldsTable()). schema_page.js reads this at a
+                // fixed index, so realFieldJsonItems' extra slots now start at index 8 for special forms.
+                .append(WebUtil.jsString(AREnumLabels.fieldOption(field.getFieldOption()))).append('"');
             if (isSpecialForm) {
                 for (String item : realFieldJsonItems(join, field, rootLevel)) json.append(',').append(item);
             }
@@ -1501,12 +1504,16 @@ public final class SchemaDetailPage {
      */
     private Table allFieldsTable(String formName, boolean isOverlaid, List<Field> fields, int rootLevel, Overlay overlay) {
         Table tbl = new Table("fieldListAll", "TblObjectList");
-        tbl.addColumn(40, "Field Name");
+        tbl.addColumn(35, "Field Name");
         tbl.addColumn(10, "Field ID");
         tbl.addColumn(10, "Datatype");
+        // "Field Type" (System/Optional/Required/Display Only) has no C++ counterpart - it's a
+        // deliberate enhancement here; a future C++-vs-Java field-list/CSV diff will show this
+        // extra column and that's expected, not a port gap.
+        tbl.addColumn(10, "Field Type");
         tbl.addColumn(10, "In Views");
         tbl.addColumn(10, "Modified");
-        tbl.addColumn(20, "By");
+        tbl.addColumn(15, "By");
 
         Map<Integer, OverlayDiff.Status> statusByFieldId = new HashMap<>();
         List<Field> removedFields = new ArrayList<>();
@@ -1541,6 +1548,7 @@ public final class SchemaDetailPage {
         row.addCell(nameCell);
         row.addCell(new TableCell(field.getFieldID()));
         row.addCell(AREnumLabels.dataType(field.getDataType()));
+        row.addCell(AREnumLabels.fieldOption(field.getFieldOption()));
         row.addCell(new TableCell(viewCount, viewsClass));
         row.addCell(DateTimeFormat.toPlainString(field.getLastUpdateTime().getValue()));
         row.addCell(field.getLastChangedBy());
@@ -1560,10 +1568,12 @@ public final class SchemaDetailPage {
         tbl.addColumn(20, "Field Name");
         tbl.addColumn(10, "Field ID");
         tbl.addColumn(10, "Datatype");
-        tbl.addColumn(30, "Real Field");
+        // See allFieldsTable() - "Field Type" is a deliberate enhancement with no C++ counterpart.
+        tbl.addColumn(10, "Field Type");
+        tbl.addColumn(25, "Real Field");
         tbl.addColumn(10, "In Views");
         tbl.addColumn(10, "Modified");
-        tbl.addColumn(20, "By");
+        tbl.addColumn(15, "By");
 
         // Deliberately a no-op sink, NOT the same gap as typeDetails()'s Join Qualification one -
         // this QualificationRenderer is only reused here for fieldRef()'s link-rendering
@@ -1581,6 +1591,7 @@ public final class SchemaDetailPage {
             row.addCell(URLLink.to(field.getName(), Naming.schemaFieldDetail(formName, isOverlaid, field.getFieldID()), ImageTag.Id.Document, rootLevel).toHtml());
             row.addCell(new TableCell(field.getFieldID()));
             row.addCell(AREnumLabels.dataType(field.getDataType()));
+            row.addCell(AREnumLabels.fieldOption(field.getFieldOption()));
             row.addCell(realFieldCell(join, field, ref, rootLevel));
             row.addCell(new TableCell(viewCount, viewsClass));
             row.addCell(DateTimeFormat.toPlainString(field.getLastUpdateTime().getValue()));

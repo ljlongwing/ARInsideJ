@@ -11,13 +11,16 @@ $.fn.appendText = function(text) {
 };
 
 var schemaFieldManager = {
+    // Index 7 is the "Field Type" label (added for every form type); the real-field slots this
+    // renderer walks start at index 8 for special forms. The length checks below are therefore
+    // one higher than the pre-"Field Type" layout (was 7/9/10/11).
     view_vendor_RFR: function(row) {
-        return (schemaFieldList[row].length > 7 ? schemaFieldList[row][7] : "");
+        return (schemaFieldList[row].length > 8 ? schemaFieldList[row][8] : "");
     },
     join_left: null,
     join_right: null,
     join_RFR: function(row) {
-        var pos = 7;
+        var pos = 8;
         var div = $("<div>");
         var first = 0;
         for (pos; pos + 2 <= schemaFieldList[row].length; pos += 2) {
@@ -29,13 +32,13 @@ var schemaFieldManager = {
               div.append($("<a>").attr("href", schemaFieldList[row][pos + 1]).text(schemaFieldList[row][pos]));
             div.appendText("\u00a0 -> \u00a0");
 
-						var joinSchema = schemaFieldList[row][9];
-						if (schemaFieldList[row].length == 10 && (joinSchema == '0' || joinSchema == '1')) {
+						var joinSchema = schemaFieldList[row][10];
+						if (schemaFieldList[row].length == 11 && (joinSchema == '0' || joinSchema == '1')) {
 							var joinLink = (joinSchema == '0' ? this.join_left : this.join_right);
 							div.append($("<span>").append(joinLink.clone()));
 							pos++;
 						}
-						else if (schemaFieldList[row].length == 11) {
+						else if (schemaFieldList[row].length == 12) {
 							var joinLink = (first?this.join_right:this.join_left);
 							div.append($("<span>").append(joinLink.clone()));
 						}
@@ -43,7 +46,7 @@ var schemaFieldManager = {
             first++;
         }
         if (first > 0) return div;
-        return (schemaFieldList[row].length > 7 ? schemaFieldList[row][7] : "");
+        return (schemaFieldList[row].length > 8 ? schemaFieldList[row][8] : "");
     },
     renderRealField: function(row) {
         if (this.realFieldRenderer == null) { return ""; }
@@ -162,7 +165,8 @@ $('document').ready(function() {
 			var search = $("#fieldNameFilter").val().replace(" +", " ").replace(" ", ".*");
 			var numSearch = search.search("^\\d+$");
 			var matches = 0;
-			var hasRealFieldColumn = ($('#' + table_name + ' thead tr:eq(0) th:eq(3)').text().lastIndexOf("Real Field", 0) === 0);
+			// "Field Type" is always th:eq(3) now; the special-form "Real Field" column, when present, follows it at th:eq(4).
+			var hasRealFieldColumn = ($('#' + table_name + ' thead tr:eq(0) th:eq(4)').text().lastIndexOf("Real Field", 0) === 0);
 
 			$('#' + table_name + ' tbody').remove();
 
@@ -176,6 +180,7 @@ $('document').ready(function() {
 						)
 						.append($("<td>").text(schemaFieldList[i][0]))
 						.append($("<td>").text(ARFieldDataTypeToString(schemaFieldList[i][2])))
+						.append($("<td>").text(schemaFieldList[i][7] || ""))
 					);
 					if (hasRealFieldColumn)
 						row.append($("<td>").append(schemaFieldManager.renderRealField(i)));

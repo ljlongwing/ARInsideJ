@@ -908,7 +908,9 @@ public final class ActionSummaryTable {
      * WSDL-based Web Service with wrong/blank fields; only the Alias Name is rendered until the
      * remaining BAO-specific indices are confirmed.
      */
-    private static boolean isAtriumOrchestrator(SetFieldsFromWebService fa) {
+    // Package-private (not private): also the single source of the Atrium-Orchestrator test for
+    // SetFieldsSubtype.of(), so the "by action" sub-type breakdown classifies these the same way.
+    static boolean isAtriumOrchestrator(SetFieldsFromWebService fa) {
         return "BMC ATRIUM ORCHESTRATOR".equals(webServiceCharValue(fa.getInputAssignList(), 18));
     }
 
