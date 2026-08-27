@@ -67,7 +67,7 @@ public final class ActiveLinkOverviewPage {
                 String link = URLLink.relativeUrl(page.rootLevel(), detail);
 
                 TableRow row = new TableRow();
-                row.addCell(URLLink.to(name, detail, ImageTag.Id.ActiveLink, page.rootLevel()).toHtml());
+                row.addCell(URLLink.to(name, detail, new ImageTag(ImageTag.Id.ActiveLink, page.rootLevel(), OverlaySupport.overlayType(al.getProperties())), page.rootLevel()).toHtml());
                 row.addCell(new TableCell(AREnumLabels.objectEnable(al.isEnable()), al.isEnable() ? "" : "objStatusDisabled"));
                 row.addCell(new TableCell(groupCount));
                 row.addCell(new TableCell(al.getOrder()));

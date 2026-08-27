@@ -95,7 +95,35 @@ public final class SchemaDetailPage {
     }
 
     /** Everything render() needs that comes from AR System - fetched once, up front, so the render/write half can run independently of the fetch (see ReadPool/WritePool). */
-    public record SchemaData(String formName, Form form, boolean isOverlaid, List<Field> fields, List<View> vuis) {}
+    public record SchemaData(String formName, Form form, boolean isOverlaid, List<Field> fields, List<View> vuis, Overlay overlay) {}
+
+    /**
+     * Base-layer data needed to compute the overlay diff against the active/overlay layer - fetched
+     * separately with the session's overlay group set to "-2", see Main.java's
+     * documentOverlayBaseLayers and {@link OverlaySupport}'s class javadoc. Views come from a direct
+     * {@code getViews()} call here rather than {@link GlobalFieldIndex#views}, since that index is
+     * built once up front against the ACTIVE layer only and isn't overlay-group-toggle-aware.
+     */
+    public record BaseSchema(Form form, List<Field> fields, List<View> views) {}
+
+    /**
+     * The full overlay diff attached to a {@link SchemaData} on the "overlay diff" third pass - see
+     * {@link OverlayDiff}. Non-null only for forms with a discovered base layer. Permissions/Sort
+     * List/Entry List/Views are separate typed Form accessors living entirely outside
+     * getProperties() (confirmed via the Java API - same structural-content situation as every
+     * other type this feature covers), so the plain property diff never saw them - Archive/Audit
+     * Info are single objects (not lists) so they're tracked as simple "changed" flags rather than
+     * a keyed diff.
+     */
+    record Overlay(List<OverlayDiff.Item<Field>> fieldDiff, List<OverlayDiff.Item<IndexInfo>> indexDiff, List<OverlayDiff.PropChange> propertyDiff,
+                    List<OverlayDiff.Item<PermissionInfo>> permissionDiff, List<OverlayDiff.Item<SortInfo>> sortDiff,
+                    List<OverlayDiff.Item<EntryListFieldInfo>> entryListDiff, List<OverlayDiff.Item<View>> viewDiff,
+                    ArchiveInfo baseArchive, boolean archiveChanged, AuditInfo baseAudit, boolean auditChanged) {
+        boolean hasChanges() {
+            return !fieldDiff.isEmpty() || !indexDiff.isEmpty() || !propertyDiff.isEmpty() || !permissionDiff.isEmpty()
+                || !sortDiff.isEmpty() || !entryListDiff.isEmpty() || !viewDiff.isEmpty() || archiveChanged || auditChanged;
+        }
+    }
 
     /** The fetch half - safe to run on a pooled read connection. */
     public SchemaData fetch(SchemaSource repo, String formName) throws ARException {
@@ -106,7 +134,51 @@ public final class SchemaDetailPage {
         // Read from GlobalFieldIndex's own pass (built up front, before forms render) instead of a
         // redundant re-fetch - see GlobalFieldIndex.viewsByForm's javadoc.
         List<View> vuis = globalFields.views(formName);
-        return new SchemaData(formName, form, isOverlaid, fields, vuis);
+        return new SchemaData(formName, form, isOverlaid, fields, vuis, null);
+    }
+
+    /** Fetches the base layer's Form+Fields+Views - call while the session's overlay group is "-2" (see Main.java's documentOverlayBaseLayers). */
+    public BaseSchema fetchBase(SchemaSource repo, String formName) throws ARException {
+        return new BaseSchema(repo.getForm(formName), repo.getFields(formName), repo.getViews(formName));
+    }
+
+    /** Same as {@link #fetch}, plus the full overlay diff against a previously-fetched base layer - used for the third "overlay diff" pass, see Main.java. */
+    public SchemaData fetchWithDiff(SchemaSource repo, String formName, BaseSchema base) throws ARException {
+        SchemaData data = fetch(repo, formName);
+        if (base == null) return data;
+        Form baseForm = base.form(), overlayForm = data.form();
+        List<OverlayDiff.Item<Field>> fieldDiff = OverlayDiff.diffKeyed(base.fields(), data.fields(), Field::getFieldID, SchemaDetailPage::fieldsEqual);
+        List<OverlayDiff.Item<IndexInfo>> indexDiff = OverlayDiff.diffKeyed(baseForm.getIndexInfo(), overlayForm.getIndexInfo(), IndexInfo::getIndexName, IndexInfo::equals);
+        List<OverlayDiff.PropChange> propertyDiff = OverlayDiff.diffProperties(baseForm.getProperties(), overlayForm.getProperties());
+        List<OverlayDiff.Item<PermissionInfo>> permissionDiff = OverlayDiff.diffKeyed(baseForm.getPermissions(), overlayForm.getPermissions(), PermissionInfo::getGroupID, PermissionInfo::equals);
+        List<OverlayDiff.Item<SortInfo>> sortDiff = OverlayDiff.diffKeyed(baseForm.getSortInfo(), overlayForm.getSortInfo(), SortInfo::getFieldID, SortInfo::equals);
+        List<OverlayDiff.Item<EntryListFieldInfo>> entryListDiff = OverlayDiff.diffKeyed(baseForm.getEntryListFieldInfo(), overlayForm.getEntryListFieldInfo(), EntryListFieldInfo::getFieldId, EntryListFieldInfo::equals);
+        List<OverlayDiff.Item<View>> viewDiff = OverlayDiff.diffKeyed(base.views(), data.vuis(), View::getVUIId, View::equals);
+        boolean archiveChanged = !java.util.Objects.equals(baseForm.getArchiveInfo(), overlayForm.getArchiveInfo());
+        boolean auditChanged = !java.util.Objects.equals(baseForm.getAuditInfo(), overlayForm.getAuditInfo());
+        return new SchemaData(data.formName(), data.form(), data.isOverlaid(), data.fields(), data.vuis(),
+            new Overlay(fieldDiff, indexDiff, propertyDiff, permissionDiff, sortDiff, entryListDiff, viewDiff,
+                baseForm.getArchiveInfo(), archiveChanged, baseForm.getAuditInfo(), auditChanged));
+    }
+
+    /**
+     * Field equality for the overlay diff - deliberately narrower than {@code Field.equals()}
+     * (which would also compare lastUpdateTime/lastChangedBy/owner/diary, always different since
+     * the overlay is definitionally newer) and skips per-VUI DisplayInstance positioning (a
+     * presentation detail, not the kind of "customization" this feature surfaces).
+     */
+    private static boolean fieldsEqual(Field a, Field b) {
+        if (a.getDataType() != b.getDataType()) return false;
+        if (a.getFieldOption() != b.getFieldOption()) return false;
+        if (!java.util.Objects.equals(a.getDefaultValue(), b.getDefaultValue())) return false;
+        if (!java.util.Objects.equals(a.getFieldLimit(), b.getFieldLimit())) return false;
+        return permissionSignature(a.getAssignedGroup()).equals(permissionSignature(b.getAssignedGroup()));
+    }
+
+    private static Set<String> permissionSignature(List<PermissionInfo> perms) {
+        Set<String> sig = new java.util.TreeSet<>();
+        if (perms != null) for (PermissionInfo p : perms) sig.add(p.getGroupID() + ":" + p.getPermissionValue());
+        return sig;
     }
 
     /** Fused fetch+render, for callers (file mode) that don't route through the parallel read/write pools. */
@@ -132,12 +204,18 @@ public final class SchemaDetailPage {
         head.append(WebUtil.objName(formName));
         webPage.addContentHead(head.toString());
 
+        if (isOverlaid) {
+            webPage.addContent(baseLayerNote(formName, page.rootLevel()));
+        } else if (data.overlay() != null) {
+            webPage.addContent(overlaySummary(formName, form, data.overlay(), page.rootLevel()));
+        }
+
         boolean isSpecialForm = form.getFormType() == Constants.AR_SCHEMA_JOIN
             || form.getFormType() == Constants.AR_SCHEMA_VIEW
             || form.getFormType() == Constants.AR_SCHEMA_VENDOR;
         Table fieldsTable = isSpecialForm
             ? allFieldsSpecialTable(formName, isOverlaid, form, fields, page.rootLevel())
-            : allFieldsTable(formName, isOverlaid, fields, page.rootLevel());
+            : allFieldsTable(formName, isOverlaid, fields, page.rootLevel(), data.overlay());
         String fieldsTab = fieldsFilterHeader(formName, isOverlaid, form, fields, isSpecialForm, page.rootLevel()) + fieldsTable.toXHtml();
 
         Map<Integer, String> fieldNames = new HashMap<>();
@@ -148,7 +226,7 @@ public final class SchemaDetailPage {
         // ShowProperties()'s whole Basic..Change-History accordion all live under tab-1 "General"
         // together; there is no separate "Properties" tab in the real tool.
         String generalTab = generalInfo(formName, isOverlaid, form, data.vuis(), page.rootLevel())
-            + "<hr/>\n" + propertiesInfo(formName, form, isOverlaid, fields, fieldNames, page.rootLevel()) + "<hr/>\n";
+            + "<hr/>\n" + propertiesInfo(formName, form, isOverlaid, fields, fieldNames, page.rootLevel(), data.overlay()) + "<hr/>\n";
 
         TabControl tabs = new TabControl();
         tabs.addTab("General", generalTab);
@@ -176,6 +254,89 @@ public final class SchemaDetailPage {
         for (Field field : fields) fieldDetail.render(formName, isOverlaid, form, field, fields, data.vuis());
 
         renderVuis(formName, isOverlaid, fields, data.vuis());
+    }
+
+    /**
+     * "Changes from Base Layer" summary - a new capability with no C++ precedent (see
+     * {@link OverlayDiff}'s class javadoc). Shown at the top of the active/overlay-layer page, right
+     * after the breadcrumb and before the tab control, so it's the first thing a reader sees on an
+     * overlaid form. Field/Index changes are also flagged inline in their own tab/section (see
+     * {@link #allFieldsTable}/{@link #indexBlock}); Permissions/Sort List/Result List/Views are
+     * counted here (each a separate typed Form accessor, not part of getProperties() - see
+     * {@link Overlay}'s javadoc); Archive/Audit changes get a side-by-side qualification render
+     * since they're single objects, not a countable list. The generic property table at the bottom
+     * is a real catch-all only for whatever's left in getProperties() itself (e.g. "Overlay Group") -
+     * it does NOT cover any of the above, despite an earlier, since-corrected claim that it did.
+     */
+    private String overlaySummary(String formName, Form form, Overlay overlay, int rootLevel) {
+        if (!overlay.hasChanges()) {
+            return "<div class=\"overlaySummary\"><p><b>This form is an overlay, but no differences from its base layer were found.</b></p></div>\n";
+        }
+        StringBuilder sb = new StringBuilder("<div class=\"overlaySummary\">\n<h2>");
+        sb.append(new ImageTag(ImageTag.Id.Document, rootLevel).toHtml()).append("Changes from Base Layer</h2>\n<div>\n<ul>\n");
+        appendCount(sb, overlay.fieldDiff(), "field");
+        appendCount(sb, overlay.indexDiff(), "index", "indexes");
+        appendCount(sb, overlay.permissionDiff(), "permission");
+        appendCount(sb, overlay.sortDiff(), "sort field");
+        appendCount(sb, overlay.entryListDiff(), "result list field");
+        appendCount(sb, overlay.viewDiff(), "view");
+        if (overlay.archiveChanged()) sb.append("<li>Archive settings changed</li>\n");
+        if (overlay.auditChanged()) sb.append("<li>Audit settings changed</li>\n");
+        if (!overlay.propertyDiff().isEmpty()) sb.append("<li>").append(overlay.propertyDiff().size()).append(" other propert").append(overlay.propertyDiff().size() == 1 ? "y" : "ies").append(" changed</li>\n");
+        sb.append("</ul>\n");
+
+        if (overlay.archiveChanged()) {
+            sb.append("<h3>Archive Settings Changed</h3>\n<p><b>Base:</b></p>\n").append(noOpQualificationText(formName, overlay.baseArchive() != null ? overlay.baseArchive().getQualifier() : null, "Archive Qualification", rootLevel))
+                .append("<p><b>Overlay:</b></p>\n").append(noOpQualificationText(formName, form.getArchiveInfo() != null ? form.getArchiveInfo().getQualifier() : null, "Archive Qualification", rootLevel));
+        }
+        if (overlay.auditChanged()) {
+            sb.append("<h3>Audit Settings Changed</h3>\n<p><b>Base:</b></p>\n").append(noOpQualificationText(formName, overlay.baseAudit() != null ? overlay.baseAudit().getQualifier() : null, "Audit Qualification", rootLevel))
+                .append("<p><b>Overlay:</b></p>\n").append(noOpQualificationText(formName, form.getAuditInfo() != null ? form.getAuditInfo().getQualifier() : null, "Audit Qualification", rootLevel));
+        }
+
+        if (!overlay.propertyDiff().isEmpty()) {
+            Table tbl = new Table("overlayPropDiff", "TblObjectList");
+            tbl.description = "Other Property Changes";
+            tbl.addColumn(30, "Property");
+            tbl.addColumn(35, "Base Value");
+            tbl.addColumn(35, "Overlay Value");
+            for (OverlayDiff.PropChange c : overlay.propertyDiff()) {
+                tbl.addRow(new TableRow().addCellList(c.label(), nullToEmpty(c.baseValue()), nullToEmpty(c.overlayValue())));
+            }
+            tbl.removeEmptyMessageRow();
+            sb.append(tbl.toXHtml());
+        }
+        sb.append("</div>\n</div>\n");
+        return sb.toString();
+    }
+
+    /** Renders a qualification purely for diff display, via a no-op field-reference sink so it doesn't double-register references already recorded by the page's own primary Archive/Audit sections (see {@link #archiveInfo}/{@link #auditInfo}). */
+    private String noOpQualificationText(String formName, com.bmc.arsys.api.QualifierInfo q, String detail, int rootLevel) {
+        if (q == null || q.getOperation() == com.bmc.arsys.api.QualifierInfo.AR_COND_OP_NONE) return "No qualification specified";
+        QualificationRenderer noOpQr = new QualificationRenderer(formName, rootLevel, globalFields, (f, id, exists, d) -> {});
+        return noOpQr.render(q, detail);
+    }
+
+    private static <T> void appendCount(StringBuilder sb, List<OverlayDiff.Item<T>> diff, String singular) {
+        appendCount(sb, diff, singular, singular + "s");
+    }
+
+    private static <T> void appendCount(StringBuilder sb, List<OverlayDiff.Item<T>> diff, String singular, String plural) {
+        if (diff.isEmpty()) return;
+        long added = diff.stream().filter(i -> i.status() == OverlayDiff.Status.ADDED).count();
+        long changed = diff.stream().filter(i -> i.status() == OverlayDiff.Status.CHANGED).count();
+        long removed = diff.stream().filter(i -> i.status() == OverlayDiff.Status.REMOVED).count();
+        sb.append("<li>").append(diff.size()).append(' ').append(diff.size() == 1 ? singular : plural).append(" affected: ");
+        List<String> parts = new ArrayList<>();
+        if (added > 0) parts.add(added + " added");
+        if (changed > 0) parts.add(changed + " changed");
+        if (removed > 0) parts.add(removed + " removed");
+        sb.append(String.join(", ", parts)).append("</li>\n");
+    }
+
+    /** Reciprocal note shown on the hidden base-layer ("__o") page, pointing back to the overlay page instead of duplicating its diff. */
+    private String baseLayerNote(String formName, int rootLevel) {
+        return OverlayDiff.renderBaseLayerNote(URLLink.to("overlay page", Naming.schemaDetail(formName, false), ImageTag.Id.Schema, rootLevel).toHtml());
     }
 
     /** Java port of doc/DocVUIDetails.cpp's list pass - one vui_*.htm page per VUI, with the fields shown on it (reverse-indexed from each field's DisplayInstanceMap, keyed by VUI ID). */
@@ -450,7 +611,7 @@ public final class SchemaDetailPage {
      * ShowResultListProperties/ShowSortListProperties/ShowArchiveProperties/ShowAuditProperties read
      * typed Form accessors instead of a raw property list - see class javadoc for why.
      */
-    private String propertiesInfo(String formName, Form form, boolean isOverlaid, List<Field> fields, Map<Integer, String> fieldNames, int rootLevel) {
+    private String propertiesInfo(String formName, Form form, boolean isOverlaid, List<Field> fields, Map<Integer, String> fieldNames, int rootLevel, Overlay overlay) {
         StringBuilder sb = new StringBuilder("<div id='schemaProperties'>\n");
 
         sb.append(basicPropertiesInfo(form.getProperties(), rootLevel));
@@ -528,10 +689,23 @@ public final class SchemaDetailPage {
         }
 
         List<IndexInfo> indexes = form.getIndexInfo();
-        if (indexes != null && !indexes.isEmpty()) {
+        Map<String, OverlayDiff.Status> indexDiffByName = new HashMap<>();
+        List<IndexInfo> removedIndexes = new ArrayList<>();
+        if (overlay != null) {
+            for (OverlayDiff.Item<IndexInfo> item : overlay.indexDiff()) {
+                if (item.status() == OverlayDiff.Status.REMOVED) removedIndexes.add(item.base());
+                else indexDiffByName.put(item.overlay().getIndexName(), item.status());
+            }
+        }
+        if ((indexes != null && !indexes.isEmpty()) || !removedIndexes.isEmpty()) {
             StringBuilder indexesHtml = new StringBuilder();
-            for (IndexInfo ix : indexes) {
-                indexesHtml.append(indexTable(formName, isOverlaid, ix, fieldsById, rootLevel).toXHtml());
+            if (indexes != null) {
+                for (IndexInfo ix : indexes) {
+                    indexesHtml.append(indexBlock(formName, isOverlaid, ix, fieldsById, rootLevel, indexDiffByName.get(ix.getIndexName())));
+                }
+            }
+            for (IndexInfo ix : removedIndexes) {
+                indexesHtml.append(indexBlock(formName, isOverlaid, ix, fieldsById, rootLevel, OverlayDiff.Status.REMOVED));
             }
             sb.append("<h2>").append(new ImageTag(ImageTag.Id.Document, rootLevel).toHtml()).append("Indexes</h2>\n<div>\n")
                 .append(indexesHtml).append("</div>\n");
@@ -1061,9 +1235,15 @@ public final class SchemaDetailPage {
      * index on the page - a real, harmless C++ quirk (duplicate ids across sibling tables), not
      * something this port needs to work around.
      */
-    private Table indexTable(String formName, boolean isOverlaid, IndexInfo ix, Map<Integer, Field> fieldsById, int rootLevel) {
+    /** Wraps {@link #indexTable} with an overlay-diff badge/CSS block when {@code status} is non-null (inline annotation - see {@link OverlayDiff}). */
+    private String indexBlock(String formName, boolean isOverlaid, IndexInfo ix, Map<Integer, Field> fieldsById, int rootLevel, OverlayDiff.Status status) {
+        String xhtml = indexTable(formName, isOverlaid, ix, fieldsById, rootLevel, status).toXHtml();
+        return status == null ? xhtml : "<div class=\"" + OverlayDiff.cssClass(status) + "\">\n" + xhtml + "</div>\n";
+    }
+
+    private Table indexTable(String formName, boolean isOverlaid, IndexInfo ix, Map<Integer, Field> fieldsById, int rootLevel, OverlayDiff.Status status) {
         Table tbl = new Table("indexTbl", "TblObjectList");
-        tbl.description = (ix.isUnique() ? "Unique Index :" : "Index: ") + WebUtil.objName(nullToEmpty(ix.getIndexName()));
+        tbl.description = (ix.isUnique() ? "Unique Index :" : "Index: ") + WebUtil.objName(nullToEmpty(ix.getIndexName())) + (status == null ? "" : OverlayDiff.badge(status));
         tbl.addColumn(30, "Field Name");
         tbl.addColumn(10, "Field ID");
         tbl.addColumn(15, "Datatype");
@@ -1117,6 +1297,10 @@ public final class SchemaDetailPage {
         tbl.addColumn(30, "Property");
         tbl.addColumn(70, "Value");
         tbl.addRow(new TableRow().addCellList("Name", WebUtil.validate(formName)));
+        int overlayType = OverlaySupport.overlayType(form.getProperties());
+        if (overlayType != Constants.AR_ORIGINAL_OBJECT) {
+            tbl.addRow(new TableRow().addCellList("Customization Type", OverlaySupport.customizationTypeLabel(overlayType)));
+        }
         String type = AREnumLabels.internalSchemaType(schemaTypes.internalSchemaType(formName, form.getFormType()));
         String details = typeDetails(formName, isOverlaid, form, rootLevel);
         if (!details.isEmpty()) type += " " + details;
@@ -1315,7 +1499,7 @@ public final class SchemaDetailPage {
      * "&nbsp;" is only a no-line-wrap hint for the HTML table, not a correctness requirement, and
      * embedding "&nbsp;" literally in the CSV export would be a real data-quality bug.
      */
-    private Table allFieldsTable(String formName, boolean isOverlaid, List<Field> fields, int rootLevel) {
+    private Table allFieldsTable(String formName, boolean isOverlaid, List<Field> fields, int rootLevel, Overlay overlay) {
         Table tbl = new Table("fieldListAll", "TblObjectList");
         tbl.addColumn(40, "Field Name");
         tbl.addColumn(10, "Field ID");
@@ -1324,22 +1508,43 @@ public final class SchemaDetailPage {
         tbl.addColumn(10, "Modified");
         tbl.addColumn(20, "By");
 
-        for (Field field : fields) {
-            int viewCount = field.getDisplayInstance() == null ? 0 : field.getDisplayInstance().size();
-            String viewsClass = (viewCount == 0 && field.getFieldID() != 15) ? "fieldInNoView" : "";
-
-            TableRow row = new TableRow();
-            row.addCell(URLLink.to(field.getName(), Naming.schemaFieldDetail(formName, isOverlaid, field.getFieldID()), ImageTag.Id.Document, rootLevel).toHtml());
-            row.addCell(new TableCell(field.getFieldID()));
-            row.addCell(AREnumLabels.dataType(field.getDataType()));
-            row.addCell(new TableCell(viewCount, viewsClass));
-            row.addCell(DateTimeFormat.toPlainString(field.getLastUpdateTime().getValue()));
-            row.addCell(field.getLastChangedBy());
-            tbl.addRow(row);
+        Map<Integer, OverlayDiff.Status> statusByFieldId = new HashMap<>();
+        List<Field> removedFields = new ArrayList<>();
+        if (overlay != null) {
+            for (OverlayDiff.Item<Field> item : overlay.fieldDiff()) {
+                if (item.status() == OverlayDiff.Status.REMOVED) removedFields.add(item.base());
+                else statusByFieldId.put(item.overlay().getFieldID(), item.status());
+            }
         }
-        if (!fields.isEmpty()) tbl.removeEmptyMessageRow();
+
+        for (Field field : fields) {
+            allFieldsRow(tbl, formName, isOverlaid, rootLevel, field, statusByFieldId.get(field.getFieldID()), true);
+        }
+        for (Field field : removedFields) {
+            allFieldsRow(tbl, formName, isOverlaid, rootLevel, field, OverlayDiff.Status.REMOVED, false);
+        }
+        if (!fields.isEmpty() || !removedFields.isEmpty()) tbl.removeEmptyMessageRow();
 
         return tbl;
+    }
+
+    /** {@code linkable} is false for a REMOVED (base-only) field, which has no detail page of its own under this form's active-layer path. */
+    private void allFieldsRow(Table tbl, String formName, boolean isOverlaid, int rootLevel, Field field, OverlayDiff.Status status, boolean linkable) {
+        int viewCount = field.getDisplayInstance() == null ? 0 : field.getDisplayInstance().size();
+        String viewsClass = (viewCount == 0 && field.getFieldID() != 15) ? "fieldInNoView" : "";
+        String badge = status == null ? "" : OverlayDiff.badge(status);
+        String nameCell = (linkable
+            ? URLLink.to(field.getName(), Naming.schemaFieldDetail(formName, isOverlaid, field.getFieldID()), ImageTag.Id.Document, rootLevel).toHtml()
+            : WebUtil.objName(field.getName())) + badge;
+
+        TableRow row = new TableRow(status == null ? "" : OverlayDiff.cssClass(status));
+        row.addCell(nameCell);
+        row.addCell(new TableCell(field.getFieldID()));
+        row.addCell(AREnumLabels.dataType(field.getDataType()));
+        row.addCell(new TableCell(viewCount, viewsClass));
+        row.addCell(DateTimeFormat.toPlainString(field.getLastUpdateTime().getValue()));
+        row.addCell(field.getLastChangedBy());
+        tbl.addRow(row);
     }
 
     /**

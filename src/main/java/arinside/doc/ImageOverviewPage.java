@@ -45,7 +45,7 @@ public final class ImageOverviewPage {
             try {
                 Image img = repo.getImage(name);
                 if (!OverlaySupport.isVisible(img.getProperties(), serverOverlayMode, appConfig.overlaySupport)) continue;
-                PagePath detail = Naming.imageDetail(name);
+                PagePath detail = Naming.imageDetail(name, false);
                 letterFilter.incStartLetterOf(name);
 
                 String type = img.getType() == null ? "" : img.getType();
@@ -54,7 +54,7 @@ public final class ImageOverviewPage {
                 String link = URLLink.relativeUrl(page.rootLevel(), detail);
 
                 TableRow row = new TableRow();
-                row.addCell(URLLink.to(name, detail, ImageTag.Id.Image, page.rootLevel()).toHtml());
+                row.addCell(URLLink.to(name, detail, new ImageTag(ImageTag.Id.Image, page.rootLevel(), OverlaySupport.overlayType(img.getProperties())), page.rootLevel()).toHtml());
                 row.addCell(type);
                 row.addCell(modified);
                 row.addCell(img.getLastChangedBy());

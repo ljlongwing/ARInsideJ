@@ -364,6 +364,26 @@ iframe.tabContent {
   font-size: 12px;
 }
 
+/* "Changes from Base Layer" overlay diff - see arinside.doc.OverlayDiff */
+tr.overlayAdded, div.overlayAdded {
+  background-color: #CCFFCC;
+}
+
+tr.overlayChanged, div.overlayChanged {
+  background-color: #FFF2AE;
+}
+
+tr.overlayRemoved, div.overlayRemoved {
+  background-color: #FFD9D9;
+}
+
+.overlaySummary {
+  border: 1px solid #cccccc;
+  background-color: #F5F5F5;
+  padding: 4px 10px;
+  margin-bottom: 10px;
+}
+
 #tblDocSummary{
 	width: 50%;
 }

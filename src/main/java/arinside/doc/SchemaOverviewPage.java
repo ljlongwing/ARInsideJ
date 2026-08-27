@@ -68,7 +68,7 @@ public final class SchemaOverviewPage {
 
                 boolean isOverlaid = OverlaySupport.isOverlaidForNaming(form.getProperties(), serverOverlayMode);
                 PagePath detailPage = Naming.schemaDetail(name, isOverlaid);
-                ImageTag img = new ImageTag(AREnumLabels.schemaImage(form.getFormType()), page.rootLevel());
+                ImageTag img = new ImageTag(AREnumLabels.schemaImage(form.getFormType()), page.rootLevel(), OverlaySupport.overlayType(form.getProperties()));
                 letterFilter.incStartLetterOf(name);
 
                 String modified = DateTimeFormat.toHtmlString(form.getLastUpdateTime().getValue());

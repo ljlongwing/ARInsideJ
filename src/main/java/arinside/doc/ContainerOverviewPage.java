@@ -73,7 +73,7 @@ public final class ContainerOverviewPage {
                 String link = URLLink.relativeUrl(page.rootLevel(), detail);
 
                 TableRow row = new TableRow();
-                row.addCell(URLLink.to(name, detail, icon, page.rootLevel()).toHtml() + (unused ? " (<b>!</b>)" : ""));
+                row.addCell(URLLink.to(name, detail, new ImageTag(icon, page.rootLevel(), OverlaySupport.overlayType(c.getProperties())), page.rootLevel()).toHtml() + (unused ? " (<b>!</b>)" : ""));
                 row.addCell(modified);
                 row.addCell(c.getLastChangedBy());
                 tbl.addRow(row);

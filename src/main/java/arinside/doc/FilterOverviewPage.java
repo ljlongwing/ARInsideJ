@@ -62,7 +62,7 @@ public final class FilterOverviewPage {
                 String link = URLLink.relativeUrl(page.rootLevel(), detail);
 
                 TableRow row = new TableRow();
-                row.addCell(URLLink.to(name, detail, ImageTag.Id.Filter, page.rootLevel()).toHtml());
+                row.addCell(URLLink.to(name, detail, new ImageTag(ImageTag.Id.Filter, page.rootLevel(), OverlaySupport.overlayType(filter.getProperties())), page.rootLevel()).toHtml());
                 row.addCell(new TableCell(AREnumLabels.objectEnable(filter.isEnable()), filter.isEnable() ? "" : "objStatusDisabled"));
                 row.addCell(new TableCell(filter.getOrder()));
                 row.addCell(executeOn);

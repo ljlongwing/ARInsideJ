@@ -61,7 +61,7 @@ public final class MenuOverviewPage {
                 String modifiedPlain = DateTimeFormat.toPlainString(menu.getLastUpdateTime().getValue());
                 String link = URLLink.relativeUrl(page.rootLevel(), detail);
 
-                String nameCell = URLLink.to(name, detail, ImageTag.Id.Menu, page.rootLevel()).toHtml();
+                String nameCell = URLLink.to(name, detail, new ImageTag(ImageTag.Id.Menu, page.rootLevel(), OverlaySupport.overlayType(menu.getProperties())), page.rootLevel()).toHtml();
                 if (!usedInWorkflow) nameCell += " (<b>!</b>)";
 
                 TableRow row = new TableRow();

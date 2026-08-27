@@ -75,11 +75,29 @@ public final class MenuDetailPage {
         this.missingFieldRefs = missingFieldRefs;
     }
 
-    public record MenuData(String name, Menu menu) {}
+    public record MenuData(String name, Menu menu, List<OverlayDiff.PropChange> overlayDiff, List<OverlayDiff.Item<MenuItem>> itemDiff) {}
 
     /** The fetch half - safe to run on a pooled read connection. */
     public MenuData fetch(WorkflowSource repo, String name) throws ARException {
-        return new MenuData(name, repo.getMenu(name));
+        return new MenuData(name, repo.getMenu(name), null, null);
+    }
+
+    /**
+     * Property diff against a previously-fetched base layer - used for the "overlay diff" third
+     * pass, see Main.java's documentOverlayBaseLayers and {@link OverlayDiff}. Also diffs
+     * {@link ListMenu#getItems()} (keyed by label - menu items have no stable id) when both layers
+     * are list menus, since that's real structural content living outside getProperties() entirely,
+     * not covered by the property diff alone. Query/SQL/File/Data-Dictionary menus still only get
+     * the property-level diff this pass - their own structural content (qualifications/SQL text/
+     * file refs) is real, valuable follow-on work using this same pattern.
+     */
+    public MenuData fetchWithDiff(WorkflowSource repo, String name, Menu base) throws ARException {
+        MenuData data = fetch(repo, name);
+        List<OverlayDiff.Item<MenuItem>> itemDiff = null;
+        if (base instanceof ListMenu baseLm && data.menu() instanceof ListMenu overlayLm) {
+            itemDiff = OverlayDiff.diffKeyed(baseLm.getItems(), overlayLm.getItems(), MenuItem::getLabel, MenuItem::equals);
+        }
+        return new MenuData(data.name(), data.menu(), OverlayDiff.diffProperties(base.getProperties(), data.menu().getProperties()), itemDiff);
     }
 
     /** Fused fetch+render, for callers (file mode) that don't route through the parallel read/write pools. */
@@ -91,7 +109,8 @@ public final class MenuDetailPage {
     public void render(MenuData data) throws ARException {
         String name = data.name();
         Menu menu = data.menu();
-        PagePath page = Naming.menuDetail(name, OverlaySupport.isOverlaidForNaming(menu.getProperties(), serverOverlayMode));
+        boolean isOverlaid = OverlaySupport.isOverlaidForNaming(menu.getProperties(), serverOverlayMode);
+        PagePath page = Naming.menuDetail(name, isOverlaid);
 
         WebPage webPage = new WebPage(page.fileName(), name, page.rootLevel(), appConfig);
 
@@ -100,9 +119,19 @@ public final class MenuDetailPage {
             + ApplicationHeaderLink.suffix(appIndex.menuApp(name), page.rootLevel());
         webPage.addContentHead(head);
 
+        if (isOverlaid) {
+            webPage.addContent(OverlayDiff.renderBaseLayerNote(URLLink.to("overlay page", Naming.menuDetail(name, false), ImageTag.Id.Menu, page.rootLevel()).toHtml()));
+        } else if (data.overlayDiff() != null) {
+            webPage.addContent(menuOverlaySummary(data.overlayDiff(), data.itemDiff(), page.rootLevel()));
+        }
+
         Table tbl = new Table("menuGeneral", "TblObjectList");
         tbl.addColumn(30, "Property");
         tbl.addColumn(70, "Value");
+        int overlayType = OverlaySupport.overlayType(menu.getProperties());
+        if (overlayType != Constants.AR_ORIGINAL_OBJECT) {
+            tbl.addRow(new TableRow().addCellList("Customization Type", OverlaySupport.customizationTypeLabel(overlayType)));
+        }
         tbl.addRow(new TableRow().addCellList("Type", AREnumLabels.menuType(menu.getMenuType())));
         tbl.addRow(new TableRow().addCellList("Refresh", AREnumLabels.menuRefresh(menu.getRefreshCode())));
         webPage.addContent(tbl.toXHtml());
@@ -120,7 +149,7 @@ public final class MenuDetailPage {
             if (!fieldExists) missingFieldRefs.add(formName, fieldId, ref);
         };
 
-        webPage.addContent(definition(name, menu, page.rootLevel(), sink));
+        webPage.addContent(definition(name, menu, page.rootLevel(), sink, data.itemDiff()));
         webPage.addContent(relatedFields(name, page.rootLevel()));
         webPage.addContent(relatedActiveLinks(name, page.rootLevel()));
         webPage.addContent(containerReferences(name, page.rootLevel()));
@@ -134,8 +163,8 @@ public final class MenuDetailPage {
     }
 
     /** Dispatches on the real menu subtype - matches DocCharMenuDetails.cpp's switch on menuType. */
-    private String definition(String menuName, Menu menu, int rootLevel, QualificationRenderer.FieldReferenceSink sink) {
-        if (menu instanceof ListMenu lm) return listMenuDefinition(lm);
+    private String definition(String menuName, Menu menu, int rootLevel, QualificationRenderer.FieldReferenceSink sink, List<OverlayDiff.Item<MenuItem>> itemDiff) {
+        if (menu instanceof ListMenu lm) return listMenuDefinition(lm, itemDiff);
         if (menu instanceof QueryMenu qm) return perAttachedForm(menuName, rootLevel, form -> queryMenuRow(qm, form, rootLevel, sink));
         if (menu instanceof SqlMenu sm) return perAttachedForm(menuName, rootLevel, form -> sqlMenuRow(sm, form, rootLevel, sink));
         if (menu instanceof FileMenu fm) return fileMenuDefinition(fm);
@@ -150,23 +179,64 @@ public final class MenuDetailPage {
      * never showed each item's Type (Label vs Value) at all - a real content divergence, not just
      * cosmetic, caught by the source-verification audit.
      */
-    private String listMenuDefinition(ListMenu lm) {
+    private String listMenuDefinition(ListMenu lm, List<OverlayDiff.Item<MenuItem>> itemDiff) {
         Table tbl = new Table("menuItems", "TblObjectList");
         tbl.description = "Menu Definition";
         tbl.addColumn(20, "Type");
         tbl.addColumn(40, "Label");
         tbl.addColumn(40, "Value");
+
+        java.util.Map<String, OverlayDiff.Status> statusByLabel = new java.util.HashMap<>();
+        List<MenuItem> removedItems = new java.util.ArrayList<>();
+        if (itemDiff != null) {
+            for (OverlayDiff.Item<MenuItem> item : itemDiff) {
+                if (item.status() == OverlayDiff.Status.REMOVED) removedItems.add(item.base());
+                else statusByLabel.put(item.overlay().getLabel(), item.status());
+            }
+        }
+
         List<MenuItem> items = lm.getItems();
         int count = 0;
         if (items != null) {
             for (MenuItem item : items) {
-                String value = item.getType() == Constants.AR_MENU_TYPE_VALUE ? nullToEmpty(item.getValue()) : "";
-                tbl.addRow(new TableRow().addCellList(AREnumLabels.menuItemType(item.getType()), WebUtil.validate(nullToEmpty(item.getLabel())), WebUtil.validate(value)));
-                count++;
+                count += addMenuItemRow(tbl, item, statusByLabel.get(item.getLabel()));
             }
+        }
+        for (MenuItem item : removedItems) {
+            count += addMenuItemRow(tbl, item, OverlayDiff.Status.REMOVED);
         }
         if (count > 0) tbl.removeEmptyMessageRow();
         return tbl.toXHtml();
+    }
+
+    private int addMenuItemRow(Table tbl, MenuItem item, OverlayDiff.Status status) {
+        String value = item.getType() == Constants.AR_MENU_TYPE_VALUE ? nullToEmpty(item.getValue()) : "";
+        String badge = status == null ? "" : OverlayDiff.badge(status);
+        TableRow row = new TableRow(status == null ? "" : OverlayDiff.cssClass(status));
+        row.addCellList(AREnumLabels.menuItemType(item.getType()), WebUtil.validate(nullToEmpty(item.getLabel())) + badge, WebUtil.validate(value));
+        tbl.addRow(row);
+        return 1;
+    }
+
+    /** Menu-specific "Changes from Base Layer" summary - property changes (see {@link OverlayDiff#renderSummary}) plus, for list menus, item add/change/remove counts (see {@link #listMenuDefinition}'s own inline badges for the detail). */
+    private String menuOverlaySummary(List<OverlayDiff.PropChange> propertyDiff, List<OverlayDiff.Item<MenuItem>> itemDiff, int rootLevel) {
+        boolean noItemDiff = itemDiff == null || itemDiff.isEmpty();
+        if (noItemDiff) return OverlayDiff.renderSummary(propertyDiff, rootLevel);
+
+        long added = itemDiff.stream().filter(i -> i.status() == OverlayDiff.Status.ADDED).count();
+        long changed = itemDiff.stream().filter(i -> i.status() == OverlayDiff.Status.CHANGED).count();
+        long removed = itemDiff.stream().filter(i -> i.status() == OverlayDiff.Status.REMOVED).count();
+        List<String> parts = new java.util.ArrayList<>();
+        if (added > 0) parts.add(added + " added");
+        if (changed > 0) parts.add(changed + " changed");
+        if (removed > 0) parts.add(removed + " removed");
+
+        StringBuilder sb = new StringBuilder("<div class=\"overlaySummary\">\n<h2>");
+        sb.append(new ImageTag(ImageTag.Id.Document, rootLevel).toHtml()).append("Changes from Base Layer</h2>\n<div>\n<ul>\n");
+        sb.append("<li>").append(itemDiff.size()).append(" menu item(s) affected: ").append(String.join(", ", parts)).append("</li>\n</ul>\n");
+        if (propertyDiff != null) sb.append(OverlayDiff.renderPropertyTable(propertyDiff));
+        sb.append("</div>\n</div>\n");
+        return sb.toString();
     }
 
     /** Java port of DocCharMenuDetails.cpp's FileMenuDetails - filename/location are on the object directly, no attached-form context needed. */

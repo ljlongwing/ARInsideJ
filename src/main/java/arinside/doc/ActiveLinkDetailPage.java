@@ -75,6 +75,11 @@ public final class ActiveLinkDetailPage {
 
     /** The render+write half - pure local work, safe to run on the write pool. */
     public void render(String name, ActiveLink al) throws ARException {
+        render(name, al, (ActiveLink) null);
+    }
+
+    /** Same as {@link #render(String, ActiveLink)}, plus an overlay-diff summary (or, on a base-layer page, a reciprocal note) when {@code base} is non-null - see {@link OverlayDiff}. */
+    public void render(String name, ActiveLink al, ActiveLink base) throws ARException {
         boolean isOverlaid = OverlaySupport.isOverlaidForNaming(al.getProperties(), serverOverlayMode);
         PagePath page = Naming.activeLinkDetail(name, isOverlaid);
 
@@ -85,6 +90,12 @@ public final class ActiveLinkDetailPage {
             + " &gt; " + new ImageTag(ImageTag.Id.ActiveLink, page.rootLevel()).toHtml() + WebUtil.objName(name)
             + ApplicationHeaderLink.suffix(appRefName, page.rootLevel());
         webPage.addContentHead(head);
+
+        if (isOverlaid) {
+            webPage.addContent(OverlayDiff.renderBaseLayerNote(URLLink.to("overlay page", Naming.activeLinkDetail(name, false), ImageTag.Id.ActiveLink, page.rootLevel()).toHtml()));
+        } else if (base != null) {
+            webPage.addContent(overlaySummary(al, base, page.rootLevel()));
+        }
 
         PagePath alLink = Naming.activeLinkDetail(name, false);
         QualificationRenderer.FieldReferenceSink sink = (formName, fieldId, fieldExists, detail) -> {
@@ -103,6 +114,46 @@ public final class ActiveLinkDetailPage {
         webPage.addContent(ServerObjectHistoryWidget.render(al, knownUserNames, page.rootLevel()));
 
         webPage.saveInFolder(page.path());
+    }
+
+    /**
+     * "Changes from Base Layer" summary - properties (see {@link OverlayDiff}) plus Run If
+     * Qualification and Action/Else-List (real functional content living outside getProperties()
+     * entirely - see {@link OverlayDiff.WorkflowDiff}'s javadoc). Resolved against the AL's primary
+     * form (falling back to its first attached form) rather than looping every attached form the
+     * way the main "General" tab does - a deliberate simplification, since the diff only needs ONE
+     * consistent field-name-resolution context to show whether the qualification/actions changed at
+     * all, not a full per-form re-render.
+     */
+    private String overlaySummary(ActiveLink al, ActiveLink base, int rootLevel) {
+        List<OverlayDiff.PropChange> propertyDiff = OverlayDiff.diffProperties(base.getProperties(), al.getProperties());
+        boolean qualifierChanged = !java.util.Objects.equals(base.getQualifier(), al.getQualifier());
+        boolean actionsChanged = !java.util.Objects.equals(base.getActionList(), al.getActionList())
+            || !java.util.Objects.equals(base.getElseList(), al.getElseList());
+        List<OverlayDiff.Item<String>> formListDiff = OverlayDiff.diffKeyed(base.getFormList(), al.getFormList(), java.util.function.Function.identity(), Object::equals);
+        OverlayDiff.WorkflowDiff diff = new OverlayDiff.WorkflowDiff(propertyDiff, qualifierChanged, actionsChanged, formListDiff);
+
+        String resolveForm = al.getPrimaryForm();
+        if ((resolveForm == null || resolveForm.isEmpty()) && al.getFormList() != null && !al.getFormList().isEmpty()) {
+            resolveForm = al.getFormList().get(0);
+        }
+        String baseQualHtml = "", overlayQualHtml = "", baseActionsHtml = "", overlayActionsHtml = "";
+        if (qualifierChanged) {
+            QualificationRenderer noOpQr = new QualificationRenderer(resolveForm, rootLevel, fieldIndex, (f, id, exists, detail) -> {});
+            baseQualHtml = qualifierHtml(base, noOpQr);
+            overlayQualHtml = qualifierHtml(al, noOpQr);
+        }
+        if (actionsChanged) {
+            baseActionsHtml = ActionSummaryTable.render(base.getActionList(), base.getElseList(), ActionSummaryTable.activeLinkTypeOf(), ActionSummaryTable.activeLinkLabel(), resolveForm, null, appConfig.serverName);
+            overlayActionsHtml = ActionSummaryTable.render(al.getActionList(), al.getElseList(), ActionSummaryTable.activeLinkTypeOf(), ActionSummaryTable.activeLinkLabel(), resolveForm, null, appConfig.serverName);
+        }
+        return OverlayDiff.renderWorkflowSummary(diff, baseQualHtml, overlayQualHtml, baseActionsHtml, overlayActionsHtml, rootLevel);
+    }
+
+    private static String qualifierHtml(ActiveLink al, QualificationRenderer qr) {
+        return al.getQualifier() != null && al.getQualifier().getOperation() != com.bmc.arsys.api.QualifierInfo.AR_COND_OP_NONE
+            ? qr.render(al.getQualifier(), "Run If")
+            : "No qualification specified";
     }
 
     /**
@@ -152,6 +203,10 @@ public final class ActiveLinkDetailPage {
         Table tbl = new Table("alGeneral", "TblObjectList");
         tbl.addColumn(30, "Property");
         tbl.addColumn(70, "Value");
+        int overlayType = OverlaySupport.overlayType(al.getProperties());
+        if (overlayType != Constants.AR_ORIGINAL_OBJECT) {
+            tbl.addRow(new TableRow().addCellList("Customization Type", OverlaySupport.customizationTypeLabel(overlayType)));
+        }
         tbl.addRow(new TableRow().addCellList("Enabled", AREnumLabels.objectEnable(al.isEnable())));
         tbl.addRow(new TableRow().addCellList("Order", Integer.toString(al.getOrder())));
         tbl.addRow(new TableRow().addCellList("Execute On", executeOn(al)));

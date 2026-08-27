@@ -69,7 +69,13 @@ public final class EscalationDetailPage {
 
     /** The render+write half - pure local work, safe to run on the write pool. */
     public void render(String name, Escalation esc) throws ARException {
-        PagePath page = Naming.escalationDetail(name, OverlaySupport.isOverlaidForNaming(esc.getProperties(), serverOverlayMode));
+        render(name, esc, (Escalation) null);
+    }
+
+    /** Same as {@link #render(String, Escalation)}, plus an overlay-diff summary (or, on a base-layer page, a reciprocal note) when {@code base} is non-null - see {@link OverlayDiff}. */
+    public void render(String name, Escalation esc, Escalation base) throws ARException {
+        boolean isOverlaid = OverlaySupport.isOverlaidForNaming(esc.getProperties(), serverOverlayMode);
+        PagePath page = Naming.escalationDetail(name, isOverlaid);
 
         WebPage webPage = new WebPage(page.fileName(), name, page.rootLevel(), appConfig);
 
@@ -77,6 +83,12 @@ public final class EscalationDetailPage {
             + " &gt; " + new ImageTag(ImageTag.Id.Escalation, page.rootLevel()).toHtml() + WebUtil.objName(name)
             + ApplicationHeaderLink.suffix(ownerApp(esc.getFormList()), page.rootLevel());
         webPage.addContentHead(head);
+
+        if (isOverlaid) {
+            webPage.addContent(OverlayDiff.renderBaseLayerNote(URLLink.to("overlay page", Naming.escalationDetail(name, false), ImageTag.Id.Escalation, page.rootLevel()).toHtml()));
+        } else if (base != null) {
+            webPage.addContent(overlaySummary(esc, base, page.rootLevel()));
+        }
 
         PagePath escLink = Naming.escalationDetail(name, false);
         QualificationRenderer.FieldReferenceSink sink = (formName, fieldId, fieldExists, detail) -> {
@@ -104,6 +116,43 @@ public final class EscalationDetailPage {
     }
 
     /**
+     * "Changes from Base Layer" summary - properties (see {@link OverlayDiff}) plus Run If
+     * Qualification and Action/Else-List (real functional content living outside getProperties()
+     * entirely - see {@link OverlayDiff.WorkflowDiff}'s javadoc). Resolved against the escalation's
+     * primary form (falling back to its first attached form).
+     */
+    private String overlaySummary(Escalation esc, Escalation base, int rootLevel) {
+        List<OverlayDiff.PropChange> propertyDiff = OverlayDiff.diffProperties(base.getProperties(), esc.getProperties());
+        boolean qualifierChanged = !java.util.Objects.equals(base.getQualifier(), esc.getQualifier());
+        boolean actionsChanged = !java.util.Objects.equals(base.getActionList(), esc.getActionList())
+            || !java.util.Objects.equals(base.getElseList(), esc.getElseList());
+        List<OverlayDiff.Item<String>> formListDiff = OverlayDiff.diffKeyed(base.getFormList(), esc.getFormList(), java.util.function.Function.identity(), Object::equals);
+        OverlayDiff.WorkflowDiff diff = new OverlayDiff.WorkflowDiff(propertyDiff, qualifierChanged, actionsChanged, formListDiff);
+
+        String resolveForm = esc.getPrimaryForm();
+        if ((resolveForm == null || resolveForm.isEmpty()) && esc.getFormList() != null && !esc.getFormList().isEmpty()) {
+            resolveForm = esc.getFormList().get(0);
+        }
+        String baseQualHtml = "", overlayQualHtml = "", baseActionsHtml = "", overlayActionsHtml = "";
+        if (qualifierChanged) {
+            QualificationRenderer noOpQr = new QualificationRenderer(resolveForm, rootLevel, fieldIndex, (f, id, exists, detail) -> {});
+            baseQualHtml = qualifierHtml(base, noOpQr);
+            overlayQualHtml = qualifierHtml(esc, noOpQr);
+        }
+        if (actionsChanged) {
+            baseActionsHtml = ActionSummaryTable.render(base.getActionList(), base.getElseList(), ActionSummaryTable.filterTypeOf(), ActionSummaryTable.filterLabel(), resolveForm, null, appConfig.serverName);
+            overlayActionsHtml = ActionSummaryTable.render(esc.getActionList(), esc.getElseList(), ActionSummaryTable.filterTypeOf(), ActionSummaryTable.filterLabel(), resolveForm, null, appConfig.serverName);
+        }
+        return OverlayDiff.renderWorkflowSummary(diff, baseQualHtml, overlayQualHtml, baseActionsHtml, overlayActionsHtml, rootLevel);
+    }
+
+    private static String qualifierHtml(Escalation esc, QualificationRenderer qr) {
+        return esc.getQualifier() != null && esc.getQualifier().getOperation() != com.bmc.arsys.api.QualifierInfo.AR_COND_OP_NONE
+            ? qr.render(esc.getQualifier(), "Run If")
+            : "No qualification specified";
+    }
+
+    /**
      * Java port of DocEscalationDetails.cpp's Documentation()/CreateSpecific() - a single flat
      * properties table (no tabs; the real C++ has no separate "Actions" tab for escalations), with
      * one "[schema link] -&gt; Run If / Actions" row PER form the escalation is attached to, matching
@@ -116,6 +165,10 @@ public final class EscalationDetailPage {
         Table tbl = new Table("escalationGeneral", "TblObjectList");
         tbl.addColumn(30, "Property");
         tbl.addColumn(70, "Value");
+        int overlayType = OverlaySupport.overlayType(esc.getProperties());
+        if (overlayType != Constants.AR_ORIGINAL_OBJECT) {
+            tbl.addRow(new TableRow().addCellList("Customization Type", OverlaySupport.customizationTypeLabel(overlayType)));
+        }
         tbl.addRow(new TableRow().addCellList("Enabled", AREnumLabels.objectEnable(esc.isEnable())));
 
         String pool = poolNumber(esc);

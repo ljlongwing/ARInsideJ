@@ -1,13 +1,20 @@
 package arinside.output;
 
+import com.bmc.arsys.api.Constants;
+
 import java.util.EnumMap;
 import java.util.Map;
 
 /**
- * Java port of output/ImageTag.{h,cpp}. The overlay-aware constructor that takes a server
- * object (ImageTag(const CARServerObject&, rootLevel) in the C++) is added once the object
- * model exists (Phase 2+); for now this covers the plain enum-based icon rendering that
- * WebPage/URLLink need.
+ * Java port of output/ImageTag.{h,cpp}. The overlay-aware constructor ({@link #ImageTag(Id, int, int)})
+ * composites a small overlay/custom badge onto the base type icon - the exact same visual
+ * convention already ported into arshelper.js's own {@code getIcon()} (same
+ * overlay.gif/custom.gif assets, same "badge as foreground img, base icon as CSS background"
+ * trick), which every *List.js row-renderer already calls (schemaList.js/actlinkList.js/
+ * filterList.js/escalationList.js/menuList.js/containerList.js/imageList.js) - but only for rows
+ * the JS filter widget re-renders after the user types into the filter box, never for the plain
+ * server-rendered rows shown on initial page load. This constructor closes that gap server-side so
+ * the badge is visible immediately, not just after interacting with the filter.
  */
 public final class ImageTag {
 
@@ -76,18 +83,36 @@ public final class ImageTag {
 
     private final Id id;
     private final int rootLevel;
+    private final int overlayType;
 
     public ImageTag(Id id, int rootLevel) {
+        this(id, rootLevel, Constants.AR_ORIGINAL_OBJECT);
+    }
+
+    /** {@code overlayType} is {@code OverlaySupport.overlayType(props)}'s raw result - AR_OVERLAY_OBJECT/AR_CUSTOM_OBJECT get a badge, anything else (including AR_ORIGINAL_OBJECT and the hidden AR_OVERLAID_OBJECT base layer) renders the plain icon, matching arshelper.js's own getIcon(). */
+    public ImageTag(Id id, int rootLevel, int overlayType) {
         this.id = id;
         this.rootLevel = rootLevel;
+        this.overlayType = overlayType;
     }
 
     public String toHtml() {
         if (id == Id.NoImage) return "";
         String src = FILE_NAMES.get(id);
         Dim dim = DIMENSIONS.getOrDefault(id, DEFAULT_DIM);
-        return "<img src=\"" + RootPath.of(rootLevel) + "img/" + src + "\" "
-            + "width=\"" + dim.w() + "\" height=\"" + dim.h() + "\" alt=\"" + src + "\" />";
+        String mainSrc = RootPath.of(rootLevel) + "img/" + src;
+
+        String badge = switch (overlayType) {
+            case Constants.AR_OVERLAY_OBJECT -> "overlay.gif";
+            case Constants.AR_CUSTOM_OBJECT -> "custom.gif";
+            default -> null;
+        };
+        if (badge != null) {
+            return "<img src=\"" + RootPath.of(rootLevel) + "img/" + badge + "\" "
+                + "width=\"" + dim.w() + "\" height=\"" + dim.h() + "\" alt=\"" + src + "\" "
+                + "style=\"background:url(" + mainSrc + ")\" />";
+        }
+        return "<img src=\"" + mainSrc + "\" width=\"" + dim.w() + "\" height=\"" + dim.h() + "\" alt=\"" + src + "\" />";
     }
 
     @Override

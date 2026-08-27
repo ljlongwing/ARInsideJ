@@ -76,7 +76,7 @@ final class ObjectPropertiesTable {
         return tbl.toXHtml();
     }
 
-    private static String valueText(int propId, Value value) {
+    static String valueText(int propId, Value value) {
         if (value == null) return "";
         if (propId == Constants.AR_DPROP_ENUM_LABELS && value.getDataType() == DataType.CHAR
             && value.getValue() instanceof String packed) {

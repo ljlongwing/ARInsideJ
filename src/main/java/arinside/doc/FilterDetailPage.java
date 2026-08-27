@@ -13,6 +13,7 @@ import arinside.scan.GlobalFieldIndex;
 import arinside.scan.MissingFieldReferenceIndex;
 import arinside.scan.SchemaReferenceIndex;
 import com.bmc.arsys.api.ARException;
+import com.bmc.arsys.api.Constants;
 import com.bmc.arsys.api.Filter;
 
 import java.util.List;
@@ -68,7 +69,13 @@ public final class FilterDetailPage {
 
     /** The render+write half - pure local work, safe to run on the write pool. */
     public void render(String name, Filter filter) throws ARException {
-        PagePath page = Naming.filterDetail(name, OverlaySupport.isOverlaidForNaming(filter.getProperties(), serverOverlayMode));
+        render(name, filter, (Filter) null);
+    }
+
+    /** Same as {@link #render(String, Filter)}, plus an overlay-diff summary (or, on a base-layer page, a reciprocal note) when {@code base} is non-null - see {@link OverlayDiff}. */
+    public void render(String name, Filter filter, Filter base) throws ARException {
+        boolean isOverlaid = OverlaySupport.isOverlaidForNaming(filter.getProperties(), serverOverlayMode);
+        PagePath page = Naming.filterDetail(name, isOverlaid);
 
         WebPage webPage = new WebPage(page.fileName(), name, page.rootLevel(), appConfig);
 
@@ -76,6 +83,12 @@ public final class FilterDetailPage {
             + " &gt; " + new ImageTag(ImageTag.Id.Filter, page.rootLevel()).toHtml() + WebUtil.objName(name)
             + ApplicationHeaderLink.suffix(ownerApp(filter.getFormList()), page.rootLevel());
         webPage.addContentHead(head);
+
+        if (isOverlaid) {
+            webPage.addContent(OverlayDiff.renderBaseLayerNote(URLLink.to("overlay page", Naming.filterDetail(name, false), ImageTag.Id.Filter, page.rootLevel()).toHtml()));
+        } else if (base != null) {
+            webPage.addContent(overlaySummary(filter, base, page.rootLevel()));
+        }
 
         PagePath filterLink = Naming.filterDetail(name, false);
         QualificationRenderer.FieldReferenceSink sink = (formName, fieldId, fieldExists, detail) -> {
@@ -102,6 +115,43 @@ public final class FilterDetailPage {
     }
 
     /**
+     * "Changes from Base Layer" summary - properties (see {@link OverlayDiff}) plus Run If
+     * Qualification and Action/Else-List (real functional content living outside getProperties()
+     * entirely - see {@link OverlayDiff.WorkflowDiff}'s javadoc). Resolved against the filter's
+     * primary form (falling back to its first attached form).
+     */
+    private String overlaySummary(Filter filter, Filter base, int rootLevel) {
+        List<OverlayDiff.PropChange> propertyDiff = OverlayDiff.diffProperties(base.getProperties(), filter.getProperties());
+        boolean qualifierChanged = !java.util.Objects.equals(base.getQualifier(), filter.getQualifier());
+        boolean actionsChanged = !java.util.Objects.equals(base.getActionList(), filter.getActionList())
+            || !java.util.Objects.equals(base.getElseList(), filter.getElseList());
+        List<OverlayDiff.Item<String>> formListDiff = OverlayDiff.diffKeyed(base.getFormList(), filter.getFormList(), java.util.function.Function.identity(), Object::equals);
+        OverlayDiff.WorkflowDiff diff = new OverlayDiff.WorkflowDiff(propertyDiff, qualifierChanged, actionsChanged, formListDiff);
+
+        String resolveForm = filter.getPrimaryForm();
+        if ((resolveForm == null || resolveForm.isEmpty()) && filter.getFormList() != null && !filter.getFormList().isEmpty()) {
+            resolveForm = filter.getFormList().get(0);
+        }
+        String baseQualHtml = "", overlayQualHtml = "", baseActionsHtml = "", overlayActionsHtml = "";
+        if (qualifierChanged) {
+            QualificationRenderer noOpQr = new QualificationRenderer(resolveForm, rootLevel, fieldIndex, (f, id, exists, detail) -> {});
+            baseQualHtml = qualifierHtml(base, noOpQr);
+            overlayQualHtml = qualifierHtml(filter, noOpQr);
+        }
+        if (actionsChanged) {
+            baseActionsHtml = ActionSummaryTable.render(base.getActionList(), base.getElseList(), ActionSummaryTable.filterTypeOf(), ActionSummaryTable.filterLabel(), resolveForm, null, appConfig.serverName);
+            overlayActionsHtml = ActionSummaryTable.render(filter.getActionList(), filter.getElseList(), ActionSummaryTable.filterTypeOf(), ActionSummaryTable.filterLabel(), resolveForm, null, appConfig.serverName);
+        }
+        return OverlayDiff.renderWorkflowSummary(diff, baseQualHtml, overlayQualHtml, baseActionsHtml, overlayActionsHtml, rootLevel);
+    }
+
+    private static String qualifierHtml(Filter filter, QualificationRenderer qr) {
+        return filter.getQualifier() != null && filter.getQualifier().getOperation() != com.bmc.arsys.api.QualifierInfo.AR_COND_OP_NONE
+            ? qr.render(filter.getQualifier(), "Run If")
+            : "No qualification specified";
+    }
+
+    /**
      * Java port of DocFilterDetails.cpp's Documentation()/CreateSpecific() - a single flat
      * properties table (no tabs; the real C++ has no separate "Actions" tab for filters), with one
      * "[schema link] -&gt; Run If / Actions" row PER form the filter is attached to, matching the
@@ -113,6 +163,10 @@ public final class FilterDetailPage {
         Table tbl = new Table("filterGeneral", "TblObjectList");
         tbl.addColumn(30, "Property");
         tbl.addColumn(70, "Value");
+        int overlayType = OverlaySupport.overlayType(filter.getProperties());
+        if (overlayType != Constants.AR_ORIGINAL_OBJECT) {
+            tbl.addRow(new TableRow().addCellList("Customization Type", OverlaySupport.customizationTypeLabel(overlayType)));
+        }
         tbl.addRow(new TableRow().addCellList("Enabled", AREnumLabels.objectEnable(filter.isEnable())));
         tbl.addRow(new TableRow().addCellList("Order", Integer.toString(filter.getOrder())));
         tbl.addRow(new TableRow().addCellList("Execute On", AREnumLabels.filterExecuteOn(filter.getOpSet())));

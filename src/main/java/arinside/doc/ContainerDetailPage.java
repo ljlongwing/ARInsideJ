@@ -106,7 +106,13 @@ public final class ContainerDetailPage {
 
     /** The render+write half - pure local work, safe to run on the write pool. */
     public void render(String name, Container c) throws ARException {
-        PagePath page = Naming.containerDetail(containerType, name, OverlaySupport.isOverlaidForNaming(c.getProperties(), serverOverlayMode));
+        render(name, c, (Container) null);
+    }
+
+    /** Same as {@link #render(String, Container)}, plus an overlay-diff summary (or, on a base-layer page, a reciprocal note) when {@code base} is non-null - see {@link OverlayDiff}. */
+    public void render(String name, Container c, Container base) throws ARException {
+        boolean isOverlaid = OverlaySupport.isOverlaidForNaming(c.getProperties(), serverOverlayMode);
+        PagePath page = Naming.containerDetail(containerType, name, isOverlaid);
 
         WebPage webPage = new WebPage(page.fileName(), name, page.rootLevel(), appConfig);
 
@@ -115,6 +121,12 @@ public final class ContainerDetailPage {
             + " &gt; " + new ImageTag(icon, page.rootLevel()).toHtml() + WebUtil.objName(name)
             + ApplicationHeaderLink.suffix(appRefName, page.rootLevel());
         webPage.addContentHead(head);
+
+        if (isOverlaid) {
+            webPage.addContent(OverlayDiff.renderBaseLayerNote(URLLink.to("overlay page", Naming.containerDetail(containerType, name, false), icon, page.rootLevel()).toHtml()));
+        } else if (base != null) {
+            webPage.addContent(overlaySummary(c, base, page.rootLevel()));
+        }
 
         TabControl tabs = new TabControl();
         tabs.addTab("General", generalInfo(c, appRefName, page.rootLevel()));
@@ -153,11 +165,40 @@ public final class ContainerDetailPage {
         webPage.saveInFolder(page.path());
     }
 
+    /**
+     * "Changes from Base Layer" summary - properties (see {@link OverlayDiff}) plus a plain
+     * ADDED/CHANGED/REMOVED name list of {@code getReferences()} (a container's real content -
+     * guide steps/app members/etc. - lives entirely outside getProperties(), same situation as
+     * every other structural-content gap this feature closes - see {@link OverlayDiff}'s class
+     * javadoc). Deliberately NOT the type-specific rendering each of the 5 container subtypes uses
+     * elsewhere on this page (applicationContent/guideContent/webserviceContent) - no overlaid
+     * Container existed on this feature's test server to verify a richer per-type diff against, so
+     * this stays a generic, always-correct name list instead of an unverified guess.
+     */
+    private String overlaySummary(Container c, Container base, int rootLevel) {
+        List<OverlayDiff.PropChange> propertyDiff = OverlayDiff.diffProperties(base.getProperties(), c.getProperties());
+        List<OverlayDiff.Item<Reference>> refDiff = OverlayDiff.diffKeyed(base.getReferences(), c.getReferences(),
+            r -> r.getName() + ":" + r.getReferenceType(), Reference::equals);
+        if (propertyDiff.isEmpty() && refDiff.isEmpty()) {
+            return "<div class=\"overlaySummary\"><p><b>This object is an overlay, but no differences from its base layer were found.</b></p></div>\n";
+        }
+        StringBuilder sb = new StringBuilder("<div class=\"overlaySummary\">\n<h2>");
+        sb.append(new ImageTag(ImageTag.Id.Document, rootLevel).toHtml()).append("Changes from Base Layer</h2>\n<div>\n");
+        sb.append(OverlayDiff.renderItemListDiff("Reference Changes", refDiff, r -> r.getName() + " (" + r.getReferenceType() + ")"));
+        sb.append(OverlayDiff.renderPropertyTable(propertyDiff));
+        sb.append("</div>\n</div>\n");
+        return sb.toString();
+    }
+
     /** Java port of DocContainerHelper.cpp's BaseInfo. */
     private String generalInfo(Container c, String appRefName, int rootLevel) {
         Table tbl = new Table("containerGeneral", "TblObjectList");
         tbl.addColumn(30, "Property");
         tbl.addColumn(70, "Value");
+        int overlayType = OverlaySupport.overlayType(c.getProperties());
+        if (overlayType != Constants.AR_ORIGINAL_OBJECT) {
+            tbl.addRow(new TableRow().addCellList("Customization Type", OverlaySupport.customizationTypeLabel(overlayType)));
+        }
         tbl.addRow(new TableRow().addCellList("Label", c.getLabel() == null ? WebUtil.EMPTY_VALUE : WebUtil.validate(c.getLabel())));
         tbl.addRow(new TableRow().addCellList("Description", c.getDescription() == null ? WebUtil.EMPTY_VALUE : WebUtil.validate(c.getDescription())));
         tbl.addRow(new TableRow().addCellList("Permissions", permissionList(c, appRefName, rootLevel)));
@@ -558,7 +599,7 @@ public final class ContainerDetailPage {
                     srvObj = URLLink.to(name, Naming.menuDetail(name, false), ImageTag.Id.Menu, rootLevel).toHtml();
                 } else if (t == ReferenceType.IMAGE.toInt()) {
                     srvType = "Image";
-                    srvObj = URLLink.to(name, Naming.imageDetail(name), ImageTag.Id.Image, rootLevel).toHtml();
+                    srvObj = URLLink.to(name, Naming.imageDetail(name, false), ImageTag.Id.Image, rootLevel).toHtml();
                     // Java port of DocPacklistDetails.cpp's ARREF_IMAGE case's image.AddReference() -
                     // feeds ImageDetailPage's "Workflow Reference" section, same side-effect pattern
                     // as workflowIndex above.

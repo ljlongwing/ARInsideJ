@@ -63,7 +63,7 @@ public final class EscalationOverviewPage {
                 String link = URLLink.relativeUrl(page.rootLevel(), detail);
 
                 TableRow row = new TableRow();
-                row.addCell(URLLink.to(name, detail, ImageTag.Id.Escalation, page.rootLevel()).toHtml());
+                row.addCell(URLLink.to(name, detail, new ImageTag(ImageTag.Id.Escalation, page.rootLevel(), OverlaySupport.overlayType(esc.getProperties())), page.rootLevel()).toHtml());
                 row.addCell(new TableCell(AREnumLabels.objectEnable(esc.isEnable()), esc.isEnable() ? "" : "objStatusDisabled"));
                 row.addCell(executeOn);
                 row.addCell(new TableCell(ifCount));

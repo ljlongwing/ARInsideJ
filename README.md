@@ -11,6 +11,20 @@ This port exists because the C API ARInside's C++ build depends on hasn't been u
 9.1.0, and several bulk calls fail against modern (21+) AR servers, requiring workarounds. The Java
 API is still actively maintained and doesn't have that problem.
 
+## Download
+
+Don't want to build it yourself? Grab `arinsidej.jar` from the
+[latest release](https://github.com/ljlongwing/ARInsideJ/releases/latest) - the proprietary
+`arapi`/`arlogger` jars (see "Requirements" below) are already bundled in, so it runs standalone
+with no extra setup:
+
+```
+java -jar arinsidej.jar -i settings.ini -l Demo -p pass -s myserver
+```
+
+The "Requirements" and "Building" sections below are only needed if you want to build from source
+instead.
+
 ## Requirements
 
 * **JDK 17+** to build. Verified against JDK 25.

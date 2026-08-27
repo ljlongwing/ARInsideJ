@@ -409,7 +409,9 @@ public final class Main {
                 // instance's own repo, so every call in this one pass is a real live query.
                 WorkflowRepository workflowLive = new WorkflowRepository(client, blackList);
                 ActiveLinkDetailPage alLivePage = new ActiveLinkDetailPage(workflowLive, appConfig, serverOverlayMode, globalFields, fieldRefs, missingFieldRefs, knownUserNames, appIndex, containerRefs, schemaRefs, roleIndex, earlyGroupsById);
-                documentOverlayBaseLayers(client, "active link", workflowLive::listActiveLinkNames, alLivePage::render);
+                documentOverlayBaseLayers(client, "active link", workflowLive::listActiveLinkNames, alLivePage::render,
+                    workflowLive::getActiveLink,
+                    (name, base) -> alLivePage.render(name, workflowLive.getActiveLink(name), base));
                 new ActiveLinkActionPage(workflow, appConfig, serverOverlayMode).render();
 
                 // Built here, before filters are documented, so FilterDetailPage's reverse
@@ -436,7 +438,9 @@ public final class Main {
                     documentEachWriteOnly("filter detail", filterNames, writes, filterPage::render);
                 }
                 FilterDetailPage filterLivePage = new FilterDetailPage(workflowLive, appConfig, serverOverlayMode, globalFields, fieldRefs, missingFieldRefs, knownUserNames, appIndex, containerRefs, filterErrorHandlers, schemaRefs);
-                documentOverlayBaseLayers(client, "filter", workflowLive::listFilterNames, filterLivePage::render);
+                documentOverlayBaseLayers(client, "filter", workflowLive::listFilterNames, filterLivePage::render,
+                    workflowLive::getFilter,
+                    (name, base) -> filterLivePage.render(name, workflowLive.getFilter(name), base));
                 new FilterActionPage(workflow, appConfig, serverOverlayMode).render();
                 new FilterErrorHandlersPage(workflow, appConfig, serverOverlayMode, filterErrorHandlers).render();
 
@@ -455,7 +459,9 @@ public final class Main {
                     documentEachWriteOnly("escalation detail", escalNames, writes, escalPage::render);
                 }
                 EscalationDetailPage escalLivePage = new EscalationDetailPage(workflowLive, appConfig, serverOverlayMode, globalFields, fieldRefs, missingFieldRefs, knownUserNames, appIndex, containerRefs, schemaRefs);
-                documentOverlayBaseLayers(client, "escalation", workflowLive::listEscalationNames, escalLivePage::render);
+                documentOverlayBaseLayers(client, "escalation", workflowLive::listEscalationNames, escalLivePage::render,
+                    workflowLive::getEscalation,
+                    (name, base) -> escalLivePage.render(name, workflowLive.getEscalation(name), base));
                 new EscalationActionPage(workflow, appConfig, serverOverlayMode).render();
 
                 // Associations have no file-mode/XML equivalent - see AssociationSource's javadoc -
@@ -499,7 +505,9 @@ public final class Main {
                 // listFormNames()/getForm().
                 SchemaRepository schemasLive = new SchemaRepository(client, blackList);
                 SchemaDetailPage schemaLivePage = new SchemaDetailPage(schemasLive, appConfig, workflowIndex, serverOverlayMode, fieldRefs, missingFieldRefs, globalFields, joinFields, schemaTypes, imageRefs, knownUserNames, schemaRefs, containerRefs, appIndex, roleIndex, earlyGroupsById, schemaDbInfo);
-                documentOverlayBaseLayers(client, "form", schemasLive::listFormNames, schemaLivePage::render);
+                documentOverlayBaseLayers(client, "form", schemasLive::listFormNames, schemaLivePage::render,
+                    name -> schemaLivePage.fetchBase(schemasLive, name),
+                    (name, base) -> schemaLivePage.render(schemaLivePage.fetchWithDiff(schemasLive, name, base)));
 
                 System.out.println("Indexing group/role permission cross-references (scan/ pass)...");
                 PermissionIndex permIndex = reads != null
@@ -530,6 +538,13 @@ public final class Main {
                 } else {
                     documentEachWriteOnly("menu detail", menuNames, writes, menuPage::render);
                 }
+                // Reuses workflowLive (the cache-less repo already built above for AL/Filter/
+                // Escalation's own base-layer passes - see that comment) rather than a fresh
+                // WorkflowRepository, for the identical staleness reason.
+                MenuDetailPage menuLivePage = new MenuDetailPage(workflowLive, appConfig, serverOverlayMode, knownUserNames, workflowIndex, globalFields, menuAttachments, containers, appIndex, containerRefs, fieldRefs, missingFieldRefs);
+                documentOverlayBaseLayers(client, "menu", workflowLive::listMenuNames, menuLivePage::render,
+                    workflowLive::getMenu,
+                    (name, base) -> menuLivePage.render(menuLivePage.fetchWithDiff(workflowLive, name, base)));
 
                 // Built here, just before container documentation - only consumed by ContainerDetailPage's
                 // Application Content section, so (unlike AppMembershipIndex/ContainerReferenceIndex) it
@@ -545,11 +560,11 @@ public final class Main {
                     ? GuideCallIndex.build(workflow, reads, c -> new WorkflowRepository(c, blForIndexes, workflowCacheForIndexes))
                     : GuideCallIndex.build(workflow);
 
-                int alGuideCount = documentContainerType(containers, appConfig, Constants.ARCON_GUIDE, "Active Link Guides", ImageTag.Id.ActiveLinkGuide, serverOverlayMode, knownUserNames, workflowIndex, imageRefs, globalFields, appIndex, schemaWorkflow, guideCalls, containerRefs, roleIndex, earlyGroupsById, reads, writes, blackList, scopeFilter);
-                int applicationCount = documentContainerType(containers, appConfig, Constants.ARCON_APP, "Applications", ImageTag.Id.Application, serverOverlayMode, knownUserNames, workflowIndex, imageRefs, globalFields, appIndex, schemaWorkflow, guideCalls, containerRefs, roleIndex, earlyGroupsById, reads, writes, blackList, scopeFilter);
-                int packListCount = documentContainerType(containers, appConfig, Constants.ARCON_PACK, "Packing Lists", ImageTag.Id.PackingList, serverOverlayMode, knownUserNames, workflowIndex, imageRefs, globalFields, appIndex, schemaWorkflow, guideCalls, containerRefs, roleIndex, earlyGroupsById, reads, writes, blackList, scopeFilter);
-                int filterGuideCount = documentContainerType(containers, appConfig, Constants.ARCON_FILTER_GUIDE, "Filter Guides", ImageTag.Id.FilterGuide, serverOverlayMode, knownUserNames, workflowIndex, imageRefs, globalFields, appIndex, schemaWorkflow, guideCalls, containerRefs, roleIndex, earlyGroupsById, reads, writes, blackList, scopeFilter);
-                int webServiceCount = documentContainerType(containers, appConfig, Constants.ARCON_WEBSERVICE, "Web Services", ImageTag.Id.Webservice, serverOverlayMode, knownUserNames, workflowIndex, imageRefs, globalFields, appIndex, schemaWorkflow, guideCalls, containerRefs, roleIndex, earlyGroupsById, reads, writes, blackList, scopeFilter);
+                int alGuideCount = documentContainerType(client, containers, appConfig, Constants.ARCON_GUIDE, "Active Link Guides", ImageTag.Id.ActiveLinkGuide, serverOverlayMode, knownUserNames, workflowIndex, imageRefs, globalFields, appIndex, schemaWorkflow, guideCalls, containerRefs, roleIndex, earlyGroupsById, reads, writes, blackList, scopeFilter);
+                int applicationCount = documentContainerType(client, containers, appConfig, Constants.ARCON_APP, "Applications", ImageTag.Id.Application, serverOverlayMode, knownUserNames, workflowIndex, imageRefs, globalFields, appIndex, schemaWorkflow, guideCalls, containerRefs, roleIndex, earlyGroupsById, reads, writes, blackList, scopeFilter);
+                int packListCount = documentContainerType(client, containers, appConfig, Constants.ARCON_PACK, "Packing Lists", ImageTag.Id.PackingList, serverOverlayMode, knownUserNames, workflowIndex, imageRefs, globalFields, appIndex, schemaWorkflow, guideCalls, containerRefs, roleIndex, earlyGroupsById, reads, writes, blackList, scopeFilter);
+                int filterGuideCount = documentContainerType(client, containers, appConfig, Constants.ARCON_FILTER_GUIDE, "Filter Guides", ImageTag.Id.FilterGuide, serverOverlayMode, knownUserNames, workflowIndex, imageRefs, globalFields, appIndex, schemaWorkflow, guideCalls, containerRefs, roleIndex, earlyGroupsById, reads, writes, blackList, scopeFilter);
+                int webServiceCount = documentContainerType(client, containers, appConfig, Constants.ARCON_WEBSERVICE, "Web Services", ImageTag.Id.Webservice, serverOverlayMode, knownUserNames, workflowIndex, imageRefs, globalFields, appIndex, schemaWorkflow, guideCalls, containerRefs, roleIndex, earlyGroupsById, reads, writes, blackList, scopeFilter);
 
                 System.out.println("Documenting validator/analyzer/custom-workflow pages...");
                 new ValidatorPage(appConfig, permIndex, missingFieldRefs, globalFields).render();
@@ -620,7 +635,7 @@ public final class Main {
                 System.out.println("Documenting images...");
                 int imageCount = new ImageOverviewPage(images, appConfig, serverOverlayMode).render();
                 System.out.println(imageCount + " images listed.");
-                ImageDetailPage imagePage = new ImageDetailPage(images, appConfig, workflowIndex, imageRefs, knownUserNames);
+                ImageDetailPage imagePage = new ImageDetailPage(images, appConfig, workflowIndex, imageRefs, knownUserNames, serverOverlayMode);
                 if (reads != null) {
                     documentEachParallel("image detail", images.listImageNames(), reads, writes,
                         (c, name) -> new Named<>(name, c.raw().getImage(name)),
@@ -628,6 +643,13 @@ public final class Main {
                 } else {
                     documentEachWriteOnly("image detail", images.listImageNames(), writes, imagePage::render);
                 }
+                // ImageSource has no bulk-cache variant - images is already safe to reuse directly
+                // for the base-layer/diff pass. No overlaid Image existed on this feature's test
+                // server (see ImageDetailPage.diffAgainstBase's javadoc) - wired up the same way as
+                // the proven types, but not live-verified.
+                documentOverlayBaseLayers(client, "image", images::listImageNames, imagePage::render,
+                    images::getImage,
+                    (name, base) -> imagePage.render(name, images.getImage(name), base));
 
                 System.out.println("Writing index page...");
                 long documentationSeconds = java.time.Duration.ofNanos(System.nanoTime() - pipelineStart).toSeconds() - loadSeconds;
@@ -661,7 +683,7 @@ public final class Main {
         }
     }
 
-    private static int documentContainerType(ContainerSource repo, AppConfig appConfig, int type, String title, ImageTag.Id icon, int serverOverlayMode, Set<String> knownUserNames, WorkflowReferenceIndex workflowIndex, ImageReferenceIndex imageRefs, GlobalFieldIndex globalFields, AppMembershipIndex appIndex, SchemaWorkflowIndex schemaWorkflow, GuideCallIndex guideCalls, ContainerReferenceIndex containerRefs, RoleIndex roleIndex, Map<Integer, GroupRecord> groupsById, ReadPool reads, WritePool writes, BlackList blackList, ScopeFilter scopeFilter) throws ARException {
+    private static int documentContainerType(ArClient client, ContainerSource repo, AppConfig appConfig, int type, String title, ImageTag.Id icon, int serverOverlayMode, Set<String> knownUserNames, WorkflowReferenceIndex workflowIndex, ImageReferenceIndex imageRefs, GlobalFieldIndex globalFields, AppMembershipIndex appIndex, SchemaWorkflowIndex schemaWorkflow, GuideCallIndex guideCalls, ContainerReferenceIndex containerRefs, RoleIndex roleIndex, Map<Integer, GroupRecord> groupsById, ReadPool reads, WritePool writes, BlackList blackList, ScopeFilter scopeFilter) throws ARException {
         System.out.println("Documenting " + title + "...");
         int count = new ContainerOverviewPage(repo, appConfig, type, title, icon, serverOverlayMode, guideCalls).render();
         System.out.println(count + " " + title.toLowerCase() + " listed.");
@@ -675,6 +697,11 @@ public final class Main {
         } else {
             documentEachWriteOnly(title.toLowerCase() + " detail", containerNames, writes, detail::render);
         }
+        // ContainerRepository has no bulk-cache variant (unlike Schema/Workflow) - repo is already
+        // safe to reuse directly for the base-layer/diff pass, no separate cache-less instance needed.
+        documentOverlayBaseLayers(client, title.toLowerCase(), () -> repo.listContainerNames(type), detail::render,
+            repo::getContainer,
+            (name, base) -> detail.render(name, repo.getContainer(name), base));
         return count;
     }
 
@@ -822,14 +849,54 @@ public final class Main {
      * active one - no changes needed in any Doc*DetailPage class for this to work.
      */
     private static void documentOverlayBaseLayers(ArClient client, String label, OverlaySupport.NameLister lister, DetailRenderer renderer) throws ARException {
+        documentOverlayBaseLayers(client, label, lister, renderer, null, null);
+    }
+
+    @FunctionalInterface
+    private interface BaseFetcher<T> {
+        T fetch(String name) throws ARException;
+    }
+
+    @FunctionalInterface
+    private interface DiffRenderer<T> {
+        void render(String name, T base) throws ARException;
+    }
+
+    /**
+     * Same base-layer discovery/toggle as the 4-arg overload, plus (when {@code baseFetcher}/
+     * {@code diffRenderer} are non-null) a third pass: fetch each base-layer object's data (still
+     * under "-2", right after the base-layer page render so both happen in the same toggle window),
+     * then - back in default/overlay mode - re-render the PLAIN-name page a third time with that
+     * base data attached, overwriting the normal first pass's output with the diff-annotated
+     * version. See {@link arinside.doc.OverlayDiff}'s class javadoc for why this is a real
+     * base-vs-overlay comparison rather than trusting AR System's own granular-overlay bookkeeping.
+     */
+    private static <T> void documentOverlayBaseLayers(ArClient client, String label, OverlaySupport.NameLister lister,
+                                                        DetailRenderer renderer, BaseFetcher<T> baseFetcher, DiffRenderer<T> diffRenderer) throws ARException {
         if (client == null) return; // connectionless XML file mode - nothing to toggle overlay-group discovery against, see AppConfig.connectionless's javadoc
         List<String> baseNames = OverlaySupport.discoverOverlayBaseNames(client, lister);
         if (baseNames.isEmpty()) return;
+        Map<String, T> baseObjects = baseFetcher != null ? new HashMap<>() : null;
         client.raw().setOverlayGroup("-2");
         try {
             documentEach(label + " overlay base layer", baseNames, renderer);
+            if (baseFetcher != null) {
+                for (String name : baseNames) {
+                    try {
+                        baseObjects.put(name, baseFetcher.fetch(name));
+                    } catch (Exception e) {
+                        System.out.println("EXCEPTION " + label + " overlay base fetch of '" + name + "': " + rootMessage(e));
+                    }
+                }
+            }
         } finally {
             client.raw().setOverlayGroup(null);
+        }
+        if (diffRenderer != null) {
+            documentEach(label + " overlay diff", baseNames, name -> {
+                T base = baseObjects.get(name);
+                if (base != null) diffRenderer.render(name, base);
+            });
         }
     }
 }

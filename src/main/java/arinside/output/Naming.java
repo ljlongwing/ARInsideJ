@@ -294,13 +294,13 @@ public final class Naming {
         return new PagePath(DIR_IMAGE, FILE_INDEX, 1);
     }
 
-    public static PagePath imageDetail(String name) {
-        return new PagePath(DIR_IMAGE, fileNameOfObjectName(name, false), 1);
+    public static PagePath imageDetail(String name, boolean isOverlaid) {
+        return new PagePath(DIR_IMAGE, fileNameOfObjectName(name, isOverlaid), 1);
     }
 
     /** Matches PAGE_IMAGE_DATA - the raw image bytes are a flat sibling of the image's own .htm page, e.g. "image/Active.png" next to "image/Active.htm". */
-    public static String imageDataFileName(String name, String extension) {
-        return fileNameOfObjectName(name, false) + "." + extension;
+    public static String imageDataFileName(String name, boolean isOverlaid, String extension) {
+        return fileNameOfObjectName(name, isOverlaid) + "." + extension;
     }
 
     /**

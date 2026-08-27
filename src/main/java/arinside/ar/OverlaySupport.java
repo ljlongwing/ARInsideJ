@@ -114,9 +114,27 @@ public final class OverlaySupport {
         return false;
     }
 
-    /** Java port of core/AREnum.cpp's CAREnum::GetOverlayType - used by CustomWorkflowPage's "Type" column. */
+    /** Java port of core/AREnum.cpp's CAREnum::GetOverlayType - used by CustomWorkflowPage's "Type" column. Kept verbatim (not touched by the "Customization Type" feature below) since it's an already-verified C++-parity port for that specific existing page. */
     public static String overlayTypeLabel(int overlayType) {
         if (overlayType == Constants.AR_OVERLAID_OBJECT) return "Original";
+        if (overlayType == Constants.AR_OVERLAY_OBJECT) return "Overlay";
+        if (overlayType == Constants.AR_CUSTOM_OBJECT) return "Custom";
+        return "";
+    }
+
+    /**
+     * Real BMC Dev Studio wording for this same overlay-type value (its own "Customization Type"
+     * column: Unmodified/Overlay/Custom) - confirmed by the user directly, distinct from
+     * {@link #overlayTypeLabel}'s C++-ported "Original" wording. Used by the "Changes from Base
+     * Layer" feature's own per-object-type "Customization Type" row, which has no C++ precedent to
+     * match, so it uses the terminology AR System administrators actually see day to day instead.
+     * AR_OVERLAID_OBJECT (the hidden base layer, only ever fetched via the "-2" mechanism) maps to
+     * "Unmodified" here rather than "Original" - accurate on its own terms (the base layer itself
+     * has nothing customized about IT; the customization lives in the separate overlay layer) and
+     * matches what Dev Studio would call it if it could show a base layer at all.
+     */
+    public static String customizationTypeLabel(int overlayType) {
+        if (overlayType == Constants.AR_OVERLAID_OBJECT) return "Unmodified";
         if (overlayType == Constants.AR_OVERLAY_OBJECT) return "Overlay";
         if (overlayType == Constants.AR_CUSTOM_OBJECT) return "Custom";
         return "";
