@@ -1,0 +1,63 @@
+# Builds the ARInsideJ container image and pushes it to GitHub Container Registry.
+#
+# Source can't be built in CI (the proprietary BMC arapi/arlogger jars are not public), so this
+# does NOT compile anything - it takes the self-contained `arinsidej.jar` that each GitHub Release
+# already ships as a bare asset, wraps it with the repo Dockerfile, and publishes:
+#   ghcr.io/<owner>/arinsidej:<release-tag>   and   :latest
+#
+# Trigger: automatically when a Release is published, or manually (workflow_dispatch) against the
+# latest release.
+
+name: docker-publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout (for the Dockerfile)
+        uses: actions/checkout@v4
+
+      - name: Download arinsidej.jar from the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          mkdir -p target
+          # release event -> that tag; manual run -> newest release
+          gh release download ${TAG:+"$TAG"} \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'arinsidej.jar' \
+            --output target/arinsidej.jar
+          ls -l target/arinsidej.jar
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/arinsidej
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
