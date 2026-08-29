@@ -564,6 +564,22 @@ tr.overlayRemoved, div.overlayRemoved { background: var(--bad-bg); color: var(--
   padding: var(--sp-3) var(--sp-4);
   margin-bottom: var(--sp-4);
 }
+
+/* Provenance card on the home page (DocSummaryInfo.metaBlock) */
+.ari-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--sp-2) var(--sp-4);
+  margin: 0 0 var(--sp-5);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  border-radius: var(--radius);
+}
+.ari-meta > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ari-meta dt { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--fg-muted); }
+.ari-meta dd { margin: 0; overflow-wrap: anywhere; }
+.ari-meta code { background: var(--code-bg); border-radius: 3px; padding: 1px 4px; font-size: .9em; }
 #ovlNote {
   text-align: center;
   margin: var(--sp-3) 0;

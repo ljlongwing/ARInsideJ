@@ -23,7 +23,7 @@ public class CommandLineArgs {
     private String diffBaseline = "";
     private String diffCurrent = "";
 
-    private boolean serverSet, outputFolderSet, usernameSet, passwordSet, tcpPortSet, rpcPortSet, scopeSet, diffSet, incrementalSet;
+    private boolean serverSet, outputFolderSet, usernameSet, passwordSet, tcpPortSet, rpcPortSet, scopeSet, diffSet, incrementalSet, openSet;
     private boolean helpRequested;
 
     public static CommandLineArgs parse(String[] args) {
@@ -49,6 +49,7 @@ public class CommandLineArgs {
                     result.diffSet = true;
                 }
                 case "--incremental" -> result.incrementalSet = true;
+                case "--open" -> result.openSet = true;
                 case "-v", "--verbose" -> AppConfig.verboseMode = true;
                 case "-h", "--help" -> result.helpRequested = true;
                 default -> throw new IllegalArgumentException("error: unknown argument '" + arg + "'");
@@ -85,6 +86,8 @@ public class CommandLineArgs {
                                        to the output folder instead of the normal documentation
                   --incremental        Skip the whole run if nothing changed since the last one
                                        (writes/reads .arinside-state in the output folder)
+                  --open               Open the generated index page in the default browser
+                                       when the run finishes
               -v, --verbose            Verbose output
               -h, --help                Show this help
             """);
@@ -110,6 +113,7 @@ public class CommandLineArgs {
     public boolean isScopeSet() { return scopeSet; }
     public boolean isDiffSet() { return diffSet; }
     public boolean isIncrementalSet() { return incrementalSet; }
+    public boolean isOpenSet() { return openSet; }
     public String getDiffBaseline() { return diffBaseline; }
     public String getDiffCurrent() { return diffCurrent; }
 }

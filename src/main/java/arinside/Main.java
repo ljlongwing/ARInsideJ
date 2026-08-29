@@ -189,6 +189,7 @@ public final class Main {
                 System.exit(1);
             }
             System.out.println(Version.PRODUCT_NAME + " diff run complete.");
+            if (appConfig.openWhenDone) openInBrowser(java.nio.file.Path.of(appConfig.targetFolder, "diff", "index." + arinside.output.WebUtil.webPageSuffix()));
             return;
         }
 
@@ -755,6 +756,29 @@ public final class Main {
         System.out.println(WebPage.filesCreated.get() + " files created.");
         System.out.println(arinside.util.Timing.summary(System.nanoTime() - pipelineStart));
         System.out.println(Version.PRODUCT_NAME + " run complete.");
+
+        if (appConfig.openWhenDone) {
+            openInBrowser(java.nio.file.Path.of(appConfig.targetFolder, Naming.mainHome().fullFileName()));
+        }
+    }
+
+    /**
+     * {@code --open}: best-effort "show me the result now". Falls back to just printing the
+     * {@code file://} URL when there's no desktop (headless / CI / SSH) - never fails the run.
+     */
+    private static void openInBrowser(java.nio.file.Path indexPage) {
+        java.net.URI uri = indexPage.toUri();
+        try {
+            if (!java.awt.GraphicsEnvironment.isHeadless()
+                    && java.awt.Desktop.isDesktopSupported()
+                    && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
+                java.awt.Desktop.getDesktop().browse(uri);
+                return;
+            }
+        } catch (Exception e) {
+            if (AppConfig.verboseMode) System.out.println("--open: " + e);
+        }
+        System.out.println("Open: " + uri);
     }
 
     /** Java port of CARInside::WriteHTAccess - lets an Apache server serve the .htm.gz files with the right Content-Encoding. */

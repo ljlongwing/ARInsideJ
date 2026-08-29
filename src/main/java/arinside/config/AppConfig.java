@@ -114,6 +114,9 @@ public class AppConfig {
      */
     public boolean incrementalRuns = false;
 
+    /** {@code --open}: launch the generated index page in the default browser when the run finishes. CLI only (a no-op on a headless/CI host). */
+    public boolean openWhenDone = false;
+
     /**
      * Ported from AppConfig::Validate. Applies CLI overrides, checks required fields for
      * server mode, guards against a target folder pointing at the filesystem root, and
@@ -200,6 +203,7 @@ public class AppConfig {
             diffCurrent = cmdLine.getDiffCurrent();
         }
         if (cmdLine.isIncrementalSet()) incrementalRuns = true;
+        if (cmdLine.isOpenSet()) openWhenDone = true;
         slowObjectLoading = cmdLine.isSlowObjectLoading();
     }
 
