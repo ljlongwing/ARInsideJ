@@ -65,6 +65,9 @@
     return e;
   }
 
+  var REDUCE_MOTION = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function scrollBehavior() { return REDUCE_MOTION ? "auto" : "smooth"; }
+
   function iconSvg(name, cls) {
     var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("class", cls || "ico");
@@ -117,6 +120,8 @@
     var d = document.querySelector(".ari-theme-dark"), l = document.querySelector(".ari-theme-light");
     if (d) d.hidden = dark;
     if (l) l.hidden = !dark;
+    var btn = document.getElementById("ari-theme");
+    if (btn) btn.setAttribute("aria-label", dark ? "Switch to light theme" : "Switch to dark theme");
   }
 
   /* ---------- sidebar nav ---------- */
@@ -128,7 +133,7 @@
         var a = el("a", { href: ROOT + n.href });
         a.appendChild(iconSvg(n.icon || "document"));
         a.appendChild(document.createTextNode(n.label));
-        if (navMatch(here, n.href)) a.classList.add("active");
+        if (navMatch(here, n.href)) { a.classList.add("active"); a.setAttribute("aria-current", "page"); }
         li.appendChild(a);
       } else {
         var span = el("span", { class: "nav-group-label" });
@@ -148,13 +153,19 @@
     host.appendChild(buildNavList(window.ARI_NAV, here));
 
     var toggle = document.getElementById("ari-navtoggle");
-    if (toggle) toggle.addEventListener("click", function () {
-      document.body.classList.toggle("nav-open");
-    });
+    function syncToggle() {
+      if (toggle) toggle.setAttribute("aria-expanded", document.body.classList.contains("nav-open") ? "true" : "false");
+    }
+    if (toggle) {
+      toggle.setAttribute("aria-controls", "ari-nav");
+      toggle.addEventListener("click", function () { document.body.classList.toggle("nav-open"); syncToggle(); });
+    }
+    syncToggle();
     document.addEventListener("click", function (e) {
       if (!document.body.classList.contains("nav-open")) return;
       if (e.target.closest && (e.target.closest("#ari-nav") || e.target.closest("#ari-navtoggle"))) return;
       document.body.classList.remove("nav-open");
+      syncToggle();
     });
   }
 
@@ -198,32 +209,46 @@
   function initPalette() {
     var trigger = document.getElementById("ari-search");
     var modal = el("div", { class: "ari-palette", id: "ari-palette", hidden: "" });
-    var panel = el("div", { class: "ari-palette-panel", role: "dialog", "aria-label": "Command palette" });
-    var input = el("input", { type: "text", class: "ari-palette-input", placeholder: "Jump to an object, page, or action…", autocomplete: "off", spellcheck: "false", "aria-label": "Command palette" });
-    var list = el("div", { class: "ari-palette-list", role: "listbox" });
+    var panel = el("div", { class: "ari-palette-panel", role: "dialog", "aria-modal": "true", "aria-label": "Command palette" });
+    var input = el("input", { type: "text", class: "ari-palette-input", placeholder: "Jump to an object, page, or action…",
+      autocomplete: "off", spellcheck: "false", "aria-label": "Search objects, pages and actions",
+      role: "combobox", "aria-expanded": "true", "aria-autocomplete": "list", "aria-controls": "ari-palette-list" });
+    var list = el("div", { class: "ari-palette-list", id: "ari-palette-list", role: "listbox", "aria-label": "Results" });
     panel.appendChild(input); panel.appendChild(list);
     modal.appendChild(panel);
     document.body.appendChild(modal);
+    var lastFocus = null;
 
     var NAV = flattenNav(window.ARI_NAV, [], "");
     var ACTIONS = [
       { kind: "action", label: "Toggle light / dark theme", icon: "visible", run: function () { var b = document.getElementById("ari-theme"); if (b) b.click(); } },
       { kind: "action", label: "Toggle sidebar", icon: "menu", run: function () { document.body.classList.toggle("nav-open"); } },
-      { kind: "action", label: "Scroll to top", icon: "up", run: function () { window.scrollTo({ top: 0, behavior: "smooth" }); } }
+      { kind: "action", label: "Scroll to top", icon: "up", run: function () { window.scrollTo({ top: 0, behavior: scrollBehavior() }); } }
     ];
     var objects = null, rows = [], cur = -1, timer;
 
     function open() {
+      lastFocus = document.activeElement;
       modal.hidden = false;
       input.value = ""; input.focus(); render();
       if (!objects) loadSearchIndex().then(function (d) { objects = d; if (!modal.hidden) render(); });
     }
-    function closeP() { modal.hidden = true; }
+    function closeP() {
+      modal.hidden = true;
+      if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
     function activate(r) { closeP(); if (r.kind === "action") r.run(); else location.href = ROOT + r.href; }
     function setCur(i) {
-      if (rows[cur]) rows[cur].classList.remove("active");
+      if (rows[cur]) { rows[cur].classList.remove("active"); rows[cur].setAttribute("aria-selected", "false"); }
       cur = Math.max(0, Math.min(i, rows.length - 1));
-      if (rows[cur]) { rows[cur].classList.add("active"); rows[cur].scrollIntoView({ block: "nearest" }); }
+      if (rows[cur]) {
+        rows[cur].classList.add("active");
+        rows[cur].setAttribute("aria-selected", "true");
+        rows[cur].scrollIntoView({ block: "nearest" });
+        input.setAttribute("aria-activedescendant", rows[cur].id);
+      } else {
+        input.removeAttribute("aria-activedescendant");
+      }
     }
     function render() {
       var q = input.value.trim(), scored = [];
@@ -240,9 +265,9 @@
       }
       list.innerHTML = ""; rows = []; cur = -1;
       if (!scored.length) { list.appendChild(el("div", { class: "ari-palette-empty", text: objects || !q ? "No matches" : "Loading…" })); return; }
-      scored.forEach(function (x) {
+      scored.forEach(function (x, idx) {
         var r = x.r;
-        var item = el("div", { class: "ari-palette-item", role: "option" });
+        var item = el("div", { class: "ari-palette-item", role: "option", id: "ari-palette-opt-" + idx, "aria-selected": "false" });
         item.appendChild(iconSvg(r.icon || "document"));
         item.appendChild(el("span", { class: "ari-palette-label", text: r.label }));
         var tag = r.kind === "nav" ? (r.sub || "page") : r.kind === "action" ? "action" : "";
@@ -262,6 +287,8 @@
       else if (e.key === "Escape") { e.preventDefault(); closeP(); }
     });
     modal.addEventListener("click", function (e) { if (e.target === modal) closeP(); });
+    // focus trap: the input is the only tabbable node inside the dialog
+    panel.addEventListener("keydown", function (e) { if (e.key === "Tab") { e.preventDefault(); input.focus(); } });
     if (trigger) trigger.addEventListener("click", open);
     document.addEventListener("keydown", function (e) {
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) { e.preventDefault(); modal.hidden ? open() : closeP(); return; }
@@ -292,8 +319,13 @@
     head.dataset.sortReady = "1";
     Array.prototype.forEach.call(head.cells, function (th, idx) {
       th.classList.add("sortheader");
+      th.tabIndex = 0;
+      if (!th.getAttribute("title")) th.setAttribute("title", "Sort by this column");
       if (!th.querySelector(".sortarrow")) th.appendChild(el("span", { class: "sortarrow" }));
       th.addEventListener("click", function () { sortBy(table, idx, th); });
+      th.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") { e.preventDefault(); sortBy(table, idx, th); }
+      });
     });
   }
   function sortBy(table, idx, th) {

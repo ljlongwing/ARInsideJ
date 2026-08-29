@@ -78,7 +78,11 @@
     this.max = 250;                 // rows rendered per chunk
     this.data = window[cfg.key] || [];
     this.checkboxes = cfg.typeFilter ? Array.prototype.slice.call(document.querySelectorAll(cfg.typeFilter.selector + ' input[type="checkbox"]')) : [];
-    if (this.count) this.count.classList.add("ari-liststatus");
+    if (this.count) {
+      this.count.classList.add("ari-liststatus");
+      this.count.setAttribute("role", "status");
+      this.count.setAttribute("aria-live", "polite");
+    }
     this.reset();
   }
   FilterableTable.prototype.reset = function () { this.lastIndex = 0; this.rendered = 0; this.totalMatches = 0; };

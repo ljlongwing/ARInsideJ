@@ -59,6 +59,7 @@
     var btn = document.getElementById("execFieldFilter");
     var count = document.getElementById("fieldListFilterResultCount");
     if (!list || !table || !input) return;
+    if (count) { count.setAttribute("role", "status"); count.setAttribute("aria-live", "polite"); }
 
     var headCells = table.tHead ? table.tHead.rows[0].cells : [];
     var hasRealField = headCells[4] && /^Real Field/.test(headCells[4].textContent.trim());
@@ -133,6 +134,7 @@
     var input = document.getElementById("workflowFilter");
     var countSpan = document.getElementById("workflowFilterResult");
     if (!list || !table) return;
+    if (countSpan) { countSpan.setAttribute("role", "status"); countSpan.setAttribute("aria-live", "polite"); }
     wfInit = true;
     var boxes = Array.prototype.slice.call(document.querySelectorAll('#referenceMultiFilter input[type="checkbox"]'));
 

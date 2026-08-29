@@ -149,6 +149,7 @@ public final class WebPage {
         String root = rootPath();
         w.write(bodyClass.isEmpty() ? "<body>\n" : "<body class=\"" + bodyClass + "\">\n");
         w.write("<a id=\"top\"></a>\n");
+        w.write("<a class=\"ari-skip\" href=\"#ari-main\">Skip to main content</a>\n");
         w.write("<div class=\"ari-shell\">\n");
 
         // --- header ---
@@ -185,7 +186,7 @@ public final class WebPage {
         w.write("<nav id=\"ari-nav\" class=\"ari-nav\" aria-label=\"Site\"></nav>\n");
 
         // --- main ---
-        w.write("<main class=\"ari-main\"><div class=\"ari-main-inner\">\n");
+        w.write("<main id=\"ari-main\" class=\"ari-main\" tabindex=\"-1\"><div class=\"ari-main-inner\">\n");
     }
 
     private void contentClose(Writer w) throws IOException {
