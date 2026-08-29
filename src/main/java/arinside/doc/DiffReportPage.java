@@ -26,9 +26,22 @@ public final class DiffReportPage {
 
     private static final QualificationRenderer.FieldReferenceSink NOOP = (f, id, exists, detail) -> {};
 
+    /**
+     * Above this many changes the per-object before/after pages are skipped (the summary table +
+     * data/diff.json still cover everything). A diff that large is almost always two unrelated
+     * snapshots or a server compared against a tiny export - writing 100k+ HTML files serially is
+     * the bottleneck, not the comparison.
+     */
+    static final int MAX_DETAIL_PAGES = 5000;
+
     public static void write(AppConfig cfg, List<Change> changes, RepoSet baseline, RepoSet current) {
         writeNav(cfg);
         writeIndex(cfg, changes);
+        if (changes.size() > MAX_DETAIL_PAGES) {
+            System.out.println("Diff: " + changes.size() + " changes exceeds " + MAX_DETAIL_PAGES
+                + " - per-object pages skipped (see diff/index.htm and data/diff.json).");
+            return;
+        }
         for (Change c : changes) writeDetail(cfg, c, baseline, current);
     }
 
@@ -61,6 +74,13 @@ public final class DiffReportPage {
         sb.append("<p>Baseline: <code>").append(WebUtil.validate(cfg.diffBaseline)).append("</code><br/>Current: <code>")
             .append(WebUtil.validate(cfg.diffCurrent)).append("</code></p></div>\n");
 
+        boolean detailPages = changes.size() <= MAX_DETAIL_PAGES;
+        if (!detailPages) {
+            sb.append("<div class=\"overlaySummary\"><p>Too many changes for per-object before/after pages "
+                + "(over ").append(MAX_DETAIL_PAGES).append("); the table below and <code>data/diff.json</code> "
+                + "still list every change.</p></div>\n");
+        }
+
         Table tbl = new Table("diffList", "TblObjectList");
         tbl.addColumn(34, "Object");
         tbl.addColumn(12, "Type");
@@ -68,7 +88,7 @@ public final class DiffReportPage {
         tbl.addColumn(44, "What changed");
         for (Change c : changes) {
             String link = "../diff/" + c.typeSlug + "/" + WebUtil.docName(sanitize(c.name));
-            String obj = c.kind == Change.Kind.MODIFIED || c.kind == Change.Kind.ADDED || c.kind == Change.Kind.REMOVED
+            String obj = detailPages
                 ? "<a href=\"" + link + "\">" + WebUtil.validate(c.name) + "</a>"
                 : WebUtil.validate(c.name);
             tbl.addRow(new TableRow(cssFor(c.kind)).addCellList(
@@ -161,8 +181,12 @@ public final class DiffReportPage {
         if (wa.order != wb.order) sb.append("<p><b>Order:</b> ").append(wa.order).append(" &rarr; ").append(wb.order).append("</p>\n");
         sb.append(diffItemList("Form list", formListDiff, Function.identity()));
         if (qualifierChanged) {
-            sb.append("<h3>Run If &mdash; baseline</h3>\n").append(qualHtml(wa.qual, new QualificationRenderer(resolveA, rootLevel, gfiA, NOOP)));
-            sb.append("<h3>Run If &mdash; current</h3>\n").append(qualHtml(wb.qual, new QualificationRenderer(resolveB, rootLevel, gfiB, NOOP)));
+            String qhA = qualHtml(wa.qual, new QualificationRenderer(resolveA, rootLevel, gfiA, NOOP));
+            String qhB = qualHtml(wb.qual, new QualificationRenderer(resolveB, rootLevel, gfiB, NOOP));
+            sb.append("<h3>Run If &mdash; what changed</h3>\n<p>")
+              .append(arinside.util.TextDiff.inlineWords(qhA, qhB)).append("</p>\n");
+            sb.append("<h3>Run If &mdash; baseline</h3>\n").append(qhA);
+            sb.append("<h3>Run If &mdash; current</h3>\n").append(qhB);
         }
         if (actionsChanged) {
             @SuppressWarnings("unchecked")

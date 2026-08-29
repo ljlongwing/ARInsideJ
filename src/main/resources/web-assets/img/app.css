@@ -587,6 +587,11 @@ tr.overlayRemoved, div.overlayRemoved { background: var(--bad-bg); color: var(--
   margin-bottom: var(--sp-4);
 }
 
+/* Word-level qualifier diff in the snapshot-diff report (util/TextDiff) */
+.tokdiff { line-height: 1.9; }
+.tokdel { background: var(--bad-bg); color: var(--bad-fg); text-decoration: line-through; border-radius: 2px; padding: 0 2px; }
+.tokins { background: var(--ok-bg); color: var(--ok-fg); border-radius: 2px; padding: 0 2px; }
+
 /* Provenance card on the home page (DocSummaryInfo.metaBlock) */
 .ari-meta {
   display: grid;

@@ -117,6 +117,12 @@ public class AppConfig {
     /** {@code --open}: launch the generated index page in the default browser when the run finishes. CLI only (a no-op on a headless/CI host). */
     public boolean openWhenDone = false;
 
+    /** A diff-mode input of the literal {@code server} means "the live server from -s/-l/-p", not a file. */
+    public static boolean isServerToken(String s) { return s != null && s.trim().equalsIgnoreCase("server"); }
+    public boolean diffBaselineIsServer() { return isServerToken(diffBaseline); }
+    public boolean diffCurrentIsServer() { return isServerToken(diffCurrent); }
+    public boolean diffUsesServer() { return diffBaselineIsServer() || diffCurrentIsServer(); }
+
     /**
      * Ported from AppConfig::Validate. Applies CLI overrides, checks required fields for
      * server mode, guards against a target folder pointing at the filesystem root, and
@@ -135,11 +141,15 @@ public class AppConfig {
 
         if (diffMode) {
             if (diffBaseline.isEmpty() || diffCurrent.isEmpty()) {
-                throw new IllegalArgumentException("[ERR] Diff mode needs both a baseline and a current export (--diff <baseline> <current>, or DiffBaseline= / DiffCurrent=).");
+                throw new IllegalArgumentException("[ERR] Diff mode needs both a baseline and a current input (--diff <baseline> <current>, or DiffBaseline= / DiffCurrent=). Each may be an .xml/.def export or the literal 'server'.");
+            }
+            if (diffBaselineIsServer() && diffCurrentIsServer()) {
+                throw new IllegalArgumentException("[ERR] Diff mode cannot use 'server' for both sides - diff a file against the live server, or two files.");
             }
             for (String p : new String[]{diffBaseline, diffCurrent}) {
+                if (isServerToken(p)) continue;
                 if (!arinside.ar.FileFormatSniffer.isXmlFormat(p) && !arinside.ar.FileFormatSniffer.isDefFormat(p)) {
-                    throw new IllegalArgumentException("[ERR] Diff input is not a readable AR System .xml or .def export: " + p);
+                    throw new IllegalArgumentException("[ERR] Diff input is not a readable AR System .xml or .def export (or the literal 'server'): " + p);
                 }
             }
             if (!scope.isEmpty()) {
@@ -158,7 +168,8 @@ public class AppConfig {
             && (arinside.ar.FileFormatSniffer.isXmlFormat(objListXML) || arinside.ar.FileFormatSniffer.isDefFormat(objListXML));
 
         StringBuilder missingArgs = new StringBuilder();
-        if (!connectionless && !diffMode) {
+        // A live session is needed for a normal run, and for a diff where one side is 'server'.
+        if ((!connectionless && !diffMode) || (diffMode && diffUsesServer())) {
             if (serverName.isEmpty()) {
                 missingArgs.append("server / ServerName");
             }

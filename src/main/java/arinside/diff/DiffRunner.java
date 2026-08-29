@@ -1,5 +1,6 @@
 package arinside.diff;
 
+import arinside.ar.ArClient;
 import arinside.config.AppConfig;
 import arinside.doc.DiffReportPage;
 
@@ -19,10 +20,18 @@ public final class DiffRunner {
         System.out.println("  baseline: " + cfg.diffBaseline);
         System.out.println("  current:  " + cfg.diffCurrent);
 
-        RepoSet baseline = RepoSet.load(cfg.diffBaseline, cfg.overlaySupport);
-        RepoSet current = RepoSet.load(cfg.diffCurrent, cfg.overlaySupport);
+        try (ArClient client = cfg.diffUsesServer() ? ArClient.connect(cfg) : null) {
+            RepoSet baseline = cfg.diffBaselineIsServer()
+                ? RepoSet.loadServer(client, cfg) : RepoSet.load(cfg.diffBaseline, cfg.overlaySupport);
+            RepoSet current = cfg.diffCurrentIsServer()
+                ? RepoSet.loadServer(client, cfg) : RepoSet.load(cfg.diffCurrent, cfg.overlaySupport);
 
-        System.out.println("Comparing snapshots...");
+            System.out.println("Comparing snapshots...");
+            compare(cfg, baseline, current);
+        }
+    }
+
+    private static void compare(AppConfig cfg, RepoSet baseline, RepoSet current) throws Exception {
         List<Change> changes = new SnapshotDiff(baseline, current).run();
         changes.sort(Comparator
             .comparing((Change c) -> c.typeLabel)

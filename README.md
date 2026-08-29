@@ -268,8 +268,15 @@ management ("what did this weekend's promotion actually touch?").
 java -jar arinsidej.jar --diff old-export.xml new-export.def -o C:/tmp/change-report
 ```
 
-Both inputs are `.xml` or `.def` exports (mix is fine); no server connection is made. Equivalent
-ini keys: `DiffBaseline=` and `DiffCurrent=`. `-o` / `TargetFolder` is required.
+Each input is an `.xml` / `.def` export (mix is fine) **or the literal `server`**, meaning the
+live server from `-s`/`-l`/`-p` - so you can diff a file against the current server state:
+
+```
+java -jar arinsidej.jar -s prod -l Demo -p pass --diff last-release.def server -o C:/tmp/drift
+```
+
+Only one side may be `server`. Equivalent ini keys: `DiffBaseline=` and `DiffCurrent=`.
+`-o` / `TargetFolder` is required.
 
 Output (into the target folder):
 
@@ -278,12 +285,14 @@ Output (into the target folder):
 * `diff/<type>/<name>.htm` - one page per change. Added/removed objects show their key facts;
   modified objects show a before/after: forms get field / index / permission / sort / result-list /
   view / property changes; active links / filters / escalations get enabled / order / form-list
-  changes plus the before-and-after Run If qualification and action list.
+  changes plus the before-and-after Run If qualification (with a word-level highlight of exactly
+  which tokens changed) and action list. Above 5,000 changes the per-object pages are skipped -
+  the summary table and `data/diff.json` still list everything.
 * `data/diff.json` - the same information, machine-readable, for CI checks.
 
 Compares object *existence* for every type, and full detail for forms and workflow. Users / groups
-/ roles aren't in the export formats, so they aren't diffed. `--scope` is not supported here (a
-diff is always whole-snapshot).
+/ roles and server-vs-server diffs aren't supported yet (they need two live connections). `--scope`
+is not supported here (a diff is always whole-snapshot).
 
 ## Incremental Runs (`--incremental`)
 
