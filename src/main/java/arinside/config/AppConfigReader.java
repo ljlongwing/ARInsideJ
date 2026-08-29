@@ -60,6 +60,12 @@ public class AppConfigReader {
         cfg.compactFolder = readBool(props, "CompactFolder", false);
         cfg.gzCompression = readBool(props, "GZCompression", false);
         cfg.deleteExistingFiles = readBool(props, "DeleteExistingFiles", false);
+        cfg.searchIndex = readBool(props, "SearchIndex", true);
+        cfg.jsonOutput = readBool(props, "JsonOutput", false);
+        cfg.incrementalRuns = readBool(props, "IncrementalRuns", false);
+        cfg.diffBaseline = readString(props, "DiffBaseline", "");
+        cfg.diffCurrent = readString(props, "DiffCurrent", "");
+        if (!cfg.diffBaseline.isEmpty() && !cfg.diffCurrent.isEmpty()) cfg.diffMode = true;
         cfg.runNotes = readString(props, "RunNotes", "");
         cfg.serverName = readString(props, "ServerName", "");
         cfg.tcpPort = readInt(props, "TCPPort", 0);

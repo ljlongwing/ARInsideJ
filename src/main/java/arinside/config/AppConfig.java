@@ -51,6 +51,16 @@ public class AppConfig {
     public boolean deleteExistingFiles = false;
     public boolean overlaySupport;
 
+    /**
+     * Emit {@code img/search-index.js} (the data for the header search box). On by default; set
+     * {@code SearchIndex=FALSE} in settings.ini to skip it on very large servers where the
+     * multi-MB index isn't wanted.
+     */
+    public boolean searchIndex = true;
+
+    /** Emit {@code data/*.json} (machine-readable object inventory) alongside the HTML. Off by default. */
+    public boolean jsonOutput = false;
+
     public String serverName = "";
     public String userName = "";
     public String password = "";
@@ -87,6 +97,24 @@ public class AppConfig {
     public boolean connectionless = false;
 
     /**
+     * Two-snapshot diff mode: compare two offline exports and write a standalone change report to
+     * {@code targetFolder}, instead of the normal documentation. Set by {@code --diff <baseline>
+     * <current>} or by {@code DiffBaseline=} + {@code DiffCurrent=} in the ini. No server needed.
+     */
+    public boolean diffMode = false;
+    public String diffBaseline = "";
+    public String diffCurrent = "";
+
+    /**
+     * Incremental runs: {@code IncrementalRuns=TRUE} / {@code --incremental}. After a run, a
+     * {@code .arinside-state} manifest is written into {@code targetFolder}; on the next run, if
+     * nothing has changed since (file mode: the export is byte-identical; server mode: no object
+     * added / modified / removed) the whole run is skipped and the existing output is left in place.
+     * All-or-nothing - it never re-documents a subset, so a stale page is not possible.
+     */
+    public boolean incrementalRuns = false;
+
+    /**
      * Ported from AppConfig::Validate. Applies CLI overrides, checks required fields for
      * server mode, guards against a target folder pointing at the filesystem root, and
      * settles the overlay-support flag from the (string-valued, ini-compatible) overlayMode setting.
@@ -102,6 +130,24 @@ public class AppConfig {
     public void validate(arinside.cli.CommandLineArgs cmdLine) {
         overrideSettingsByCommandLine(cmdLine);
 
+        if (diffMode) {
+            if (diffBaseline.isEmpty() || diffCurrent.isEmpty()) {
+                throw new IllegalArgumentException("[ERR] Diff mode needs both a baseline and a current export (--diff <baseline> <current>, or DiffBaseline= / DiffCurrent=).");
+            }
+            for (String p : new String[]{diffBaseline, diffCurrent}) {
+                if (!arinside.ar.FileFormatSniffer.isXmlFormat(p) && !arinside.ar.FileFormatSniffer.isDefFormat(p)) {
+                    throw new IllegalArgumentException("[ERR] Diff input is not a readable AR System .xml or .def export: " + p);
+                }
+            }
+            if (!scope.isEmpty()) {
+                throw new IllegalArgumentException("[ERR] --scope / Scope is not supported in diff mode (a diff is always whole-snapshot).");
+            }
+        }
+
+        if (incrementalRuns && !scope.isEmpty()) {
+            throw new IllegalArgumentException("[ERR] --scope / Scope is not supported with IncrementalRuns (the run-state snapshot is always whole-server; a later unscoped run would wrongly skip).");
+        }
+
         if (fileMode && objListXML.isEmpty()) {
             throw new IllegalArgumentException("[ERR] FileMode=TRUE but no 'ObjListXML' file specified in the application configuration file!");
         }
@@ -109,7 +155,7 @@ public class AppConfig {
             && (arinside.ar.FileFormatSniffer.isXmlFormat(objListXML) || arinside.ar.FileFormatSniffer.isDefFormat(objListXML));
 
         StringBuilder missingArgs = new StringBuilder();
-        if (!connectionless) {
+        if (!connectionless && !diffMode) {
             if (serverName.isEmpty()) {
                 missingArgs.append("server / ServerName");
             }
@@ -148,6 +194,12 @@ public class AppConfig {
         if (cmdLine.isTcpPortSet()) tcpPort = cmdLine.getTcpPort();
         if (cmdLine.isRpcPortSet()) rpcPort = cmdLine.getRpcPort();
         if (cmdLine.isScopeSet()) scope = cmdLine.getScope();
+        if (cmdLine.isDiffSet()) {
+            diffMode = true;
+            diffBaseline = cmdLine.getDiffBaseline();
+            diffCurrent = cmdLine.getDiffCurrent();
+        }
+        if (cmdLine.isIncrementalSet()) incrementalRuns = true;
         slowObjectLoading = cmdLine.isSlowObjectLoading();
     }
 

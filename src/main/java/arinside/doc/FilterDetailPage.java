@@ -82,7 +82,7 @@ public final class FilterDetailPage {
         String head = URLLink.to("Filters", Naming.filterOverview(), ImageTag.Id.NoImage, page.rootLevel()).toHtml()
             + " &gt; " + new ImageTag(ImageTag.Id.Filter, page.rootLevel()).toHtml() + WebUtil.objName(name)
             + ApplicationHeaderLink.suffix(ownerApp(filter.getFormList()), page.rootLevel());
-        webPage.addContentHead(head);
+        webPage.addContentHead(head + WebUtil.sharedBadge(filter.getFormList()));
 
         if (isOverlaid) {
             webPage.addContent(OverlayDiff.renderBaseLayerNote(URLLink.to("overlay page", Naming.filterDetail(name, false), ImageTag.Id.Filter, page.rootLevel()).toHtml()));

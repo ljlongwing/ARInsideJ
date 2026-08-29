@@ -82,7 +82,7 @@ public final class EscalationDetailPage {
         String head = URLLink.to("Escalations", Naming.escalationOverview(), ImageTag.Id.NoImage, page.rootLevel()).toHtml()
             + " &gt; " + new ImageTag(ImageTag.Id.Escalation, page.rootLevel()).toHtml() + WebUtil.objName(name)
             + ApplicationHeaderLink.suffix(ownerApp(esc.getFormList()), page.rootLevel());
-        webPage.addContentHead(head);
+        webPage.addContentHead(head + WebUtil.sharedBadge(esc.getFormList()));
 
         if (isOverlaid) {
             webPage.addContent(OverlayDiff.renderBaseLayerNote(URLLink.to("overlay page", Naming.escalationDetail(name, false), ImageTag.Id.Escalation, page.rootLevel()).toHtml()));

@@ -49,6 +49,8 @@ public final class RoleOverviewPage {
         for (RoleRecord r : roles) {
             PagePath detail = Naming.roleDetail(r.requestId);
             letterFilter.incStartLetterOf(r.name);
+            SearchIndex.add(r.name, "role", detail);
+            if (appConfig.jsonOutput) JsonExport.addRole(r.roleId, r.name, r.applicationName, r.modified == null ? null : r.modified.getValue(), r.modifiedBy);
 
             boolean hasApp = r.applicationName != null && !r.applicationName.isEmpty();
             String appLink = hasApp ? URLLink.relativeUrl(page.rootLevel(), Naming.containerDetail(Constants.ARCON_APP, r.applicationName, false)) : "";
@@ -78,6 +80,7 @@ public final class RoleOverviewPage {
             count++;
         }
         if (!roles.isEmpty()) tbl.removeEmptyMessageRow();
+        tbl.maxRenderedRows(0); // rows come from lists.js (see Table.maxRenderedRows javadoc)
         json.append("];\nvar rootLevel = ").append(page.rootLevel()).append(";\n");
 
         StringBuilder content = new StringBuilder();
@@ -89,8 +92,7 @@ public final class RoleOverviewPage {
         content.append(tbl.toXHtml());
 
         WebPage webPage = new WebPage(page.fileName(), "Role List", page.rootLevel(), appConfig);
-        webPage.addScriptReference("img/object_list.js").addScriptReference("img/roleList.js")
-            .addScriptReference("img/jquery.timers.js").addScriptReference("img/jquery.address.min.js");
+        webPage.addScriptReference("img/lists.js").bodyClass("list-page");
         webPage.addContent(content.toString());
         webPage.saveInFolder(page.path());
         return roles;

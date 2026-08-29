@@ -236,24 +236,40 @@ public final class SchemaDetailPage {
         tabs.addTab("References", referencesInfo(formName, page.rootLevel()));
         webPage.addContent(tabs.toXHtml());
 
-        // Real jQuery UI tabs()/accordion() init for #MainObjectTabCtrl/#schemaProperties/
-        // #schemaPermissions lives in schema_page.js - without referencing it (plus its 3 sibling
-        // scripts) the tab markup above renders as a flat stacked list, never becoming real tabs.
-        webPage.addScriptReference("img/object_list.js");
-        webPage.addScriptReference("img/schema_page.js");
-        webPage.addScriptReference("img/jquery.timers.js");
-        webPage.addScriptReference("img/jquery.address.min.js");
+        // Tab switching + <details> accordions need no page-specific JS (app.js handles them).
+        // schema.js owns the schema-only pieces: the Fields-tab name filter and the lazily-built
+        // Workflow-tab reference list.
+        webPage.addScriptReference("img/schema.js");
 
         webPage.saveInFolder(page.path());
+
+        if (appConfig.jsonOutput) {
+            JsonExport.addForm(formName, form, OverlaySupport.overlayType(form.getProperties()),
+                fields.size(), data.vuis() == null ? 0 : data.vuis().size());
+        }
 
         // Java port of DocSchemaDetails::AllFieldsCsv - same table, exported alongside the page.
         new CsvPage(Naming.schemaFieldsCsv(formName, isOverlaid).fileName(), appConfig)
             .saveInFolder(page.path(), fieldsTable.toCsv());
 
         FieldDetailPage fieldDetail = new FieldDetailPage(appConfig, fieldRefs, globalFields, joinFields);
-        for (Field field : fields) fieldDetail.render(formName, isOverlaid, form, field, fields, data.vuis());
+        for (Field field : fields) {
+            try {
+                fieldDetail.render(formName, isOverlaid, form, field, fields, data.vuis());
+            } catch (RuntimeException e) {
+                // One field with an odd property shouldn't cost the form its other 70+ field pages.
+                System.out.println("EXCEPTION field detail write of '" + formName + "' field "
+                    + field.getFieldID() + " ('" + field.getName() + "'): " + e);
+                if (AppConfig.verboseMode) e.printStackTrace(System.out);
+            }
+        }
 
-        renderVuis(formName, isOverlaid, fields, data.vuis());
+        try {
+            renderVuis(formName, isOverlaid, fields, data.vuis());
+        } catch (RuntimeException e) {
+            System.out.println("EXCEPTION VUI detail write of '" + formName + "': " + e);
+            if (AppConfig.verboseMode) e.printStackTrace(System.out);
+        }
     }
 
     /**
@@ -533,6 +549,7 @@ public final class SchemaDetailPage {
         tbl.addColumn(5, "Enabled");
         tbl.addColumn(5, "Order");
         tbl.addColumn(15, "Execute On");
+        tbl.addColumn(6, "Shared");
         tbl.addColumn(5, "If");
         tbl.addColumn(5, "Else");
         tbl.addColumn(15, "Changed");
@@ -544,7 +561,7 @@ public final class SchemaDetailPage {
     /**
      * Java port of DocSchemaDetails.cpp's AddJsonRow(CARActiveLink/CARFilter/CAREscalation/
      * CARContainer, ...) - row shape [objType, name, enabled-or-containerType, order, executeOn,
-     * ifCount, elseCount, modified, changedBy, link], objType = the real C++'s
+     * ifCount, elseCount, modified, changedBy, link, shared], objType = the real C++'s
      * GetServerObjectTypeXML()-AR_STRUCT_XML_OFFSET values (6=Active Link/5=Filter/9=Escalation/
      * 12=Container - confirmed against both schema_page.js's own hardcoded checks and the real C++
      * output's actual JSON). Escalation's Order slot is the empty string "" (it has no
@@ -568,7 +585,8 @@ public final class SchemaDetailPage {
                 .append(ref.ifCount()).append(',').append(ref.elseCount()).append(",\"")
                 .append(WebUtil.jsString(ref.modified() == null ? "" : DateTimeFormat.toPlainString(ref.modified().getValue()))).append("\",\"")
                 .append(WebUtil.jsString(ref.changedBy())).append("\",\"")
-                .append(WebUtil.jsString(URLLink.relativeUrl(rootLevel, ref.link()))).append("\"]");
+                .append(WebUtil.jsString(URLLink.relativeUrl(rootLevel, ref.link()))).append("\",")
+                .append(ref.shared() ? 1 : 0).append("]");
             count++;
         }
         for (com.bmc.arsys.api.Container c : containerRefs.schemaGuidesAndWebservices(formName)) {
@@ -580,7 +598,7 @@ public final class SchemaDetailPage {
                 .append(",\"\",\"\",\"\",\"\",\"")
                 .append(WebUtil.jsString(c.getLastUpdateTime() == null ? "" : DateTimeFormat.toPlainString(c.getLastUpdateTime().getValue()))).append("\",\"")
                 .append(WebUtil.jsString(c.getLastChangedBy())).append("\",\"")
-                .append(WebUtil.jsString(URLLink.relativeUrl(rootLevel, link))).append("\"]");
+                .append(WebUtil.jsString(URLLink.relativeUrl(rootLevel, link))).append("\",0]");
             count++;
         }
         json.append("];\n");
@@ -707,8 +725,7 @@ public final class SchemaDetailPage {
             for (IndexInfo ix : removedIndexes) {
                 indexesHtml.append(indexBlock(formName, isOverlaid, ix, fieldsById, rootLevel, OverlayDiff.Status.REMOVED));
             }
-            sb.append("<h2>").append(new ImageTag(ImageTag.Id.Document, rootLevel).toHtml()).append("Indexes</h2>\n<div>\n")
-                .append(indexesHtml).append("</div>\n");
+            sb.append(accordionBlock("Indexes", rootLevel, indexesHtml.toString()));
         }
 
         if (form.getFormType() != Constants.AR_SCHEMA_DIALOG) {
@@ -736,7 +753,14 @@ public final class SchemaDetailPage {
      * be left unset (empty) by the caller - this method supplies the heading instead.
      */
     private String accordionItem(String title, int rootLevel, Table tbl) {
-        return "<h2>" + new ImageTag(ImageTag.Id.Document, rootLevel).toHtml() + title + "</h2>\n<div>\n" + tbl.toXHtml() + "</div>\n";
+        return accordionBlock(title, rootLevel, tbl.toXHtml());
+    }
+
+    /** A collapsed-by-default disclosure section (was a jQuery UI accordion panel). */
+    private String accordionBlock(String title, int rootLevel, String bodyHtml) {
+        return "<details class=\"ari-acc\">\n<summary>"
+            + new ImageTag(ImageTag.Id.Document, rootLevel).toHtml() + title
+            + "</summary>\n<div class=\"acc-body\">\n" + bodyHtml + "</div>\n</details>\n";
     }
 
     /**
@@ -840,14 +864,8 @@ public final class SchemaDetailPage {
         }
         if (!fields.isEmpty()) fieldPermTbl.removeEmptyMessageRow();
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("<h2>").append(new ImageTag(ImageTag.Id.Document, rootLevel).toHtml()).append("Permissions</h2>\n");
-        sb.append("<div id='schemaPermissions'>\n");
-        sb.append(groupTbl.toXHtml());
-        sb.append(subadminTbl.toXHtml());
-        sb.append(fieldPermTbl.toXHtml());
-        sb.append("</div>\n");
-        return sb.toString();
+        return accordionBlock("Permissions", rootLevel,
+            groupTbl.toXHtml() + subadminTbl.toXHtml() + fieldPermTbl.toXHtml());
     }
 
     private String fieldPermissionCell(List<PermissionInfo> fldPerms, String appRefName, int rootLevel) {

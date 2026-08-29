@@ -8,96 +8,90 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Java port of output/NavigationPage.cpp - the persistent left-hand navigation tree every other
- * page's `&lt;iframe id="IFrameMenu" src="../template/navigation.htm"&gt;` already references (that
- * reference has been in every generated page since early in this port; this is the file it points
- * at, previously never generated - the iframe rendered as a blank pane in a browser until now).
+ * Emits {@code <target>/img/nav.js} - the sidebar navigation tree as a JS data literal
+ * ({@code window.ARI_NAV = [...]}). {@code app.js} renders it into {@code <nav id="ari-nav">} on
+ * every page and marks the current page's entry active. Replaces the former
+ * {@code template/navigation.htm} XHTML document that was loaded through an {@code <iframe>}.
  *
- * Unlike every other generated page, this one does NOT go through {@link WebPage} - the C++'s own
- * `CNavigationPage::Header/Footer` builds a genuinely different, minimal `&lt;ul&gt;` document, not
- * the standard site chrome (breadcrumb, tabs, server-name banner) - so this writes the file
- * directly instead.
- *
- * The `overview/*_action*.htm` "By Action" breakdown pages under Active Links/Filters/Escalations
- * and `overview/error_handler.htm` are now built too (see ActiveLinkActionPage/FilterActionPage/
- * EscalationActionPage/FilterErrorHandlersPage) - every link in the C++'s tree now has a real
- * equivalent page in this port.
+ * {@code href} values are output-root-relative (no {@code ../} prefix); {@code app.js} resolves
+ * them against the page's {@code data-root} attribute.
  */
 public final class NavigationPage {
     private NavigationPage() {}
 
+    private record Node(String label, String href, String icon, List<Node> children) {
+        Node(String label, String href, String icon) { this(label, href, icon, List.of()); }
+    }
+
     public static void write(AppConfig appConfig) {
-        int rootLevel = 1;
-        StringBuilder sb = new StringBuilder();
-        sb.append("<?xml version=\"1.0\" encoding=\"ISO-8859-1\" ?> \n");
-        sb.append("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">");
-        sb.append("<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">");
-        sb.append("<head><title>Navigation</title>");
-        sb.append("<meta name=\"description\" content=\"ARSystem Documentation\" />");
-        sb.append("<meta name=\"author\" content=\"ARInsideJ\" />");
-        sb.append("<meta http-equiv=\"CONTENT-LANGUAGE\" content=\"EN\" />");
-        sb.append("<meta name=\"ROBOTS\" content=\"INDEX, FOLLOW\" />");
-        sb.append("<meta http-equiv=\"content-type\" content=\"text/html; charset=ISO-8859-1\" />");
-        sb.append("<link rel=\"stylesheet\" type=\"text/css\" href=\"../img/style.css\" />");
-        sb.append("</head><body><ul>");
+        List<Node> tree = new ArrayList<>();
 
-        li(sb, "Forms", Naming.schemaOverview(), ImageTag.Id.Schema, rootLevel);
-
-        ImageTag doc0 = new ImageTag(ImageTag.Id.Document, rootLevel);
-        sb.append("<li>").append(URLLink.to("Active Links", Naming.overviewActiveLinks(), new ImageTag(ImageTag.Id.ActiveLink, rootLevel), rootLevel, true, URLLink.Target.PARENT).toHtml());
-        sb.append("<ul><li>").append(URLLink.to("By Action", Naming.activeLinkActionOverview(), doc0, rootLevel, true, URLLink.Target.PARENT).toHtml()).append("</li></ul>");
-        sb.append("</li>");
-
-        sb.append("<li>").append(URLLink.to("Filters", Naming.overviewFilters(), new ImageTag(ImageTag.Id.Filter, rootLevel), rootLevel, true, URLLink.Target.PARENT).toHtml());
-        sb.append("<ul>");
-        sb.append("<li>").append(URLLink.to("By Action", Naming.filterActionOverview(), doc0, rootLevel, true, URLLink.Target.PARENT).toHtml()).append("</li>");
-        sb.append("<li>").append(URLLink.to("Error Handler", Naming.filterErrorHandlers(), doc0, rootLevel, true, URLLink.Target.PARENT).toHtml()).append("</li>");
-        sb.append("</ul></li>");
-
-        sb.append("<li>").append(URLLink.to("Escalations", Naming.overviewEscalations(), new ImageTag(ImageTag.Id.Escalation, rootLevel), rootLevel, true, URLLink.Target.PARENT).toHtml());
-        sb.append("<ul><li>").append(URLLink.to("By Action", Naming.escalationActionOverview(), doc0, rootLevel, true, URLLink.Target.PARENT).toHtml()).append("</li></ul>");
-        sb.append("</li>");
-
-        li(sb, "Menus", Naming.overviewMenus(), ImageTag.Id.Menu, rootLevel);
-        li(sb, "Active Link Guides", Naming.overviewContainer(Constants.ARCON_GUIDE), ImageTag.Id.ActiveLinkGuide, rootLevel);
-        li(sb, "Filter Guides", Naming.overviewContainer(Constants.ARCON_FILTER_GUIDE), ImageTag.Id.FilterGuide, rootLevel);
-        li(sb, "Applications", Naming.overviewContainer(Constants.ARCON_APP), ImageTag.Id.Application, rootLevel);
-        li(sb, "Packing Lists", Naming.overviewContainer(Constants.ARCON_PACK), ImageTag.Id.PackingList, rootLevel);
-        li(sb, "Webservices", Naming.overviewContainer(Constants.ARCON_WEBSERVICE), ImageTag.Id.Webservice, rootLevel);
-        li(sb, "Groups", Naming.groupOverview(), ImageTag.Id.Group, rootLevel);
-        li(sb, "Roles", Naming.roleOverview(), ImageTag.Id.Role, rootLevel);
-        li(sb, "Users", Naming.overviewUsers(), ImageTag.Id.User, rootLevel);
-        li(sb, "Images", Naming.overviewImages(), ImageTag.Id.Image, rootLevel);
-        // Associations are live-server-only - see AssociationSource's javadoc - so the page (and
-        // therefore this link) only exists outside file/connectionless mode.
+        tree.add(new Node("Forms", href(Naming.schemaOverview()), "schema"));
+        tree.add(new Node("Active Links", href(Naming.overviewActiveLinks()), "active-link", List.of(
+            new Node("By Action", href(Naming.activeLinkActionOverview()), "document"))));
+        tree.add(new Node("Filters", href(Naming.overviewFilters()), "filter", List.of(
+            new Node("By Action", href(Naming.filterActionOverview()), "document"),
+            new Node("Error Handler", href(Naming.filterErrorHandlers()), "document"))));
+        tree.add(new Node("Escalations", href(Naming.overviewEscalations()), "escalation", List.of(
+            new Node("By Action", href(Naming.escalationActionOverview()), "document"))));
+        tree.add(new Node("Menus", href(Naming.overviewMenus()), "menu"));
+        tree.add(new Node("Active Link Guides", href(Naming.overviewContainer(Constants.ARCON_GUIDE)), "al-guide"));
+        tree.add(new Node("Filter Guides", href(Naming.overviewContainer(Constants.ARCON_FILTER_GUIDE)), "filter-guide"));
+        tree.add(new Node("Applications", href(Naming.overviewContainer(Constants.ARCON_APP)), "application"));
+        tree.add(new Node("Packing Lists", href(Naming.overviewContainer(Constants.ARCON_PACK)), "packing-list"));
+        tree.add(new Node("Webservices", href(Naming.overviewContainer(Constants.ARCON_WEBSERVICE)), "webservice"));
+        tree.add(new Node("Groups", href(Naming.groupOverview()), "group"));
+        tree.add(new Node("Roles", href(Naming.roleOverview()), "role"));
+        tree.add(new Node("Users", href(Naming.overviewUsers()), "user"));
+        tree.add(new Node("Images", href(Naming.overviewImages()), "image"));
+        // Associations are live-server-only - see AssociationSource's javadoc.
         if (!appConfig.fileMode && !appConfig.connectionless) {
-            li(sb, "Associations", Naming.associationOverview(), ImageTag.Id.Association, rootLevel);
+            tree.add(new Node("Associations", href(Naming.associationOverview()), "association"));
         }
+        tree.add(new Node("Information", "", "folder", List.of(
+            new Node("Messages", href(Naming.messageList()), "document"),
+            new Node("Notifications", href(Naming.notificationList()), "document"),
+            new Node("Global Fields", href(Naming.globalFields()), "document"),
+            new Node("Customizations", href(Naming.customWorkflow()), "document"),
+            new Node("Validator", href(Naming.validatorMain()), "document"),
+            new Node("Analyzer", href(Naming.analyzerMain()), "document"))));
 
-        sb.append("<li>").append(new ImageTag(ImageTag.Id.Folder, rootLevel).toHtml()).append("Information:<ul>");
-        ImageTag doc = new ImageTag(ImageTag.Id.Document, rootLevel);
-        sb.append("<li>").append(URLLink.to("Messages", Naming.messageList(), doc, rootLevel, true, URLLink.Target.PARENT).toHtml()).append("</li>");
-        sb.append("<li>").append(URLLink.to("Notifications", Naming.notificationList(), doc, rootLevel, true, URLLink.Target.PARENT).toHtml()).append("</li>");
-        sb.append("<li>").append(URLLink.to("Global&nbsp;Fields", Naming.globalFields(), doc, rootLevel, false, URLLink.Target.PARENT).toHtml()).append("</li>");
-        sb.append("<li>").append(URLLink.to("Customizations", Naming.customWorkflow(), doc, rootLevel, true, URLLink.Target.PARENT).toHtml()).append("</li>");
-        sb.append("<li>").append(URLLink.to("Validator", Naming.validatorMain(), doc, rootLevel, true, URLLink.Target.PARENT).toHtml()).append("</li>");
-        sb.append("<li>").append(URLLink.to("Analyzer", Naming.analyzerMain(), doc, rootLevel, true, URLLink.Target.PARENT).toHtml()).append("</li>");
-        sb.append("</ul></li>");
+        StringBuilder sb = new StringBuilder("window.ARI_NAV=");
+        writeArray(sb, tree);
+        sb.append(";\n");
 
-        sb.append("</ul></body></html>");
-
-        Path file = Path.of(appConfig.targetFolder, "template", WebUtil.docName("navigation"));
+        Path file = Path.of(appConfig.targetFolder, "img", "nav.js");
         try {
             Files.createDirectories(file.getParent());
-            Files.writeString(file, sb.toString(), StandardCharsets.ISO_8859_1);
+            Files.writeString(file, sb.toString(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new UncheckedIOException("Error saving file '" + file + "' to disk", e);
         }
     }
 
-    private static void li(StringBuilder sb, String caption, PagePath page, ImageTag.Id imageId, int rootLevel) {
-        sb.append("<li>").append(URLLink.to(caption, page, new ImageTag(imageId, rootLevel), rootLevel, true, URLLink.Target.PARENT).toHtml()).append("</li>");
+    private static String href(PagePath page) { return page.fullFileName(); }
+
+    private static void writeArray(StringBuilder sb, List<Node> nodes) {
+        sb.append('[');
+        for (int i = 0; i < nodes.size(); i++) {
+            if (i > 0) sb.append(',');
+            writeNode(sb, nodes.get(i));
+        }
+        sb.append(']');
+    }
+
+    private static void writeNode(StringBuilder sb, Node n) {
+        sb.append("{\"label\":\"").append(WebUtil.jsString(n.label())).append('"');
+        if (!n.href().isEmpty()) sb.append(",\"href\":\"").append(WebUtil.jsString(n.href())).append('"');
+        sb.append(",\"icon\":\"").append(WebUtil.jsString(n.icon())).append('"');
+        if (!n.children().isEmpty()) {
+            sb.append(",\"children\":");
+            writeArray(sb, n.children());
+        }
+        sb.append('}');
     }
 }

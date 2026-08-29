@@ -55,6 +55,8 @@ public final class MenuOverviewPage {
                 boolean isOverlaid = OverlaySupport.isOverlaidForNaming(menu.getProperties(), serverOverlayMode);
                 PagePath detail = Naming.menuDetail(name, isOverlaid);
                 letterFilter.incStartLetterOf(name);
+                SearchIndex.add(name, "menu", detail);
+                if (appConfig.jsonOutput) JsonExport.addMenu(name, menu, OverlaySupport.overlayType(menu.getProperties()));
 
                 boolean usedInWorkflow = attachments.isUsed(name);
                 String modified = DateTimeFormat.toHtmlString(menu.getLastUpdateTime().getValue());
@@ -87,6 +89,7 @@ public final class MenuOverviewPage {
             }
         }
         if (count > 0) tbl.removeEmptyMessageRow();
+        tbl.maxRenderedRows(0); // rows come from lists.js (see Table.maxRenderedRows javadoc)
         json.append("];\nvar rootLevel = ").append(page.rootLevel()).append(";\n");
 
         StringBuilder content = new StringBuilder();
@@ -107,15 +110,13 @@ public final class MenuOverviewPage {
         content.append("(!) Menu is not attached to a character field and no Active Link \"Change Field\" Action sets the menu to a field.");
 
         WebPage webPage = new WebPage(page.fileName(), "Menu List", page.rootLevel(), appConfig);
-        webPage.addScriptReference("img/object_list.js").addScriptReference("img/menuList.js")
-            .addScriptReference("img/jquery.timers.js").addScriptReference("img/jquery.address.min.js");
+        webPage.addScriptReference("img/lists.js").bodyClass("list-page");
         webPage.addContent(content.toString());
         webPage.saveInFolder(page.path());
 
         PagePath overviewPage = Naming.overviewMenus();
         WebPage overviewWebPage = new WebPage(overviewPage.fileName(), "Menu List", overviewPage.rootLevel(), appConfig);
-        overviewWebPage.addScriptReference("img/object_list.js").addScriptReference("img/menuList.js")
-            .addScriptReference("img/jquery.timers.js").addScriptReference("img/jquery.address.min.js");
+        overviewWebPage.addScriptReference("img/lists.js").bodyClass("list-page");
         overviewWebPage.addContent(content.toString());
         overviewWebPage.saveInFolder(overviewPage.path());
 

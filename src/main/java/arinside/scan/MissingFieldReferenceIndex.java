@@ -25,7 +25,10 @@ public final class MissingFieldReferenceIndex {
         entries.add(new Entry(formName, fieldId, owner));
     }
 
+    /** Snapshot copy - {@link #add} runs on the parallel write pool; the single reader (ValidatorPage) sorts/iterates this. */
     public List<Entry> entries() {
-        return entries;
+        synchronized (entries) {
+            return new ArrayList<>(entries);
+        }
     }
 }

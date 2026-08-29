@@ -3,7 +3,7 @@ package arinside.output;
 /** Java port of output/URLLink.{h,cpp}. */
 public final class URLLink {
 
-    public enum Target { SELF, PARENT, TOP, BLANK }
+    public enum Target { SELF, TOP, BLANK }
 
     private final String html;
 
@@ -22,7 +22,6 @@ public final class URLLink {
         if (target != Target.SELF) {
             sb.append(" target=\"");
             sb.append(switch (target) {
-                case PARENT -> "_parent";
                 case TOP -> "_top";
                 case BLANK -> "_blank";
                 case SELF -> "";

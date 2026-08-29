@@ -34,14 +34,14 @@ import java.util.function.Function;
  * overlay comparison is slower but always correct: it shows exactly what a person would see
  * eyeballing both pages by hand, which is the literal feature being asked for.
  */
-final class OverlayDiff {
+public final class OverlayDiff {
     private OverlayDiff() {}
 
-    enum Status { ADDED, REMOVED, CHANGED }
+    public enum Status { ADDED, REMOVED, CHANGED }
 
     /** One item's diff outcome. Only ADDED/REMOVED/CHANGED items are ever produced - equal items are omitted (absence = unchanged). */
-    record Item<T>(Status status, T base, T overlay) {
-        T current() { return overlay != null ? overlay : base; }
+    public record Item<T>(Status status, T base, T overlay) {
+        public T current() { return overlay != null ? overlay : base; }
     }
 
     /**
@@ -49,7 +49,7 @@ final class OverlayDiff {
      * but not equal (per {@code equalsFn}) are CHANGED, present in both and equal are omitted
      * entirely. Order: overlay's own order first, then any REMOVED (base-only) items appended last.
      */
-    static <T, K> List<Item<T>> diffKeyed(List<T> base, List<T> overlay, Function<T, K> keyFn, BiPredicate<T, T> equalsFn) {
+    public static <T, K> List<Item<T>> diffKeyed(List<T> base, List<T> overlay, Function<T, K> keyFn, BiPredicate<T, T> equalsFn) {
         Map<K, T> baseByKey = new LinkedHashMap<>();
         if (base != null) for (T b : base) baseByKey.put(keyFn.apply(b), b);
         Set<K> matched = new HashSet<>();
@@ -73,7 +73,7 @@ final class OverlayDiff {
     }
 
     /** One differing property, formatted with the same label/value text {@link ObjectPropertiesTable} itself uses. */
-    record PropChange(int propId, String label, String baseValue, String overlayValue) {}
+    public record PropChange(int propId, String label, String baseValue, String overlayValue) {}
 
     /**
      * Excludes AR_SMOPROP_OVERLAY_PROPERTY (the base/overlay marker itself - definitionally always
@@ -92,7 +92,7 @@ final class OverlayDiff {
         Constants.AR_OPROP_OVERLAY_EXTEND_MASK,
         Constants.AR_OPROP_OVERLAY_INHERIT_MASK);
 
-    static List<PropChange> diffProperties(PropertyMap base, PropertyMap overlay) {
+    public static List<PropChange> diffProperties(PropertyMap base, PropertyMap overlay) {
         List<PropChange> changes = new ArrayList<>();
         if (base == null && overlay == null) return changes;
         Set<Integer> allIds = new TreeSet<>();
@@ -111,7 +111,7 @@ final class OverlayDiff {
     }
 
     /** CSS class for a diff-flagged row/block, matching the existing {@code .fieldNotFound}/{@code .fieldInNoView} convention in style.css. */
-    static String cssClass(Status status) {
+    public static String cssClass(Status status) {
         return switch (status) {
             case ADDED -> "overlayAdded";
             case CHANGED -> "overlayChanged";
@@ -120,7 +120,7 @@ final class OverlayDiff {
     }
 
     /** Short inline text badge, belt-and-suspenders with the CSS class since CSV export/non-visual contexts need a plain-text signal too. */
-    static String badge(Status status) {
+    public static String badge(Status status) {
         return switch (status) {
             case ADDED -> " (Added by Overlay)";
             case CHANGED -> " (Changed by Overlay)";
@@ -137,7 +137,7 @@ final class OverlayDiff {
      * exists but isn't actually customized - see this class's own javadoc on why that's a real,
      * expected case, not a bug.
      */
-    static String renderSummary(List<PropChange> propertyDiff, int rootLevel) {
+    public static String renderSummary(List<PropChange> propertyDiff, int rootLevel) {
         if (propertyDiff.isEmpty()) {
             return "<div class=\"overlaySummary\"><p><b>This object is an overlay, but no differences from its base layer were found.</b></p></div>\n";
         }
@@ -153,7 +153,7 @@ final class OverlayDiff {
      * (produced two "Changes from Base Layer" headings on one page) fixed by this split - always use
      * this bare variant, never renderSummary, when appending inside an existing summary block.
      */
-    static String renderPropertyTable(List<PropChange> propertyDiff) {
+    public static String renderPropertyTable(List<PropChange> propertyDiff) {
         if (propertyDiff.isEmpty()) return "";
         Table tbl = new Table("overlayPropDiff", "TblObjectList");
         tbl.description = "Other Property Changes";
@@ -168,7 +168,7 @@ final class OverlayDiff {
     }
 
     /** Reciprocal note for a hidden base-layer page, pointing back to the overlay page instead of duplicating its diff - {@code overlayPageLinkHtml} is a caller-built {@code URLLink} (each object type names its own detail page differently, see each Doc*DetailPage's Naming.*Detail call). */
-    static String renderBaseLayerNote(String overlayPageLinkHtml) {
+    public static String renderBaseLayerNote(String overlayPageLinkHtml) {
         return "<div class=\"overlaySummary\"><p>This is the <b>base layer</b> of an overlaid object - see the "
             + overlayPageLinkHtml + " for what the overlay changes.</p></div>\n";
     }
@@ -187,11 +187,11 @@ final class OverlayDiff {
      * rendering doesn't double-register field references into the live index) and passes it to
      * {@link #renderWorkflowSummary}.
      */
-    record WorkflowDiff(List<PropChange> propertyDiff, boolean qualifierChanged, boolean actionsChanged, List<Item<String>> formListDiff) {
-        boolean hasChanges() { return !propertyDiff.isEmpty() || qualifierChanged || actionsChanged || !formListDiff.isEmpty(); }
+    public record WorkflowDiff(List<PropChange> propertyDiff, boolean qualifierChanged, boolean actionsChanged, List<Item<String>> formListDiff) {
+        public boolean hasChanges() { return !propertyDiff.isEmpty() || qualifierChanged || actionsChanged || !formListDiff.isEmpty(); }
     }
 
-    static String renderWorkflowSummary(WorkflowDiff diff, String baseQualifierHtml, String overlayQualifierHtml,
+    public static String renderWorkflowSummary(WorkflowDiff diff, String baseQualifierHtml, String overlayQualifierHtml,
                                          String baseActionsHtml, String overlayActionsHtml, int rootLevel) {
         if (!diff.hasChanges()) {
             return "<div class=\"overlaySummary\"><p><b>This object is an overlay, but no differences from its base layer were found.</b></p></div>\n";
@@ -215,7 +215,7 @@ final class OverlayDiff {
     }
 
     /** Generic keyed-item-list diff renderer (a plain ADDED/CHANGED/REMOVED name list, not a structural per-item comparison) - used where a caller-specific type-aware rendering isn't worth building without real data to verify it against, see e.g. ContainerDetailPage's Reference list. */
-    static <T> String renderItemListDiff(String title, List<Item<T>> diff, Function<T, String> labelFn) {
+    public static <T> String renderItemListDiff(String title, List<Item<T>> diff, Function<T, String> labelFn) {
         if (diff.isEmpty()) return "";
         Table tbl = new Table("overlayListDiff", "TblObjectList");
         tbl.description = title;

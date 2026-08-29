@@ -50,6 +50,12 @@ public final class WebUtil {
         return "<span class=\"objName\">" + objName + "</span>\n";
     }
 
+    /** "Shared · N forms" pill for workflow attached to more than one form (Dev Studio's shared-workflow flag). Empty otherwise. */
+    public static String sharedBadge(java.util.List<String> formList) {
+        int n = formList == null ? 0 : formList.size();
+        return n > 1 ? " <span class=\"ari-badge\">Shared &middot; " + n + " forms</span>" : "";
+    }
+
     /** Escapes a string for safe embedding inside a JS double-quoted string literal (the hand-rolled "var xList = [[...]];" blocks the *List.js files consume) - not HTML escaping, a different concern from validate(). */
     public static String jsString(String text) {
         if (text == null) return "";

@@ -59,6 +59,8 @@ public final class UserOverviewPage {
 
         for (UserRecord u : users) {
             TableRow row = new TableRow();
+            SearchIndex.add(u.loginName, "user", Naming.userDetail(u.loginName));
+            if (appConfig.jsonOutput) JsonExport.addUser(u.loginName, u.fullName, u.email, u.licenseType, u.groupIds == null ? 0 : u.groupIds.size());
             row.addCell(URLLink.to(u.loginName, Naming.userDetail(u.loginName), ImageTag.Id.User, rootLevel).toHtml());
             row.addCell(u.fullName == null ? "" : WebUtil.validate(u.fullName));
             row.addCell(u.email == null ? "" : u.email);

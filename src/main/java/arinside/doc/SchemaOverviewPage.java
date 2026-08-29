@@ -70,6 +70,7 @@ public final class SchemaOverviewPage {
                 PagePath detailPage = Naming.schemaDetail(name, isOverlaid);
                 ImageTag img = new ImageTag(AREnumLabels.schemaImage(form.getFormType()), page.rootLevel(), OverlaySupport.overlayType(form.getProperties()));
                 letterFilter.incStartLetterOf(name);
+                SearchIndex.add(name, "schema", detailPage);
 
                 String modified = DateTimeFormat.toHtmlString(form.getLastUpdateTime().getValue());
                 String modifiedPlain = DateTimeFormat.toPlainString(form.getLastUpdateTime().getValue());
@@ -100,6 +101,7 @@ public final class SchemaOverviewPage {
             }
         }
         if (count > 0) tbl.removeEmptyMessageRow();
+        tbl.maxRenderedRows(0); // rows come from lists.js (see Table.maxRenderedRows javadoc)
         json.append("];\nvar rootLevel = ").append(page.rootLevel()).append(";\n");
 
         StringBuilder typeFilter = new StringBuilder();
@@ -116,8 +118,7 @@ public final class SchemaOverviewPage {
         typeFilter.append("</div></div></div>");
 
         WebPage webPage = new WebPage(page.fileName(), "Forms", page.rootLevel(), appConfig);
-        webPage.addScriptReference("img/object_list.js").addScriptReference("img/schemaList.js")
-            .addScriptReference("img/jquery.timers.js").addScriptReference("img/jquery.address.min.js");
+        webPage.addScriptReference("img/lists.js").bodyClass("list-page");
         webPage.addContent(count + " Forms\n");
         webPage.addContent("<span id='schemaListFilterResultCount'></span>\n");
         webPage.addContent("<script type=\"text/javascript\">" + json + "</script>\n");

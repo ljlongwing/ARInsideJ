@@ -52,9 +52,22 @@ public final class FieldReferenceIndex {
             .add(ref);
     }
 
+    /**
+     * Returns a snapshot copy, not the live bucket: {@link #add} runs concurrently on the write
+     * pool while FieldDetailPage iterates this result for its "Referenced By" table. Other forms'
+     * SchemaDetailPage renders add refs keyed by *referenced* form names (ResultList/Sort/Join/
+     * Audit/Archive qualifications, menu targets), so a reader and a writer really can hit the same
+     * {@code (form, fieldId)} bucket at once - iterating it live threw a rare
+     * ConcurrentModificationException (seen once per full-server run, always on the ubiquitous core
+     * field 179 "InstanceId"). Copying under the bucket's own monitor makes the read safe.
+     */
     public List<Ref> forField(String formName, int fieldId) {
         Map<Integer, List<Ref>> byField = byFormAndField.get(formName);
         if (byField == null) return List.of();
-        return byField.getOrDefault(fieldId, List.of());
+        List<Ref> live = byField.get(fieldId);
+        if (live == null) return List.of();
+        synchronized (live) {
+            return new ArrayList<>(live);
+        }
     }
 }

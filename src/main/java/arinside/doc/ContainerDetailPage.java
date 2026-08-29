@@ -131,8 +131,7 @@ public final class ContainerDetailPage {
         TabControl tabs = new TabControl();
         tabs.addTab("General", generalInfo(c, appRefName, page.rootLevel()));
         webPage.addContent(tabs.toXHtml());
-        // The C++ has no tabbed container page to port a tab-init script from - see container_page.js's own comment.
-        webPage.addScriptReference("img/container_page.js");
+        // Tab switching is handled generically by app.js - no page-specific script needed.
         // Every one of the 5 ARCON_* subtypes has its own type-specific "what's in this container"
         // section below (matching the real C++, which has no single generic content Java's old flat
         // "Members" tab stood in for) - see this file's class javadoc for that history.

@@ -14,9 +14,13 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Java port of output/WebPage.{h,cpp}. GZip output (ARINSIDE_ENABLE_ZLIB_SUPPORT /
- * AppConfig.gzCompression) is deferred to Phase 6 (cross-cutting correctness) - this always
- * writes plain .htm files for now.
+ * Assembles one generated HTML page: an HTML5 CSS-grid app shell (sticky header with a global
+ * search box + theme toggle, a sidebar populated client-side from {@code img/nav.js}, the page
+ * body, and a footer). Replaces the original XHTML 1.0 + {@code <table class="TblMain">} +
+ * navigation-{@code <iframe>} layout ported from the C++ tool.
+ *
+ * GZip output (AppConfig.gzCompression) writes {@code .htm.gz} instead of {@code .htm}; otherwise
+ * plain {@code .htm}.
  */
 public final class WebPage {
 
@@ -36,9 +40,9 @@ public final class WebPage {
     private final int rootLevel;
     private final AppConfig appConfig;
     private final List<String> bodyContent = new ArrayList<>();
-    private String navContent = "";
     private final List<String> cssReferences = new ArrayList<>();
     private final List<String> jsReferences = new ArrayList<>();
+    private String bodyClass = "";
 
     public WebPage(String fileName, String title, int rootLevel, AppConfig appConfig) {
         this.fileName = fileName;
@@ -53,33 +57,35 @@ public final class WebPage {
     public void addContentHead(String description) { addContentHead(description, ""); }
 
     public void addContentHead(String description, String rightInfo) {
+        addContent("<div class=\"ari-pagehead\">");
         addContent("<div id='locLeft'>");
         addContent(description);
         addContent("</div><div id='locRight'>");
         addContent(rightInfo.isEmpty() ? "&nbsp;" : rightInfo);
-        addContent("</div>");
+        addContent("</div></div>");
     }
-
-    public void setNavigation(String nav) { this.navContent = nav; }
 
     public WebPage addScriptReference(String scriptPath) { jsReferences.add(scriptPath); return this; }
     public WebPage addStyleSheetReference(String cssPath) { cssReferences.add(cssPath); return this; }
 
+    /** Adds a class to {@code <body>} (e.g. "list-page" for the wide, header-only overview lists). */
+    public WebPage bodyClass(String cssClass) {
+        this.bodyClass = bodyClass.isEmpty() ? cssClass : bodyClass + " " + cssClass;
+        return this;
+    }
+
     private void setupDefaultReferences() {
-        addStyleSheetReference("img/style.css");
-        addStyleSheetReference("img/jquery-ui-custom.css");
-        addScriptReference("img/sortscript.js");
-        addScriptReference("img/tabscript.js");
-        addScriptReference("img/jquery.js");
-        addScriptReference("img/jquery-ui.js");
-        addScriptReference("img/arshelper.js");
+        addStyleSheetReference("img/app.css");
+        // nav.js is generated per run into <target>/img/ (see NavigationPage); app.js reads
+        // window.ARI_NAV from it. search-index.js (also generated) can be multi-MB on a large
+        // server, so app.js loads it lazily on first use of the search box rather than here.
+        addScriptReference("img/nav.js");
+        addScriptReference("img/app.js");
     }
 
     /**
      * Saves the page under &lt;targetFolder&gt;/&lt;path&gt;/&lt;fileName&gt;.htm(.gz). Returns 1
-     * on success (matches CWebPage::SaveInFolder). Matches the C++'s ARINSIDE_ENABLE_ZLIB_SUPPORT
-     * / AppConfig.gzCompression gzip-output option (ogzstream in the C++) - java.util.zip needs
-     * no extra dependency, unlike the C++'s vendored zlib.
+     * on success (matches CWebPage::SaveInFolder).
      */
     public int saveInFolder(String path) {
         Path dir = path.isEmpty()
@@ -118,66 +124,78 @@ public final class WebPage {
         contentClose(w);
     }
 
+    private String rootPath() { return RootPath.of(rootLevel); }
+
     private void pageHeader(Writer w) throws IOException {
-        w.write("<?xml version=\"1.0\" ?>\n");
-        w.write("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n");
-        w.write("<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">\n");
+        String root = rootPath();
+        w.write("<!doctype html>\n");
+        w.write("<html lang=\"en\" data-root=\"" + root + "\">\n");
         w.write("<head>\n");
+        w.write("<meta charset=\"utf-8\" />\n");
+        w.write("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n");
         w.write("<title>" + title + "</title>\n");
-        w.write("<meta http-equiv=\"content-language\" content=\"EN\" />\n");
-        w.write("<meta http-equiv=\"content-type\" content=\"text/html; charset=ISO-8859-1\" />\n");
-        w.write("<meta http-equiv=\"expires\" content=\"-1\" />\n");
-        w.write("<meta name=\"author\" content=\"" + Version.PRODUCT_NAME + "\" />\n");
-        w.write("<script type='text/javascript'>var rootLevel=" + rootLevel + ";</script>\n");
+        w.write("<meta name=\"generator\" content=\"" + Version.PRODUCT_NAME + " v" + Version.APP_VERSION + "\" />\n");
+        w.write("<script>var rootLevel=" + rootLevel + ";</script>\n");
         for (String css : cssReferences) {
-            w.write("<link rel=\"stylesheet\" type=\"text/css\" href=\"" + RootPath.of(rootLevel) + css + "\" />\n");
+            w.write("<link rel=\"stylesheet\" href=\"" + root + css + "\" />\n");
         }
         for (String js : jsReferences) {
-            w.write("<script src=\"" + RootPath.of(rootLevel) + js + "\" type=\"text/javascript\"></script>\n");
+            w.write("<script src=\"" + root + js + "\" defer></script>\n");
         }
         w.write("</head>\n");
     }
 
-    private void dynamicHeaderText(Writer w) throws IOException {
-        w.write("<table>\n<tr>\n");
-        w.write("<td>" + URLLink.to("Main", Naming.mainHome(), ImageTag.Id.Server, rootLevel) + "</td>\n");
-        w.write("<td> (Server: " + URLLink.to(appConfig.serverName, Naming.serverInfo(), ImageTag.Id.NoImage, rootLevel) + "</td>\n");
-        w.write("<td>@</td>\n");
-        w.write("<td><a href=\"" + appConfig.companyUrl + "\" target=\"_blank\">" + appConfig.companyName + "</a>)</td>\n");
-        w.write("</tr>\n</table>\n");
-    }
-
-    private void dynamicFooterText(Writer w) throws IOException {
-        w.write("<table><tr>\n");
-        w.write("<td>" + URLLink.to("Main", Naming.mainHome(), ImageTag.Id.Prev, rootLevel) + "</td>\n");
-        w.write("<td>&nbsp;</td>\n");
-        w.write("<td>" + URLLink.linkToTop(rootLevel) + "</td>\n");
-        w.write("<td>&nbsp;</td>\n");
-        w.write("<td>Page created " + DateTimeFormat.currentToHtmlString()
-            + " by <a href=\"https://github.com/gabeluci/ARInside\" target=\"_blank\">"
-            + Version.PRODUCT_NAME + " v" + Version.APP_VERSION + "</a></td>");
-        w.write("</tr></table>\n");
-    }
-
     private void contentOpen(Writer w) throws IOException {
-        w.write("<body>\n");
-        w.write(URLLink.createTopAnchor().toHtml() + "\n");
-        w.write("<table class=\"TblMain\">\n");
-        w.write("<tr><td class=\"TdMainHeader\" colspan=\"3\">\n");
-        dynamicHeaderText(w);
-        w.write("</td></tr><tr><td class=\"TdMainMenu\">\n");
-        if (!navContent.isEmpty()) {
-            w.write("<div id=\"form_navigation\" class=\"form_navigation\">\n" + navContent + "\n</div>\n");
+        String root = rootPath();
+        w.write(bodyClass.isEmpty() ? "<body>\n" : "<body class=\"" + bodyClass + "\">\n");
+        w.write("<a id=\"top\"></a>\n");
+        w.write("<div class=\"ari-shell\">\n");
+
+        // --- header ---
+        w.write("<header class=\"ari-header\">\n");
+        w.write("<button id=\"ari-navtoggle\" class=\"ari-iconbtn\" type=\"button\" aria-label=\"Menu\">"
+            + "<svg class=\"ico\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path d=\"M2 4h12M2 8h12M2 12h12\" stroke=\"currentColor\" stroke-width=\"1.6\" fill=\"none\"/></svg>"
+            + "</button>\n");
+        w.write("<span class=\"ari-brand\"><a href=\"" + root + Naming.mainHome().fullFileName() + "\">"
+            + Version.PRODUCT_NAME + "</a></span>\n");
+        w.write("<span class=\"ari-context\">");
+        String serverLabel = appConfig.serverName != null && !appConfig.serverName.isEmpty()
+            ? WebUtil.validate(appConfig.serverName)
+            : (appConfig.fileMode ? "file export" : "server");
+        w.write("<a href=\"" + root + Naming.serverInfo().fullFileName() + "\">" + serverLabel + "</a>");
+        if (appConfig.companyName != null && !appConfig.companyName.isEmpty()) {
+            String company = appConfig.companyUrl == null || appConfig.companyUrl.isEmpty()
+                ? WebUtil.validate(appConfig.companyName)
+                : "<a href=\"" + appConfig.companyUrl + "\" target=\"_blank\" rel=\"noopener\">" + WebUtil.validate(appConfig.companyName) + "</a>";
+            w.write(" &middot; " + company);
         }
-        w.write("<iframe id=\"IFrameMenu\" src=\"" + RootPath.of(rootLevel) + "template/navigation." + WebUtil.webPageSuffix()
-            + "\" name=\"Navigation\" frameborder=\"0\">\n");
-        w.write("<p>IFrame not supported by this browser.</p></iframe></td><td class=\"TdMainContent\">\n");
+        w.write("</span>\n");
+        w.write("<span class=\"ari-header-spacer\"></span>\n");
+        // Opens the command palette (app.js) - also bound to Ctrl/Cmd-K and "/".
+        w.write("<button id=\"ari-search\" class=\"ari-search-trigger\" type=\"button\" aria-label=\"Search (Ctrl-K)\">"
+            + "<svg class=\"ico\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M7 2a5 5 0 013.98 8.06l3 3-1.42 1.42-3-3A5 5 0 117 2zm0 2a3 3 0 100 6 3 3 0 000-6z\"/></svg>"
+            + "<span>Search</span><kbd>Ctrl K</kbd></button>\n");
+        w.write("<button id=\"ari-theme\" class=\"ari-iconbtn\" type=\"button\" aria-label=\"Toggle theme\">"
+            + "<svg class=\"ico ari-theme-dark\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M6 1.5A6.5 6.5 0 1014.5 10 5 5 0 016 1.5z\"/></svg>"
+            + "<svg class=\"ico ari-theme-light\" viewBox=\"0 0 16 16\" aria-hidden=\"true\" hidden><path fill=\"currentColor\" d=\"M8 4a4 4 0 100 8 4 4 0 000-8zM8 0l1.2 2.2L8 4 6.8 2.2zm0 12l1.2 2.2L8 16l-1.2-1.8zM0 8l2.2-1.2L4 8l-1.8 1.2zm12 0l2.2-1.2L16 8l-1.8 1.2zM2.3 2.3l2.4.9L4 6 1.4 4.7zm9.3 9.3l2.4.9-.7 2.4L10.7 12zM13.7 2.3l-.7 2.4L10.7 4l.9-2.4zM4 10l-.7 2.4-2.4-.9L1.4 10z\"/></svg>"
+            + "</button>\n");
+        w.write("</header>\n");
+
+        // --- sidebar (filled by app.js from window.ARI_NAV) ---
+        w.write("<nav id=\"ari-nav\" class=\"ari-nav\" aria-label=\"Site\"></nav>\n");
+
+        // --- main ---
+        w.write("<main class=\"ari-main\"><div class=\"ari-main-inner\">\n");
     }
 
     private void contentClose(Writer w) throws IOException {
-        w.write("</td>\n<td></td>\n");
-        w.write("</tr><tr><td class=\"TdMainButtom\" colspan=\"3\">\n");
-        dynamicFooterText(w);
-        w.write("\n</td></tr></table></body></html>\n");
+        w.write("\n</div></main>\n");
+        w.write("<footer class=\"ari-footer\">\n");
+        w.write("Page created " + DateTimeFormat.currentToHtmlString()
+            + " by <a href=\"https://github.com/gabeluci/ARInside\" target=\"_blank\" rel=\"noopener\">"
+            + Version.PRODUCT_NAME + " v" + Version.APP_VERSION + "</a>"
+            + " &nbsp;&middot;&nbsp; <a href=\"#top\">Top</a>\n");
+        w.write("</footer>\n");
+        w.write("</div>\n</body>\n</html>\n");
     }
 }

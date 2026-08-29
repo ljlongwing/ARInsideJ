@@ -37,6 +37,7 @@ public final class ActiveLinkOverviewPage {
         tbl.addColumn(8, "Groups");
         tbl.addColumn(8, "Order");
         tbl.addColumn(21, "Execute On");
+        tbl.addColumn(7, "Shared");
         tbl.addColumn(6, "If");
         tbl.addColumn(6, "Else");
         tbl.addColumn(13, "Changed");
@@ -54,10 +55,14 @@ public final class ActiveLinkOverviewPage {
                 boolean isOverlaid = OverlaySupport.isOverlaidForNaming(al.getProperties(), serverOverlayMode);
                 PagePath detail = Naming.activeLinkDetail(name, isOverlaid);
                 letterFilter.incStartLetterOf(name);
+                SearchIndex.add(name, "active-link", detail);
+                if (appConfig.jsonOutput) JsonExport.addActiveLink(name, al, OverlaySupport.overlayType(al.getProperties()));
 
                 int groupCount = al.getGroupList() == null ? 0 : al.getGroupList().size();
                 int ifCount = al.getActionList() == null ? 0 : al.getActionList().size();
                 int elseCount = al.getElseList() == null ? 0 : al.getElseList().size();
+                int formCount = al.getFormList() == null ? 0 : al.getFormList().size();
+                boolean shared = formCount > 1; // attached to more than one form (Dev Studio's "Shared" flag)
                 String executeOn = String.join(", ", al.getFormList());
                 String modified = DateTimeFormat.toHtmlString(al.getLastUpdateTime().getValue());
                 // JSON rows go through jQuery's .text() client-side (not innerHTML), so they need
@@ -72,6 +77,7 @@ public final class ActiveLinkOverviewPage {
                 row.addCell(new TableCell(groupCount));
                 row.addCell(new TableCell(al.getOrder()));
                 row.addCell(executeOn);
+                row.addCell(shared ? "Yes" : "");
                 row.addCell(new TableCell(ifCount));
                 row.addCell(new TableCell(elseCount));
                 row.addCell(modified);
@@ -88,13 +94,15 @@ public final class ActiveLinkOverviewPage {
                     .append(WebUtil.jsString(modifiedPlain)).append("\",\"")
                     .append(WebUtil.jsString(al.getLastChangedBy())).append("\",\"")
                     .append(WebUtil.jsString(link)).append("\",")
-                    .append(OverlaySupport.overlayType(al.getProperties())).append(']');
+                    .append(OverlaySupport.overlayType(al.getProperties())).append(',')
+                    .append(shared ? 1 : 0).append(']');
                 count++;
             } catch (ARException e) {
                 System.out.println("EXCEPTION ActiveLinkList '" + name + "': " + e.getMessage());
             }
         }
         if (count > 0) tbl.removeEmptyMessageRow();
+        tbl.maxRenderedRows(0); // rows come from lists.js (see Table.maxRenderedRows javadoc)
         json.append("];\nvar rootLevel = ").append(page.rootLevel()).append(";\n");
 
         StringBuilder content = new StringBuilder();
@@ -106,8 +114,7 @@ public final class ActiveLinkOverviewPage {
         content.append(tbl.toXHtml());
 
         WebPage webPage = new WebPage(page.fileName(), "Active Link List", page.rootLevel(), appConfig);
-        webPage.addScriptReference("img/object_list.js").addScriptReference("img/actlinkList.js")
-            .addScriptReference("img/jquery.timers.js").addScriptReference("img/jquery.address.min.js");
+        webPage.addScriptReference("img/lists.js").bodyClass("list-page");
         webPage.addContent(content.toString());
         webPage.saveInFolder(page.path());
 
@@ -115,8 +122,7 @@ public final class ActiveLinkOverviewPage {
         // landing page, same content as above under a different path - see Naming's javadoc.
         PagePath overviewPage = Naming.overviewActiveLinks();
         WebPage overviewWebPage = new WebPage(overviewPage.fileName(), "Active Link List", overviewPage.rootLevel(), appConfig);
-        overviewWebPage.addScriptReference("img/object_list.js").addScriptReference("img/actlinkList.js")
-            .addScriptReference("img/jquery.timers.js").addScriptReference("img/jquery.address.min.js");
+        overviewWebPage.addScriptReference("img/lists.js").bodyClass("list-page");
         overviewWebPage.addContent(content.toString());
         overviewWebPage.saveInFolder(overviewPage.path());
 

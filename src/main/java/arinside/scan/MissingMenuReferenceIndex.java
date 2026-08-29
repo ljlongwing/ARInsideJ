@@ -39,7 +39,10 @@ public final class MissingMenuReferenceIndex {
         entries.add(new PackingListEntry(menuName, packingListName));
     }
 
+    /** Snapshot copy - see MissingFieldReferenceIndex.entries(). */
     public List<Entry> entries() {
-        return entries;
+        synchronized (entries) {
+            return new ArrayList<>(entries);
+        }
     }
 }

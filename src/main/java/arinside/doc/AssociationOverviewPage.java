@@ -37,6 +37,8 @@ public final class AssociationOverviewPage {
             try {
                 Association a = repo.getAssociation(name);
                 PagePath detail = Naming.associationDetail(name);
+                SearchIndex.add(name, "association", detail);
+                if (appConfig.jsonOutput) JsonExport.addAssociation(name, a instanceof DirectAssociation ? "Direct" : "Indirect", a.getPrimaryFormName(), a.getSecondaryFormName(), AREnumLabels.associationCardinality(a.getCardinality()), AREnumLabels.associationEnforcement(a.getEnforcement()));
 
                 TableRow row = new TableRow();
                 row.addCell(URLLink.to(name, detail, ImageTag.Id.Association, page.rootLevel()).toHtml());
@@ -52,6 +54,8 @@ public final class AssociationOverviewPage {
             }
         }
         if (count > 0) tbl.removeEmptyMessageRow();
+        // NOTE: no lists.js here (associations have no client-side filter widget), so this table
+        // must keep server-rendering all its rows - do NOT add tbl.maxRenderedRows(0).
 
         WebPage webPage = new WebPage(page.fileName(), "Association List", page.rootLevel(), appConfig);
         webPage.addContent(count + " Associations\n" + tbl.toXHtml());

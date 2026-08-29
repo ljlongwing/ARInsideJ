@@ -47,6 +47,8 @@ public final class ImageOverviewPage {
                 if (!OverlaySupport.isVisible(img.getProperties(), serverOverlayMode, appConfig.overlaySupport)) continue;
                 PagePath detail = Naming.imageDetail(name, false);
                 letterFilter.incStartLetterOf(name);
+                SearchIndex.add(name, "image", detail);
+                if (appConfig.jsonOutput) JsonExport.addImage(name, img.getType(), img.getLastUpdateTime() == null ? null : img.getLastUpdateTime().getValue(), img.getLastChangedBy());
 
                 String type = img.getType() == null ? "" : img.getType();
                 String modified = DateTimeFormat.toHtmlString(img.getLastUpdateTime().getValue());
@@ -73,6 +75,7 @@ public final class ImageOverviewPage {
             }
         }
         if (count > 0) tbl.removeEmptyMessageRow();
+        tbl.maxRenderedRows(0); // rows come from lists.js (see Table.maxRenderedRows javadoc)
         json.append("];\nvar rootLevel = ").append(page.rootLevel()).append(";\n");
 
         StringBuilder content = new StringBuilder();
@@ -84,15 +87,13 @@ public final class ImageOverviewPage {
         content.append(tbl.toXHtml());
 
         WebPage webPage = new WebPage(page.fileName(), "Image List", page.rootLevel(), appConfig);
-        webPage.addScriptReference("img/object_list.js").addScriptReference("img/imageList.js")
-            .addScriptReference("img/jquery.timers.js").addScriptReference("img/jquery.address.min.js");
+        webPage.addScriptReference("img/lists.js").bodyClass("list-page");
         webPage.addContent(content.toString());
         webPage.saveInFolder(page.path());
 
         PagePath overviewPage = Naming.overviewImages();
         WebPage overviewWebPage = new WebPage(overviewPage.fileName(), "Image List", overviewPage.rootLevel(), appConfig);
-        overviewWebPage.addScriptReference("img/object_list.js").addScriptReference("img/imageList.js")
-            .addScriptReference("img/jquery.timers.js").addScriptReference("img/jquery.address.min.js");
+        overviewWebPage.addScriptReference("img/lists.js").bodyClass("list-page");
         overviewWebPage.addContent(content.toString());
         overviewWebPage.saveInFolder(overviewPage.path());
 

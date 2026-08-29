@@ -29,6 +29,7 @@ import arinside.cli.CommandLineArgs;
 import arinside.config.AppConfig;
 import arinside.config.AppConfigReader;
 import arinside.doc.*;
+import arinside.incremental.RunState;
 import arinside.output.ImageTag;
 import arinside.output.Naming;
 import arinside.output.WebPage;
@@ -116,6 +117,39 @@ public final class Main {
             ? "htm.gz" // GZip writer itself lands in Phase 6; extension is set now for path fidelity
             : "htm";
 
+        // Incremental runs: read the previous run's state (before anything below can delete it) and,
+        // if nothing has changed since, leave the existing output untouched and stop here. Inert in
+        // diff mode. See AppConfig.incrementalRuns / arinside.incremental.
+        long incrementalProbeTime = java.time.Instant.now().getEpochSecond();
+        RunState prevRunState = appConfig.incrementalRuns && !appConfig.diffMode
+            ? RunState.readOrNull(appConfig.targetFolder) : null;
+        String incrementalFileHash = null;
+        if (appConfig.incrementalRuns && !appConfig.diffMode && appConfig.fileMode) {
+            incrementalFileHash = RunState.sha256(appConfig.objListXML);
+            if (prevRunState != null && "file".equals(prevRunState.mode)
+                    && prevRunState.source.equals(appConfig.objListXML)
+                    && !incrementalFileHash.isEmpty() && incrementalFileHash.equals(prevRunState.fileHash)) {
+                System.out.println("Incremental: '" + appConfig.objListXML + "' is unchanged since the last run ("
+                    + prevRunState.generated + "). Output left as-is.");
+                return;
+            }
+        }
+        if (appConfig.incrementalRuns && !appConfig.diffMode && !appConfig.fileMode
+                && prevRunState != null && "server".equals(prevRunState.mode)
+                && prevRunState.source.equals(appConfig.serverName)) {
+            try (ArClient probe = ArClient.connect(appConfig)) {
+                java.util.Optional<String> change = arinside.incremental.ChangeProbe.firstChange(probe, prevRunState);
+                if (change.isEmpty()) {
+                    System.out.println("Incremental: no changes on '" + appConfig.serverName + "' since the last run ("
+                        + prevRunState.generated + "). Output left as-is.");
+                    return;
+                }
+                System.out.println("Incremental: changes detected (" + change.get() + ") - running in full.");
+            } catch (ARException e) {
+                System.out.println("Incremental probe failed (" + e.getMessage() + ") - running in full.");
+            }
+        }
+
         if (appConfig.deleteExistingFiles) {
             OutputDirectory.deleteExistingFiles(appConfig.targetFolder);
         }
@@ -142,6 +176,21 @@ public final class Main {
 
         System.out.println("Writing navigation page...");
         arinside.output.NavigationPage.write(appConfig);
+        // Placeholder so every page's <script src="img/search-index.js"> resolves even if the
+        // documentation phase below throws; overwritten with real data once it completes.
+        arinside.output.SearchIndex.writeEmpty(appConfig.targetFolder);
+
+        if (appConfig.diffMode) {
+            try {
+                arinside.diff.DiffRunner.run(appConfig);
+            } catch (Exception e) {
+                System.out.println("EXCEPTION building diff report: " + e);
+                if (AppConfig.verboseMode) e.printStackTrace(System.out);
+                System.exit(1);
+            }
+            System.out.println(Version.PRODUCT_NAME + " diff run complete.");
+            return;
+        }
 
         {
             // Declared outside the try (not just outside the file-mode/server-mode branch) so
@@ -658,6 +707,42 @@ public final class Main {
                     escalCount, filterCount, groupCount, menuCount, roleCount, formCount, userCount, imageCount, associationCount,
                     globalFields.totalFieldCount(), loadSeconds, documentationSeconds, WebPage.filesCreated.get()));
 
+                if (appConfig.searchIndex) {
+                    arinside.output.SearchIndex.writeTo(appConfig.targetFolder);
+                    System.out.println(arinside.output.SearchIndex.size() + " objects in search index.");
+                } else {
+                    arinside.output.SearchIndex.writeEmpty(appConfig.targetFolder);
+                }
+
+                if (appConfig.jsonOutput) {
+                    arinside.output.JsonExport.writeTo(appConfig);
+                    System.out.println("JSON export written to data/.");
+                }
+
+                if (appConfig.incrementalRuns && !appConfig.diffMode) {
+                    RunState state = new RunState();
+                    state.generated = java.time.Instant.now().toString();
+                    state.probeTime = incrementalProbeTime;
+                    if (appConfig.fileMode) {
+                        state.mode = "file";
+                        state.source = appConfig.objListXML;
+                        state.fileHash = incrementalFileHash != null ? incrementalFileHash : RunState.sha256(appConfig.objListXML);
+                        state.write(appConfig.targetFolder);
+                        System.out.println("Incremental: run state written to " + RunState.FILE_NAME + ".");
+                    } else {
+                        state.mode = "server";
+                        state.source = appConfig.serverName;
+                        state.fileHash = "-";
+                        try {
+                            arinside.incremental.ChangeProbe.snapshotInto(client, state);
+                            state.write(appConfig.targetFolder);
+                            System.out.println("Incremental: run state written to " + RunState.FILE_NAME + ".");
+                        } catch (ARException e) {
+                            System.out.println("Incremental: could not snapshot object names (" + e.getMessage() + "); state not written.");
+                        }
+                    }
+                }
+
             } catch (Exception e) {
                 System.out.println("EXCEPTION connecting/documenting: " + e.getMessage());
             } finally {
@@ -783,6 +868,7 @@ public final class Main {
                 return writes.submit(() -> render.render(data))
                     .exceptionally(ex -> {
                         System.out.println("EXCEPTION " + label + " write of '" + name + "': " + rootMessage(ex));
+                        if (AppConfig.verboseMode) ((Throwable) ex).printStackTrace(System.out);
                         return null;
                     });
             });

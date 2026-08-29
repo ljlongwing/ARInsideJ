@@ -37,6 +37,7 @@ public final class EscalationOverviewPage {
         tbl.addColumn(25, "Escalation Name");
         tbl.addColumn(10, "Enabled");
         tbl.addColumn(25, "Execute On");
+        tbl.addColumn(7, "Shared");
         tbl.addColumn(7, "If");
         tbl.addColumn(7, "Else");
         tbl.addColumn(13, "Changed");
@@ -54,9 +55,12 @@ public final class EscalationOverviewPage {
                 boolean isOverlaid = OverlaySupport.isOverlaidForNaming(esc.getProperties(), serverOverlayMode);
                 PagePath detail = Naming.escalationDetail(name, isOverlaid);
                 letterFilter.incStartLetterOf(name);
+                SearchIndex.add(name, "escalation", detail);
+                if (appConfig.jsonOutput) JsonExport.addEscalation(name, esc, OverlaySupport.overlayType(esc.getProperties()));
 
                 int ifCount = esc.getActionList() == null ? 0 : esc.getActionList().size();
                 int elseCount = esc.getElseList() == null ? 0 : esc.getElseList().size();
+                boolean shared = esc.getFormList() != null && esc.getFormList().size() > 1;
                 String executeOn = String.join(", ", esc.getFormList());
                 String modified = DateTimeFormat.toHtmlString(esc.getLastUpdateTime().getValue());
                 String modifiedPlain = DateTimeFormat.toPlainString(esc.getLastUpdateTime().getValue());
@@ -66,6 +70,7 @@ public final class EscalationOverviewPage {
                 row.addCell(URLLink.to(name, detail, new ImageTag(ImageTag.Id.Escalation, page.rootLevel(), OverlaySupport.overlayType(esc.getProperties())), page.rootLevel()).toHtml());
                 row.addCell(new TableCell(AREnumLabels.objectEnable(esc.isEnable()), esc.isEnable() ? "" : "objStatusDisabled"));
                 row.addCell(executeOn);
+                row.addCell(shared ? "Yes" : "");
                 row.addCell(new TableCell(ifCount));
                 row.addCell(new TableCell(elseCount));
                 row.addCell(modified);
@@ -80,13 +85,15 @@ public final class EscalationOverviewPage {
                     .append(WebUtil.jsString(modifiedPlain)).append("\",\"")
                     .append(WebUtil.jsString(esc.getLastChangedBy())).append("\",\"")
                     .append(WebUtil.jsString(link)).append("\",0,")
-                    .append(OverlaySupport.overlayType(esc.getProperties())).append(']');
+                    .append(OverlaySupport.overlayType(esc.getProperties())).append(',')
+                    .append(shared ? 1 : 0).append(']');
                 count++;
             } catch (ARException e) {
                 System.out.println("EXCEPTION EscalationList '" + name + "': " + e.getMessage());
             }
         }
         if (count > 0) tbl.removeEmptyMessageRow();
+        tbl.maxRenderedRows(0); // rows come from lists.js (see Table.maxRenderedRows javadoc)
         json.append("];\nvar rootLevel = ").append(page.rootLevel()).append(";\n");
 
         StringBuilder content = new StringBuilder();
@@ -98,15 +105,13 @@ public final class EscalationOverviewPage {
         content.append(tbl.toXHtml());
 
         WebPage webPage = new WebPage(page.fileName(), "Escalation List", page.rootLevel(), appConfig);
-        webPage.addScriptReference("img/object_list.js").addScriptReference("img/escalationList.js")
-            .addScriptReference("img/jquery.timers.js").addScriptReference("img/jquery.address.min.js");
+        webPage.addScriptReference("img/lists.js").bodyClass("list-page");
         webPage.addContent(content.toString());
         webPage.saveInFolder(page.path());
 
         PagePath overviewPage = Naming.overviewEscalations();
         WebPage overviewWebPage = new WebPage(overviewPage.fileName(), "Escalation List", overviewPage.rootLevel(), appConfig);
-        overviewWebPage.addScriptReference("img/object_list.js").addScriptReference("img/escalationList.js")
-            .addScriptReference("img/jquery.timers.js").addScriptReference("img/jquery.address.min.js");
+        overviewWebPage.addScriptReference("img/lists.js").bodyClass("list-page");
         overviewWebPage.addContent(content.toString());
         overviewWebPage.saveInFolder(overviewPage.path());
 

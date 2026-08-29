@@ -36,6 +36,7 @@ public final class FilterOverviewPage {
         tbl.addColumn(8, "Enabled");
         tbl.addColumn(8, "Order");
         tbl.addColumn(24, "Execute On");
+        tbl.addColumn(7, "Shared");
         tbl.addColumn(6, "If");
         tbl.addColumn(6, "Else");
         tbl.addColumn(13, "Changed");
@@ -53,9 +54,12 @@ public final class FilterOverviewPage {
                 boolean isOverlaid = OverlaySupport.isOverlaidForNaming(filter.getProperties(), serverOverlayMode);
                 PagePath detail = Naming.filterDetail(name, isOverlaid);
                 letterFilter.incStartLetterOf(name);
+                SearchIndex.add(name, "filter", detail);
+                if (appConfig.jsonOutput) JsonExport.addFilter(name, filter, OverlaySupport.overlayType(filter.getProperties()));
 
                 int ifCount = filter.getActionList() == null ? 0 : filter.getActionList().size();
                 int elseCount = filter.getElseList() == null ? 0 : filter.getElseList().size();
+                boolean shared = filter.getFormList() != null && filter.getFormList().size() > 1;
                 String executeOn = String.join(", ", filter.getFormList());
                 String modified = DateTimeFormat.toHtmlString(filter.getLastUpdateTime().getValue());
                 String modifiedPlain = DateTimeFormat.toPlainString(filter.getLastUpdateTime().getValue());
@@ -66,6 +70,7 @@ public final class FilterOverviewPage {
                 row.addCell(new TableCell(AREnumLabels.objectEnable(filter.isEnable()), filter.isEnable() ? "" : "objStatusDisabled"));
                 row.addCell(new TableCell(filter.getOrder()));
                 row.addCell(executeOn);
+                row.addCell(shared ? "Yes" : "");
                 row.addCell(new TableCell(ifCount));
                 row.addCell(new TableCell(elseCount));
                 row.addCell(modified);
@@ -82,13 +87,15 @@ public final class FilterOverviewPage {
                     .append(WebUtil.jsString(filter.getLastChangedBy())).append("\",\"")
                     .append(WebUtil.jsString(link)).append("\",")
                     .append(filter.getOpSet()).append(',')
-                    .append(OverlaySupport.overlayType(filter.getProperties())).append(']');
+                    .append(OverlaySupport.overlayType(filter.getProperties())).append(',')
+                    .append(shared ? 1 : 0).append(']');
                 count++;
             } catch (ARException e) {
                 System.out.println("EXCEPTION FilterList '" + name + "': " + e.getMessage());
             }
         }
         if (count > 0) tbl.removeEmptyMessageRow();
+        tbl.maxRenderedRows(0); // rows come from lists.js (see Table.maxRenderedRows javadoc)
         json.append("];\nvar rootLevel = ").append(page.rootLevel()).append(";\n");
 
         StringBuilder content = new StringBuilder();
@@ -110,15 +117,13 @@ public final class FilterOverviewPage {
         content.append(tbl.toXHtml());
 
         WebPage webPage = new WebPage(page.fileName(), "Filter List", page.rootLevel(), appConfig);
-        webPage.addScriptReference("img/object_list.js").addScriptReference("img/filterList.js")
-            .addScriptReference("img/jquery.timers.js").addScriptReference("img/jquery.address.min.js");
+        webPage.addScriptReference("img/lists.js").bodyClass("list-page");
         webPage.addContent(content.toString());
         webPage.saveInFolder(page.path());
 
         PagePath overviewPage = Naming.overviewFilters();
         WebPage overviewWebPage = new WebPage(overviewPage.fileName(), "Filter List", overviewPage.rootLevel(), appConfig);
-        overviewWebPage.addScriptReference("img/object_list.js").addScriptReference("img/filterList.js")
-            .addScriptReference("img/jquery.timers.js").addScriptReference("img/jquery.address.min.js");
+        overviewWebPage.addScriptReference("img/lists.js").bodyClass("list-page");
         overviewWebPage.addContent(content.toString());
         overviewWebPage.saveInFolder(overviewPage.path());
 

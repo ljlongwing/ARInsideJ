@@ -89,7 +89,7 @@ public final class ActiveLinkDetailPage {
         String head = URLLink.to("Active Links", Naming.activeLinkOverview(), ImageTag.Id.NoImage, page.rootLevel()).toHtml()
             + " &gt; " + new ImageTag(ImageTag.Id.ActiveLink, page.rootLevel()).toHtml() + WebUtil.objName(name)
             + ApplicationHeaderLink.suffix(appRefName, page.rootLevel());
-        webPage.addContentHead(head);
+        webPage.addContentHead(head + WebUtil.sharedBadge(al.getFormList()));
 
         if (isOverlaid) {
             webPage.addContent(OverlayDiff.renderBaseLayerNote(URLLink.to("overlay page", Naming.activeLinkDetail(name, false), ImageTag.Id.ActiveLink, page.rootLevel()).toHtml()));

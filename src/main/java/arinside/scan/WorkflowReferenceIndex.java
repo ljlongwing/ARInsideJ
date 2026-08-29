@@ -52,9 +52,13 @@ public final class WorkflowReferenceIndex {
      */
     public record Ref(String name, String typeLabel, ImageTag.Id icon, PagePath link,
                        Integer order, Boolean enabled, Integer executeOn, Integer ifCount, Integer elseCount,
-                       com.bmc.arsys.api.Timestamp modified, String changedBy) {
+                       com.bmc.arsys.api.Timestamp modified, String changedBy, Integer formCount) {
         public Ref(String name, String typeLabel, ImageTag.Id icon, PagePath link) {
-            this(name, typeLabel, icon, link, null, null, null, null, null, null, null);
+            this(name, typeLabel, icon, link, null, null, null, null, null, null, null, null);
+        }
+        /** True when this workflow object executes on more than one form (Dev Studio's "Shared" flag). Null formCount (Menu/Container/Image refs) counts as not shared. */
+        public boolean shared() {
+            return formCount != null && formCount > 1;
         }
     }
     /**
@@ -147,7 +151,7 @@ public final class WorkflowReferenceIndex {
         boolean isOverlaid = OverlaySupport.isOverlaidForNaming(al.getProperties(), serverOverlayMode);
         Ref ref = new Ref(name, "Active Link", ImageTag.Id.ActiveLink, Naming.activeLinkDetail(name, isOverlaid),
             al.getOrder(), al.isEnable(), al.getExecuteMask(), size(al.getActionList()), size(al.getElseList()),
-            al.getLastUpdateTime(), al.getLastChangedBy());
+            al.getLastUpdateTime(), al.getLastChangedBy(), size(al.getFormList()));
         add(al.getFormList(), ref);
         addIfOverlayOrCustom(al.getProperties(), ref, al.isEnable(), al.getLastUpdateTime(), al.getLastChangedBy());
         scanAlMessages(ref, "If", al.getActionList());
@@ -159,7 +163,7 @@ public final class WorkflowReferenceIndex {
         boolean isOverlaid = OverlaySupport.isOverlaidForNaming(f.getProperties(), serverOverlayMode);
         Ref ref = new Ref(name, "Filter", ImageTag.Id.Filter, Naming.filterDetail(name, isOverlaid),
             f.getOrder(), f.isEnable(), f.getOpSet(), size(f.getActionList()), size(f.getElseList()),
-            f.getLastUpdateTime(), f.getLastChangedBy());
+            f.getLastUpdateTime(), f.getLastChangedBy(), size(f.getFormList()));
         add(f.getFormList(), ref);
         addIfOverlayOrCustom(f.getProperties(), ref, f.isEnable(), f.getLastUpdateTime(), f.getLastChangedBy());
         scanFilterActions(ref, "If", f.getActionList());
@@ -176,7 +180,7 @@ public final class WorkflowReferenceIndex {
         int tmType = esc.getEscalationTm() instanceof com.bmc.arsys.api.EscalationInterval ? 1 : 0;
         Ref ref = new Ref(name, "Escalation", ImageTag.Id.Escalation, Naming.escalationDetail(name, isOverlaid),
             null, esc.isEnable(), tmType, size(esc.getActionList()), size(esc.getElseList()),
-            esc.getLastUpdateTime(), esc.getLastChangedBy());
+            esc.getLastUpdateTime(), esc.getLastChangedBy(), size(esc.getFormList()));
         add(esc.getFormList(), ref);
         addIfOverlayOrCustom(esc.getProperties(), ref, esc.isEnable(), esc.getLastUpdateTime(), esc.getLastChangedBy());
         scanFilterActions(ref, "If", esc.getActionList());

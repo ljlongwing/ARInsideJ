@@ -32,7 +32,12 @@ public final class ImageReferenceIndex {
         byImageName.computeIfAbsent(imageName, k -> Collections.synchronizedList(new ArrayList<>())).add(ref);
     }
 
+    /** Snapshot copy (same reasoning as {@link FieldReferenceIndex#forField}): {@link #add} runs on the parallel write pool. */
     public List<Ref> forImage(String imageName) {
-        return byImageName.getOrDefault(imageName, List.of());
+        List<Ref> live = byImageName.get(imageName);
+        if (live == null) return List.of();
+        synchronized (live) {
+            return new ArrayList<>(live);
+        }
     }
 }

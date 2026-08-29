@@ -46,6 +46,8 @@ public final class GroupOverviewPage {
         for (GroupRecord g : groups) {
             PagePath detail = Naming.groupDetail(g.groupId);
             letterFilter.incStartLetterOf(g.name);
+            SearchIndex.add(g.name, "group", detail);
+            if (appConfig.jsonOutput) JsonExport.addGroup(g.groupId, g.name, g.groupType, g.category, g.modified == null ? null : g.modified.getValue(), g.modifiedBy);
 
             String modified = g.modified == null ? "" : DateTimeFormat.toHtmlString(g.modified.getValue());
             String modifiedPlain = g.modified == null ? "" : DateTimeFormat.toPlainString(g.modified.getValue());
@@ -70,6 +72,7 @@ public final class GroupOverviewPage {
             count++;
         }
         if (!groups.isEmpty()) tbl.removeEmptyMessageRow();
+        tbl.maxRenderedRows(0); // rows come from lists.js (see Table.maxRenderedRows javadoc)
         json.append("];\nvar rootLevel = ").append(page.rootLevel()).append(";\n");
 
         String typeFilter = "<span class='multiFilter' id='multiFilter'>Restrict results to: "
@@ -88,8 +91,7 @@ public final class GroupOverviewPage {
         content.append(tbl.toXHtml());
 
         WebPage webPage = new WebPage(page.fileName(), "Group List", page.rootLevel(), appConfig);
-        webPage.addScriptReference("img/object_list.js").addScriptReference("img/groupList.js")
-            .addScriptReference("img/jquery.timers.js").addScriptReference("img/jquery.address.min.js");
+        webPage.addScriptReference("img/lists.js").bodyClass("list-page");
         webPage.addContent(content.toString());
         webPage.saveInFolder(page.path());
         return groups;

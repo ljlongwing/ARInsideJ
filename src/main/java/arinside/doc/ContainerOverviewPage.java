@@ -40,6 +40,18 @@ public final class ContainerOverviewPage {
         this.guideCalls = guideCalls;
     }
 
+    /** icons.svg symbol name for this overview's container subtype (header search index). */
+    private String containerSearchIcon() {
+        return switch (containerType) {
+            case Constants.ARCON_GUIDE -> "al-guide";
+            case Constants.ARCON_FILTER_GUIDE -> "filter-guide";
+            case Constants.ARCON_APP -> "application";
+            case Constants.ARCON_PACK -> "packing-list";
+            case Constants.ARCON_WEBSERVICE -> "webservice";
+            default -> "application";
+        };
+    }
+
     /** Java port of CContainerTable::IsUnusedContainer - a Guide/Filter Guide no AL/Filter CallGuide action ever targets. */
     private boolean isUnused(String name) {
         if (containerType == Constants.ARCON_GUIDE) return guideCalls == null || guideCalls.alCallers(name).isEmpty();
@@ -66,6 +78,8 @@ public final class ContainerOverviewPage {
                 if (!OverlaySupport.isVisible(c.getProperties(), serverOverlayMode, appConfig.overlaySupport)) continue;
                 PagePath detail = Naming.containerDetail(containerType, name, OverlaySupport.isOverlaidForNaming(c.getProperties(), serverOverlayMode));
                 letterFilter.incStartLetterOf(name);
+                SearchIndex.add(name, containerSearchIcon(), detail);
+                if (appConfig.jsonOutput) JsonExport.addContainer(name, c, OverlaySupport.overlayType(c.getProperties()));
                 boolean unused = isUnused(name);
 
                 String modified = DateTimeFormat.toHtmlString(c.getLastUpdateTime().getValue());
@@ -94,6 +108,7 @@ public final class ContainerOverviewPage {
             }
         }
         if (count > 0) tbl.removeEmptyMessageRow();
+        tbl.maxRenderedRows(0); // rows come from lists.js (see Table.maxRenderedRows javadoc)
         json.append("];\nvar rootLevel = ").append(page.rootLevel()).append(";\nvar containerType = ").append(containerType).append(";\n");
 
         StringBuilder content = new StringBuilder();
@@ -107,15 +122,13 @@ public final class ContainerOverviewPage {
         }
 
         WebPage webPage = new WebPage(page.fileName(), title, page.rootLevel(), appConfig);
-        webPage.addScriptReference("img/object_list.js").addScriptReference("img/containerList.js")
-            .addScriptReference("img/jquery.timers.js").addScriptReference("img/jquery.address.min.js");
+        webPage.addScriptReference("img/lists.js").bodyClass("list-page");
         webPage.addContent(content.toString());
         webPage.saveInFolder(page.path());
 
         PagePath overviewPage = Naming.overviewContainer(containerType);
         WebPage overviewWebPage = new WebPage(overviewPage.fileName(), title, overviewPage.rootLevel(), appConfig);
-        overviewWebPage.addScriptReference("img/object_list.js").addScriptReference("img/containerList.js")
-            .addScriptReference("img/jquery.timers.js").addScriptReference("img/jquery.address.min.js");
+        overviewWebPage.addScriptReference("img/lists.js").bodyClass("list-page");
         overviewWebPage.addContent(content.toString());
         overviewWebPage.saveInFolder(overviewPage.path());
 

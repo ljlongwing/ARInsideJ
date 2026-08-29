@@ -40,18 +40,20 @@ public final class DocSummaryInfo {
         tbl.addColumn(10, "Objects");
         tbl.addColumn(90, "Description");
 
+        // Row order matches the left-hand navigation tree (see NavigationPage), not the C++
+        // tool's own summary-table order.
+        row(tbl, c.forms(), "Forms", Naming.schemaOverview());
         row(tbl, c.activeLinks(), "Active Links", Naming.overviewActiveLinks());
-        row(tbl, c.webServices(), "Web Services", Naming.overviewContainer(com.bmc.arsys.api.Constants.ARCON_WEBSERVICE));
+        row(tbl, c.filters(), "Filters", Naming.overviewFilters());
+        row(tbl, c.escalations(), "Escalations", Naming.overviewEscalations());
+        row(tbl, c.menus(), "Menus", Naming.overviewMenus());
         row(tbl, c.activeLinkGuides(), "Active Link Guides", Naming.overviewContainer(com.bmc.arsys.api.Constants.ARCON_GUIDE));
         row(tbl, c.filterGuides(), "Filter Guides", Naming.overviewContainer(com.bmc.arsys.api.Constants.ARCON_FILTER_GUIDE));
-        row(tbl, c.packingLists(), "Packing Lists", Naming.overviewContainer(com.bmc.arsys.api.Constants.ARCON_PACK));
         row(tbl, c.applications(), "Applications", Naming.overviewContainer(com.bmc.arsys.api.Constants.ARCON_APP));
-        row(tbl, c.escalations(), "Escalations", Naming.overviewEscalations());
-        row(tbl, c.filters(), "Filters", Naming.overviewFilters());
+        row(tbl, c.packingLists(), "Packing Lists", Naming.overviewContainer(com.bmc.arsys.api.Constants.ARCON_PACK));
+        row(tbl, c.webServices(), "Web Services", Naming.overviewContainer(com.bmc.arsys.api.Constants.ARCON_WEBSERVICE));
         row(tbl, c.groups(), "Groups", Naming.groupOverview());
-        row(tbl, c.menus(), "Menus", Naming.overviewMenus());
         row(tbl, c.roles(), "Roles", Naming.roleOverview());
-        row(tbl, c.forms(), "Forms", Naming.schemaOverview());
         row(tbl, c.users(), "Users", Naming.overviewUsers());
         row(tbl, c.images(), "Images", Naming.overviewImages());
         if (c.associations() > 0) row(tbl, c.associations(), "Associations", Naming.associationOverview());

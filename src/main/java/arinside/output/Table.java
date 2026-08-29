@@ -9,6 +9,7 @@ public final class Table {
     private String cssClass;
     private boolean hideHeader = false;
     private String emptyMessage = "Table contains no data";
+    private int maxRenderedRows = -1;
     public String description = "";
 
     private final List<TableColumn> columns = new ArrayList<>();
@@ -39,11 +40,20 @@ public final class Table {
     /** Ported from CTable::DisableHeader - used for small nested sub-tables (e.g. a field's per-group permission list) that don't need their own column header row. */
     public Table disableHeader() { this.hideHeader = true; return this; }
 
+    /**
+     * Cap how many {@code <tbody>} rows {@link #toXHtml()} emits. Used by the overview list pages,
+     * whose client-side filter widget (lists.js) rebuilds the visible rows from an embedded JS
+     * array anyway - server-rendering all N (tens of thousands) just produced a multi-MB page the
+     * browser laid out and then discarded. {@link #toCsv()} and {@link #numRows()} are unaffected.
+     */
+    public Table maxRenderedRows(int n) { this.maxRenderedRows = n; return this; }
+
     public String toXHtml() {
         StringBuilder sb = new StringBuilder();
         if (!description.isEmpty()) {
             sb.append("<h2>\n").append(description).append("\n</h2>\n");
         }
+        sb.append("<div class=\"ari-tablewrap\">\n");
         sb.append("<table id=\"").append(htmId).append("\"");
         if (!cssClass.isEmpty()) {
             sb.append(" class=\"").append(cssClass).append("\"\n");
@@ -61,14 +71,16 @@ public final class Table {
         }
 
         sb.append("<tbody>");
-        if (!rows.isEmpty()) {
-            for (TableRow r : rows) r.toXHtml(sb);
-        } else if (!emptyMessage.isEmpty()) {
+        int limit = maxRenderedRows < 0 ? rows.size() : Math.min(maxRenderedRows, rows.size());
+        if (limit > 0) {
+            for (int i = 0; i < limit; i++) rows.get(i).toXHtml(sb);
+        } else if (rows.isEmpty() && !emptyMessage.isEmpty()) {
             sb.append("<tr>\n<td colspan=\"").append(columns.size()).append("\">")
                 .append(emptyMessage).append("</td>\n</tr>\n");
         }
         sb.append("</tbody>");
         sb.append("</table>\n");
+        sb.append("</div>\n");
         return sb.toString();
     }
 

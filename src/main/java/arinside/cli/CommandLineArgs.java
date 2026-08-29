@@ -20,8 +20,10 @@ public class CommandLineArgs {
     private int rpcPort = 0;
     private boolean slowObjectLoading = false;
     private String scope = "";
+    private String diffBaseline = "";
+    private String diffCurrent = "";
 
-    private boolean serverSet, outputFolderSet, usernameSet, passwordSet, tcpPortSet, rpcPortSet, scopeSet;
+    private boolean serverSet, outputFolderSet, usernameSet, passwordSet, tcpPortSet, rpcPortSet, scopeSet, diffSet, incrementalSet;
     private boolean helpRequested;
 
     public static CommandLineArgs parse(String[] args) {
@@ -41,6 +43,12 @@ public class CommandLineArgs {
                 case "-o", "--output" -> { result.outputFolder = requireValue(arg, queue); result.outputFolderSet = true; }
                 case "--slow" -> result.slowObjectLoading = true;
                 case "--scope" -> { result.scope = requireValue(arg, queue); result.scopeSet = true; }
+                case "--diff" -> {
+                    result.diffBaseline = requireValue(arg, queue);
+                    result.diffCurrent = requireValue(arg, queue);
+                    result.diffSet = true;
+                }
+                case "--incremental" -> result.incrementalSet = true;
                 case "-v", "--verbose" -> AppConfig.verboseMode = true;
                 case "-h", "--help" -> result.helpRequested = true;
                 default -> throw new IllegalArgumentException("error: unknown argument '" + arg + "'");
@@ -72,6 +80,11 @@ public class CommandLineArgs {
               -o, --output <string>   Output folder
                   --slow               Uses slow object loading
                   --scope <string>     Only document this form and its directly-related workflow
+                  --diff <baseline> <current>
+                                       Compare two offline .xml/.def exports; write a change report
+                                       to the output folder instead of the normal documentation
+                  --incremental        Skip the whole run if nothing changed since the last one
+                                       (writes/reads .arinside-state in the output folder)
               -v, --verbose            Verbose output
               -h, --help                Show this help
             """);
@@ -95,4 +108,8 @@ public class CommandLineArgs {
     public boolean isTcpPortSet() { return tcpPortSet; }
     public boolean isRpcPortSet() { return rpcPortSet; }
     public boolean isScopeSet() { return scopeSet; }
+    public boolean isDiffSet() { return diffSet; }
+    public boolean isIncrementalSet() { return incrementalSet; }
+    public String getDiffBaseline() { return diffBaseline; }
+    public String getDiffCurrent() { return diffCurrent; }
 }
