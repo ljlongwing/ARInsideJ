@@ -76,6 +76,59 @@ sample `settings.ini` + README/LICENSE) - see "Download" above for what's in it.
 `mvn -o compile` (without `package`) is enough if you're just iterating on source and running via
 an IDE or a manually-assembled classpath, but `package` is what you want for a distributable build.
 
+`mvn -o test` runs a JUnit 5 smoke suite that renders a bundled sample export offline and checks the
+generated site (structure, the modern HTML shell, the JSON export, and an end-to-end `--diff` run);
+it also runs automatically as part of `mvn -o package`.
+
+## Docker
+
+The repo ships a `Dockerfile` that wraps the pre-built fat jar (it is *not* built from source in
+the image - the proprietary BMC jars can't be redistributed). Build it after `mvn -o package`:
+
+```
+docker build -t arinsidej .
+```
+
+Then run it like the jar, mounting a work directory. Live server:
+
+```
+docker run --rm \
+  -v "$PWD/out:/data/out" \
+  -v "$PWD/settings.ini:/data/settings.ini:ro" \
+  arinsidej -i /data/settings.ini -s myserver -l Demo -p secret -o /data/out
+```
+
+Fully offline against an `.xml`/`.def` export (put the export and ini in the mounted dir):
+
+```
+docker run --rm -v "$PWD:/data" arinsidej -i /data/settings.ini
+```
+
+Each GitHub Release also publishes `ghcr.io/ljlongwing/arinsidej:<version>` and `:latest`
+(`.github/workflows/docker-publish.yml`), so downstream repos can document their server on a
+schedule or on every release without building anything:
+
+```yaml
+# .github/workflows/document-ar-server.yml in your own repo
+on:
+  workflow_dispatch:
+  schedule: [{ cron: "0 6 * * 1" }]   # Mondays 06:00 UTC
+jobs:
+  document:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4          # provides settings.ini
+      - run: |
+          docker run --rm -v "$PWD:/data" ghcr.io/ljlongwing/arinsidej:latest \
+            -i /data/settings.ini -s "$AR_SERVER" -l "$AR_USER" -p "$AR_PASS" -o /data/site
+        env:
+          AR_SERVER: ${{ secrets.AR_SERVER }}
+          AR_USER: ${{ secrets.AR_USER }}
+          AR_PASS: ${{ secrets.AR_PASS }}
+      - uses: actions/upload-artifact@v4
+        with: { name: ar-docs, path: site }
+```
+
 ## Getting Started
 
 ```
@@ -87,7 +140,10 @@ This connects to `localhost` as `Demo`, and documents every form/field/workflow 
 server, and can also be set inside the ini file itself instead of on the command line. Depending on
 server size this can take anywhere from a couple of minutes to the better part of an hour; the
 `ReadConcurrency`/`WriteConcurrency` ini settings (see below) are the main lever for run time on a
-large server. Once it finishes, open `index.htm` in the `TargetFolder` you configured.
+large server. Once it finishes, open `index.htm` in the `TargetFolder` you configured - the site is
+self-contained static HTML/CSS/JS and works opened straight from disk (`file://`), no web server
+needed. It has a left sidebar for navigation, a header search box (press `/`) that jumps to any
+object by name, and a light/dark theme toggle that follows your OS setting by default.
 
 ## Command Line Arguments
 
@@ -102,6 +158,8 @@ large server. Once it finishes, open `index.htm` in the `TargetFolder` you confi
 | -o, --output \<string\> | optional | Output directory, overrides `TargetFolder` from the ini file. |
 | --slow | optional | Disables fast/bulk object loading (one-at-a-time `getX(name)` calls instead of `getListXObjects()`). Needed for some server versions - see [Known Limitations](#known-limitations). |
 | --scope \<string\> | optional | Only document this one form plus its directly-related workflow tree, instead of the whole server - see [Scoped Export](#scoped-export---scope) below. |
+| --diff \<baseline\> \<current\> | optional | Compare two offline `.xml`/`.def` exports and write a standalone change report to the output folder instead of the normal documentation - see [Snapshot Diff](#snapshot-diff---diff) below. No server needed. |
+| --incremental | optional | Skip the entire run if nothing has changed since the last one - see [Incremental Runs](#incremental-runs---incremental) below. |
 | -v, --verbose | optional | Verbose output. |
 | -h, --help | optional | Show command line usage. |
 
@@ -135,6 +193,9 @@ command-line values take precedence over the ini file.
 | DeleteExistingFiles | Boolean | `FALSE` | Delete everything already in `TargetFolder` before writing. |
 | GZCompression | Boolean | `FALSE` | Write gzip-compressed `.htm.gz` pages plus a generated `.htaccess`, for serving directly from Apache. |
 | OverlayMode | Boolean | `TRUE` | Document overlay-feature details (server 7.6.04+). |
+| SearchIndex | Boolean | `TRUE` | Emit `img/search-index.js` so the header search box can jump to any object by name. Set `FALSE` on very large servers where the multi-MB index isn't wanted. |
+| JsonOutput | Boolean | `FALSE` | Also write `data/*.json` - a machine-readable object inventory (one array file per type + `data/manifest.json`) for CI checks, external analysis, or snapshot diffing. |
+| IncrementalRuns | Boolean | `FALSE` | Skip the whole run when nothing has changed since the last one - see [Incremental Runs](#incremental-runs---incremental) below. |
 | ReadConcurrency | Integer | `8` | Max concurrent AR System connections used to fetch objects. `1` reproduces old fully-sequential behavior. |
 | WriteConcurrency | Integer | `16` | Max concurrent worker threads rendering/writing local HTML pages. |
 
@@ -197,6 +258,56 @@ so it doesn't speed up server-side data collection, just the local rendering/wri
 ```
 java -jar arinsidej.jar -i settings.ini -s myserver -l Demo -p pass --scope "HPD:Help Desk"
 ```
+
+## Snapshot Diff (`--diff`)
+
+Compare two offline AR System Administrator exports and get a change report - useful for change
+management ("what did this weekend's promotion actually touch?").
+
+```
+java -jar arinsidej.jar --diff old-export.xml new-export.def -o C:/tmp/change-report
+```
+
+Both inputs are `.xml` or `.def` exports (mix is fine); no server connection is made. Equivalent
+ini keys: `DiffBaseline=` and `DiffCurrent=`. `-o` / `TargetFolder` is required.
+
+Output (into the target folder):
+
+* `diff/index.htm` - summary (X added / Y removed / Z modified) and a sortable list of every
+  changed object, colour-coded, linking to a per-object page.
+* `diff/<type>/<name>.htm` - one page per change. Added/removed objects show their key facts;
+  modified objects show a before/after: forms get field / index / permission / sort / result-list /
+  view / property changes; active links / filters / escalations get enabled / order / form-list
+  changes plus the before-and-after Run If qualification and action list.
+* `data/diff.json` - the same information, machine-readable, for CI checks.
+
+Compares object *existence* for every type, and full detail for forms and workflow. Users / groups
+/ roles aren't in the export formats, so they aren't diffed. `--scope` is not supported here (a
+diff is always whole-snapshot).
+
+## Incremental Runs (`--incremental`)
+
+For a documentation job that runs on a schedule (nightly, or on every release), `--incremental` /
+`IncrementalRuns=TRUE` avoids regenerating an unchanged site:
+
+```
+java -jar arinsidej.jar -i settings.ini -s myserver -l Demo -p pass --incremental
+```
+
+After each run a small `.arinside-state` file is written into the output folder. On the next run,
+before doing any work, the tool checks whether anything changed:
+
+* **File mode** - is the `.xml`/`.def` export byte-for-byte identical to last time?
+* **Server mode** - has any form / active link / filter / escalation / menu / container / image
+  been added, modified, or removed since the last run? (a handful of cheap name-list calls, not a
+  full fetch)
+
+If nothing changed, it prints one line and exits, leaving the existing output in place. Otherwise
+it runs completely normally and rewrites `.arinside-state` at the end.
+
+It is strictly all-or-nothing - it never re-documents only part of the server, so a stale page is
+not possible. `--scope` is not supported with it (the recorded state is always whole-server).
+Not supported for diff mode. Users / groups / roles are not part of the change check.
 
 ## File Mode / Offline `.xml` and `.def` Export
 

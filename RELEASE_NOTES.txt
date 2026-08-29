@@ -11,7 +11,65 @@ E - Enhancement
 D - Defect fixed
 
 
-[Unreleased]
+2026-08-29
+[4.2.0]
+E - generated site reskinned: HTML5 + CSS-grid layout replacing the XHTML/table shell, light and
+    dark themes (follows the OS setting; a header toggle overrides and is remembered), a
+    responsive sidebar (collapses to a drawer on narrow screens), and readable typography
+    - the left navigation is now a real sidebar (no more <iframe>): back button, deep links,
+      in-page find and printing all work, and the current section is highlighted
+    - new header search box jumps to any object by name (press "/" to focus); driven by a
+      generated img/search-index.js, which SearchIndex=FALSE in settings.ini turns off for very
+      large servers
+    - all client-side behaviour (list filtering/sorting, tabs, collapsible sections, icons) is now
+      dependency-free vanilla JS; jQuery, jQuery UI, jquery.address and jquery.timers are gone
+      (~330 KB and ~20 files removed), and the .gif icon set is replaced by one inline SVG sprite
+    - output still opens straight from disk (file://) with no server, unchanged
+    - large overview lists (Active Links, Filters, ...) no longer server-render every row: the
+      table ships header-only and the client fills in the visible rows from the embedded data.
+      On a big server this took an Active Links list page from ~35 MB / ~37 s to first paint down
+      to ~13 MB / ~0.2 s. (Overview lists now require JavaScript.)
+    - overview lists use the full window width, keep one row per line (long values ellipsis with
+      the full text on hover; the Modified column shows the date, full timestamp on hover), show a
+      "showing 250 of N" / "N matches" status by the filter box, and page with a single
+      "Load 250 more" button
+E - snapshot diff: `--diff <baseline> <current>` (or DiffBaseline= / DiffCurrent= in the ini)
+    compares two offline .xml/.def exports and writes a standalone change report (diff/index.htm
+    + a before/after page per changed object) plus data/diff.json. Forms and workflow get
+    field / property / Run-If / action-level detail; every type is compared for existence.
+    No server connection.
+E - command palette: Ctrl/Cmd-K (or "/", or the header search box) opens one fuzzy finder over
+    every object, every overview/nav page, and a few actions (theme toggle, sidebar, top)
+E - new JsonOutput=TRUE setting: also writes data/*.json - a machine-readable object inventory
+    (one array per type + data/manifest.json) for CI checks / external analysis / snapshot diffing
+E - Active Link / Filter / Escalation lists gain a "Shared" column - "Yes" when the workflow is
+    attached to more than one form (Dev Studio's shared-workflow flag); the detail pages show a
+    "Shared - N forms" badge next to the title, and a form's Workflow tab has the column too
+E - print stylesheet: printing a detail page now drops the header/sidebar/footer, expands every
+    collapsed section, shows all documentation tabs, and adds page-break hints
+E - added a JUnit 5 smoke test suite (mvn test / part of mvn package): renders a bundled sample
+    export offline and asserts on the output tree, the modern HTML shell, the JSON export and an
+    end-to-end --diff run
+E - Docker: a Dockerfile wrapping the fat jar (`docker build -t arinsidej .` after `mvn package`),
+    plus a workflow that publishes ghcr.io/ljlongwing/arinsidej:<version> / :latest on each
+    release - so a downstream repo can document its AR server on a schedule with one `docker run`
+    (see README "Docker")
+E - incremental runs: --incremental / IncrementalRuns=TRUE skips the entire run when nothing has
+    changed since the last one (file mode: the export is byte-identical; server mode: no form /
+    active link / filter / escalation / menu / container / image added, modified or removed - a few
+    cheap list calls, not a full fetch). All-or-nothing, so a stale page is impossible. State is
+    kept in .arinside-state in the output folder. Meant for scheduled / on-release documentation
+    jobs (see README "Incremental Runs")
+E - list pages: the filter box + letter bar stay pinned while the results scroll
+E - section headings get a hover "paragraph" anchor for deep-linking
+E - the last documentation tab you opened (General / Fields / Workflow / ...) is remembered and
+    reused on the next object
+D - fixed a rare ConcurrentModificationException while writing field detail pages on a full-server
+    run (FieldReferenceIndex.forField now returns a snapshot instead of the live bucket, which
+    could be appended to by another form's render at the same moment - always hit on the
+    everywhere-referenced core field 179 "InstanceId"). A form's per-field and per-VUI page writes
+    are now also individually fault-isolated: one bad field logs and is skipped instead of
+    aborting the rest.
 E - `mvn package` now also builds target/arinsidej-<version>.zip, a batteries-included release
     bundle (fat jar + run-arinsidej.bat/.sh launchers + sample settings.ini + README/LICENSE).
     Releases ship this alongside the bare arinsidej.jar.
