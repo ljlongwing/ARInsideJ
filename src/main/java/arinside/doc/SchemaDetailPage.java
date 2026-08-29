@@ -244,8 +244,9 @@ public final class SchemaDetailPage {
         webPage.saveInFolder(page.path());
 
         if (appConfig.jsonOutput) {
-            JsonExport.addForm(formName, form, OverlaySupport.overlayType(form.getProperties()),
-                fields.size(), data.vuis() == null ? 0 : data.vuis().size());
+            List<String> viewNames = new java.util.ArrayList<>();
+            if (data.vuis() != null) for (com.bmc.arsys.api.View v : data.vuis()) viewNames.add(v.getName());
+            JsonExport.addForm(formName, form, OverlaySupport.overlayType(form.getProperties()), fields, viewNames);
         }
 
         // Java port of DocSchemaDetails::AllFieldsCsv - same table, exported alongside the page.

@@ -194,7 +194,7 @@ command-line values take precedence over the ini file.
 | GZCompression | Boolean | `FALSE` | Write gzip-compressed `.htm.gz` pages plus a generated `.htaccess`, for serving directly from Apache. |
 | OverlayMode | Boolean | `TRUE` | Document overlay-feature details (server 7.6.04+). |
 | SearchIndex | Boolean | `TRUE` | Emit `img/search-index.js` so the header search box can jump to any object by name. Set `FALSE` on very large servers where the multi-MB index isn't wanted. |
-| JsonOutput | Boolean | `FALSE` | Also write `data/*.json` - a machine-readable object inventory (one array file per type + `data/manifest.json`) for CI checks, external analysis, or snapshot diffing. |
+| JsonOutput | Boolean | `FALSE` | Also write `data/*.json` - a machine-readable object inventory (one array file per type + `data/manifest.json`), plus a per-form detail file `data/forms/<name>.json` (full field list with per-field permissions, form permissions, indexes, sort list, views). For CI checks, external analysis, or snapshot diffing. |
 | IncrementalRuns | Boolean | `FALSE` | Skip the whole run when nothing has changed since the last one - see [Incremental Runs](#incremental-runs---incremental) below. |
 | ReadConcurrency | Integer | `8` | Max concurrent AR System connections used to fetch objects. `1` reproduces old fully-sequential behavior. |
 | WriteConcurrency | Integer | `16` | Max concurrent worker threads rendering/writing local HTML pages. |

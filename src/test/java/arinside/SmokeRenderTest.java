@@ -135,6 +135,10 @@ class SmokeRenderTest {
                 "menus.json", "containers.json", "images.json")) {
             assertTrue(Files.isRegularFile(out.resolve("data/" + f)), "missing data/" + f);
         }
+        // v2: per-form detail file with a field list
+        String userDetail = read("data/forms/User.json");
+        assertTrue(userDetail.contains("\"fields\""), "form detail JSON missing a fields array");
+        assertTrue(userDetail.contains("\"permissions\""), "form detail JSON missing permissions");
     }
 
     @Test

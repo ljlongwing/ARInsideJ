@@ -32,6 +32,8 @@ public final class JsonExport {
     private JsonExport() {}
 
     private static final Queue<Map<String, Object>> forms = new ConcurrentLinkedQueue<>();
+    /** Per-form full detail (fields / permissions / indexes / sort / views) - written to data/forms/&lt;name&gt;.json. */
+    private static final Queue<Map<String, Object>> formDetails = new ConcurrentLinkedQueue<>();
     private static final Queue<Map<String, Object>> activeLinks = new ConcurrentLinkedQueue<>();
     private static final Queue<Map<String, Object>> filters = new ConcurrentLinkedQueue<>();
     private static final Queue<Map<String, Object>> escalations = new ConcurrentLinkedQueue<>();
@@ -44,7 +46,7 @@ public final class JsonExport {
     private static final Queue<Map<String, Object>> associations = new ConcurrentLinkedQueue<>();
 
     public static void clear() {
-        for (Queue<?> q : List.of(forms, activeLinks, filters, escalations, menus, containers,
+        for (Queue<?> q : List.of(forms, formDetails, activeLinks, filters, escalations, menus, containers,
                 groups, roles, users, images, associations)) q.clear();
     }
 
@@ -60,20 +62,90 @@ public final class JsonExport {
         return out;
     }
 
-    public static void addForm(String name, Form form, int overlayType, int fieldCount, int viewCount) {
+    public static void addForm(String name, Form form, int overlayType, List<Field> fields, List<String> viewNames) {
+        int fieldCount = fields == null ? 0 : fields.size();
+        int viewCount = viewNames == null ? 0 : viewNames.size();
+        AuditInfo audit = form.getAuditInfo();
+        ArchiveInfo archive = form.getArchiveInfo();
+        boolean auditEnabled = audit != null && audit.isEnable();
+        boolean archiveEnabled = archive != null && archive.isEnable();
+
         Map<String, Object> r = rec();
         r.put("name", name);
         r.put("type", form.getFormType());
+        r.put("typeName", arinside.ar.AREnumLabels.schemaType(form.getFormType()));
         r.put("overlay", overlayType);
         r.put("modified", epoch(form.getLastUpdateTime()));
         r.put("modifiedBy", form.getLastChangedBy());
         r.put("fieldCount", fieldCount);
         r.put("viewCount", viewCount);
-        AuditInfo audit = form.getAuditInfo();
-        ArchiveInfo archive = form.getArchiveInfo();
-        r.put("auditEnabled", audit != null && audit.isEnable());
-        r.put("archiveEnabled", archive != null && archive.isEnable());
+        r.put("auditEnabled", auditEnabled);
+        r.put("archiveEnabled", archiveEnabled);
         forms.add(r);
+
+        Map<String, Object> d = rec();
+        d.put("name", name);
+        d.put("type", form.getFormType());
+        d.put("typeName", arinside.ar.AREnumLabels.schemaType(form.getFormType()));
+        d.put("overlay", overlayType);
+        d.put("modified", epoch(form.getLastUpdateTime()));
+        d.put("modifiedBy", form.getLastChangedBy());
+        d.put("auditEnabled", auditEnabled);
+        d.put("archiveEnabled", archiveEnabled);
+        d.put("permissions", permissionList(form.getAssignedGroup()));
+        d.put("adminGroups", form.getAdminGrpList() == null ? List.of() : new ArrayList<>(form.getAdminGrpList()));
+        d.put("indexes", indexList(form.getIndexInfo()));
+        d.put("sortList", sortList(form.getSortInfo()));
+        d.put("views", viewNames == null ? List.of() : new ArrayList<>(viewNames));
+        List<Object> fieldRecs = new ArrayList<>();
+        if (fields != null) for (Field f : fields) {
+            Map<String, Object> fr = rec();
+            fr.put("id", f.getFieldID());
+            fr.put("name", f.getName());
+            fr.put("dataType", f.getDataType());
+            fr.put("dataTypeName", arinside.ar.AREnumLabels.dataType(f.getDataType()));
+            fr.put("option", f.getFieldOption());
+            fr.put("optionName", arinside.ar.AREnumLabels.fieldOption(f.getFieldOption()));
+            fr.put("createMode", f.getCreateMode());
+            fr.put("permissions", permissionList(f.getAssignedGroup()));
+            fieldRecs.add(fr);
+        }
+        d.put("fields", fieldRecs);
+        formDetails.add(d);
+    }
+
+    private static List<Object> permissionList(List<PermissionInfo> perms) {
+        List<Object> out = new ArrayList<>();
+        if (perms != null) for (PermissionInfo p : perms) {
+            Map<String, Object> m = rec();
+            m.put("groupId", p.getGroupID());
+            m.put("permission", p.getPermissionValue());
+            out.add(m);
+        }
+        return out;
+    }
+
+    private static List<Object> indexList(List<IndexInfo> indexes) {
+        List<Object> out = new ArrayList<>();
+        if (indexes != null) for (IndexInfo ix : indexes) {
+            Map<String, Object> m = rec();
+            m.put("name", ix.getIndexName());
+            m.put("unique", ix.isUnique());
+            m.put("fields", ix.getIndexFields() == null ? List.of() : new ArrayList<>(ix.getIndexFields()));
+            out.add(m);
+        }
+        return out;
+    }
+
+    private static List<Object> sortList(List<SortInfo> sorts) {
+        List<Object> out = new ArrayList<>();
+        if (sorts != null) for (SortInfo s : sorts) {
+            Map<String, Object> m = rec();
+            m.put("fieldId", s.getFieldID());
+            m.put("order", s.getSortOrder());
+            out.add(m);
+        }
+        return out;
     }
 
     private static Map<String, Object> workflowRec(String name, boolean enabled, int overlayType,
@@ -98,6 +170,7 @@ public final class JsonExport {
             al.getLastChangedBy(), al.getFormList(), al.getActionList(), al.getElseList());
         r.put("order", al.getOrder());
         r.put("executeMask", al.getExecuteMask());
+        r.put("groups", al.getGroupList() == null ? List.of() : new ArrayList<>(al.getGroupList()));
         r.put("groupCount", al.getGroupList() == null ? 0 : al.getGroupList().size());
         activeLinks.add(r);
     }
@@ -207,6 +280,18 @@ public final class JsonExport {
             writeArray(dir.resolve("images.json"), images);
             writeArray(dir.resolve("associations.json"), associations);
 
+            // Per-object form detail (fields / permissions / indexes / sort / views).
+            int detailFiles = 0;
+            if (!formDetails.isEmpty()) {
+                Path formsDir = dir.resolve("forms");
+                Files.createDirectories(formsDir);
+                for (Map<String, Object> d : formDetails) {
+                    Files.writeString(formsDir.resolve(sanitize(String.valueOf(d.get("name"))) + ".json"),
+                        Json.write(d), StandardCharsets.UTF_8);
+                    detailFiles++;
+                }
+            }
+
             Map<String, Object> manifest = rec();
             manifest.put("tool", arinside.Version.PRODUCT_NAME);
             manifest.put("version", arinside.Version.APP_VERSION);
@@ -227,6 +312,7 @@ public final class JsonExport {
             counts.put("images", images.size());
             counts.put("associations", associations.size());
             manifest.put("counts", counts);
+            manifest.put("formDetailFiles", detailFiles); // data/forms/<name>.json
             Files.writeString(dir.resolve("manifest.json"), Json.write(manifest), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new UncheckedIOException("Error writing JSON export to " + dir, e);
@@ -244,5 +330,11 @@ public final class JsonExport {
     private static Object firstNameKey(Map<String, Object> r) {
         for (String k : new String[]{"name", "loginName"}) if (r.containsKey(k)) return r.get(k);
         return "";
+    }
+
+    /** Filename-safe form name for data/forms/&lt;name&gt;.json (same scheme as the diff report pages). */
+    private static String sanitize(String name) {
+        String s = name.replaceAll("[^A-Za-z0-9._ -]", "_").trim();
+        return s.isEmpty() ? "_" : s;
     }
 }
