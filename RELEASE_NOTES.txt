@@ -11,7 +11,8 @@ E - Enhancement
 D - Defect fixed
 
 
-[Unreleased]
+2026-08-30
+[4.4.0]
 E - command palette: when opened with an empty box it now lists your recently opened objects
     first (remembered per browser), then the top navigation pages
 E - collapsible sections (Indexes, Permissions, the property blocks) remember whether you left
