@@ -11,6 +11,28 @@ E - Enhancement
 D - Defect fixed
 
 
+2026-08-30
+[4.3.0]
+E - new --open flag: opens the generated index page (or diff/index.htm) in the default browser
+    when the run finishes; prints the file:// URL instead on a headless host
+E - the home page shows a provenance card: when the documentation was generated, the source
+    (server name or export file), the tool build, the scope, and RunNotes
+E - accessibility pass on the generated site: a skip-to-content link, a visible keyboard focus
+    ring everywhere, prefers-reduced-motion support, keyboard-operable table sort headers
+    (previously mouse-only), a proper modal command palette (focus trapped and restored, combobox
+    semantics), aria-current on the active nav entry, and live-region filter result counts
+E - JSON export (JsonOutput=TRUE) v2: also writes data/forms/<name>.json per form - the full
+    field list with per-field permissions, plus the form's permissions, indexes, sort list and
+    views; enum codes carry a readable *Name sibling
+E - snapshot diff v2:
+    - --diff accepts the literal `server` on either side (not both) - diff an offline .xml/.def
+      export against the live server from -s/-l/-p
+    - the Run If before/after gains a word-level "what changed" line highlighting exactly which
+      tokens were removed or added
+    - above 5,000 changes the per-object pages are skipped (the summary table and data/diff.json
+      still list everything) so a server-vs-tiny-export diff can't stall writing 100k files
+
+
 2026-08-29
 [4.2.0]
 E - generated site reskinned: HTML5 + CSS-grid layout replacing the XHTML/table shell, light and
