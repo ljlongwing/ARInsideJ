@@ -219,6 +219,20 @@
     document.body.appendChild(modal);
     var lastFocus = null;
 
+    var RECENT_KEY = "ari-recent";
+    function readRecent() {
+      try { var a = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); return Array.isArray(a) ? a : []; }
+      catch (e) { return []; }
+    }
+    function pushRecent(r) {
+      if (!r || !r.href) return;
+      try {
+        var list = readRecent().filter(function (x) { return x.href !== r.href; });
+        list.unshift({ label: r.label, href: r.href, icon: r.icon || "document" });
+        localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 8)));
+      } catch (e) {}
+    }
+
     var NAV = flattenNav(window.ARI_NAV, [], "");
     var ACTIONS = [
       { kind: "action", label: "Toggle light / dark theme", icon: "visible", run: function () { var b = document.getElementById("ari-theme"); if (b) b.click(); } },
@@ -237,7 +251,12 @@
       modal.hidden = true;
       if (lastFocus && lastFocus.focus) lastFocus.focus();
     }
-    function activate(r) { closeP(); if (r.kind === "action") r.run(); else location.href = ROOT + r.href; }
+    function activate(r) {
+      closeP();
+      if (r.kind === "action") { r.run(); return; }
+      pushRecent(r);
+      location.href = ROOT + r.href;
+    }
     function setCur(i) {
       if (rows[cur]) { rows[cur].classList.remove("active"); rows[cur].setAttribute("aria-selected", "false"); }
       cur = Math.max(0, Math.min(i, rows.length - 1));
@@ -253,7 +272,14 @@
     function render() {
       var q = input.value.trim(), scored = [];
       if (!q) {
-        NAV.slice(0, 12).forEach(function (r) { scored.push({ r: r, s: 0 }); });
+        var recent = readRecent();
+        var recentHrefs = {};
+        recent.forEach(function (x) {
+          recentHrefs[x.href] = 1;
+          scored.push({ r: { kind: "recent", label: x.label, icon: x.icon || "document", href: x.href }, s: 0 });
+        });
+        NAV.filter(function (r) { return !recentHrefs[r.href]; }).slice(0, Math.max(0, 12 - scored.length))
+          .forEach(function (r) { scored.push({ r: r, s: 0 }); });
       } else {
         NAV.concat(ACTIONS).forEach(function (r) { var s = fuzzyScore(r.label, q); if (s >= 0) scored.push({ r: r, s: s + 25 }); });
         if (objects) for (var i = 0; i < objects.length; i++) {
@@ -270,7 +296,7 @@
         var item = el("div", { class: "ari-palette-item", role: "option", id: "ari-palette-opt-" + idx, "aria-selected": "false" });
         item.appendChild(iconSvg(r.icon || "document"));
         item.appendChild(el("span", { class: "ari-palette-label", text: r.label }));
-        var tag = r.kind === "nav" ? (r.sub || "page") : r.kind === "action" ? "action" : "";
+        var tag = r.kind === "recent" ? "recent" : r.kind === "nav" ? (r.sub || "page") : r.kind === "action" ? "action" : "";
         if (tag) item.appendChild(el("span", { class: "ari-palette-tag", text: tag }));
         item.addEventListener("click", function () { activate(r); });
         item.addEventListener("mousemove", function () { setCur(rows.indexOf(item)); });
@@ -451,6 +477,27 @@
     });
   }
 
+  /* ---------- remember which <details> sections are open (per page) ---------- */
+  function initDetailsMemory() {
+    var accs = document.querySelectorAll("details.ari-acc");
+    if (!accs.length) return;
+    var key = "ari-details:" + currentRootRelPath();
+    var state = {};
+    try { state = JSON.parse(localStorage.getItem(key) || "{}") || {}; } catch (e) {}
+    var seen = {};
+    Array.prototype.forEach.call(accs, function (d) {
+      var sum = d.querySelector("summary");
+      var slug = slugify(sum ? sum.textContent : "section");
+      while (seen[slug]) slug += "-x";
+      seen[slug] = 1;
+      if (Object.prototype.hasOwnProperty.call(state, slug)) d.open = state[slug];
+      d.addEventListener("toggle", function () {
+        state[slug] = d.open;
+        try { localStorage.setItem(key, JSON.stringify(state)); } catch (e) {}
+      });
+    });
+  }
+
   /* ---------- remember the last-viewed tab label ---------- */
   var LAST_TAB = "ari-last-tab";
   function rememberedTab() { try { return localStorage.getItem(LAST_TAB); } catch (e) { return null; } }
@@ -465,6 +512,7 @@
     initStickyControls();
     initSort();
     initTabs();
+    initDetailsMemory();
     initHeadingAnchors();
     initLetterFilter();
     initClearable();

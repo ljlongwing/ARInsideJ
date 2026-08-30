@@ -4,7 +4,10 @@
  * light + dark, CSS-grid app shell. No build step - hand-authored, loaded directly.
  */
 
-/* ---------- design tokens ---------- */
+/* ---------- design tokens ----------
+   Text/background and UI-boundary pairs meet WCAG AA in both themes (fg/fg-muted/accent >= 4.5:1
+   on their surfaces; border-strong, active-nav, status badges >= 3:1). Keep it that way when
+   changing colours. */
 :root {
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
@@ -15,7 +18,7 @@
   --fg: #1b1f24;
   --fg-muted: #5a636e;
   --border: #d6dae0;
-  --border-strong: #b7bec7;
+  --border-strong: #888f99;
   --accent: #1257b0;
   --accent-fg: #ffffff;
   --accent-soft: #e7f0fb;
@@ -54,7 +57,7 @@
     --fg: #e6e9ee;
     --fg-muted: #9aa4b0;
     --border: #2b313a;
-    --border-strong: #3a424d;
+    --border-strong: #616b78;
     --accent: #4c9dff;
     --accent-fg: #0b1620;
     --accent-soft: #172740;
@@ -78,7 +81,7 @@
   --fg: #e6e9ee;
   --fg-muted: #9aa4b0;
   --border: #2b313a;
-  --border-strong: #3a424d;
+  --border-strong: #616b78;
   --accent: #4c9dff;
   --accent-fg: #0b1620;
   --accent-soft: #172740;

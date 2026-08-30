@@ -11,6 +11,15 @@ E - Enhancement
 D - Defect fixed
 
 
+[Unreleased]
+E - command palette: when opened with an empty box it now lists your recently opened objects
+    first (remembered per browser), then the top navigation pages
+E - collapsible sections (Indexes, Permissions, the property blocks) remember whether you left
+    them open or closed, per page
+E - light/dark palette checked against WCAG AA; the one boundary colour that fell short
+    (--border-strong on inputs / tab underlines) was darkened/lightened to >= 3:1
+
+
 2026-08-30
 [4.3.0]
 E - new --open flag: opens the generated index page (or diff/index.htm) in the default browser
