@@ -706,7 +706,13 @@ public final class Main {
                 arinside.ar.is.IsRepository isRepo = null;
                 if (appConfig.documentInnovationStudio) {
                     try {
-                        isRepo = documentInnovationStudio(appConfig);
+                        Set<String> documentedForms = new HashSet<>(schemas.listFormNames());
+                        GlobalFieldIndex gfiForIs = globalFields;
+                        java.util.function.Function<String, String> formHref = formName ->
+                            documentedForms.contains(formName)
+                                ? arinside.output.URLLink.relativeUrl(2, Naming.schemaDetail(formName, gfiForIs.isOverlaid(formName)))
+                                : null;
+                        isRepo = documentInnovationStudio(appConfig, formHref);
                     } catch (RuntimeException e) {
                         System.out.println("EXCEPTION documenting Innovation Studio: " + e.getMessage());
                         if (AppConfig.verboseMode) e.printStackTrace(System.out);
@@ -800,7 +806,8 @@ public final class Main {
      * over the rx REST API and renders them. Record definitions are skipped (they are the classic
      * AR forms). For now this reports counts; the doc/ pages land in a follow-up increment.
      */
-    private static arinside.ar.is.IsRepository documentInnovationStudio(AppConfig appConfig) {
+    private static arinside.ar.is.IsRepository documentInnovationStudio(AppConfig appConfig,
+            java.util.function.Function<String, String> formHref) {
         System.out.println("Documenting Innovation Studio at " + appConfig.isServerUrl + " ...");
         try (arinside.ar.is.IsClient client = new arinside.ar.is.IsClient(
                 appConfig.isServerUrl, appConfig.effectiveIsUsername(), appConfig.effectiveIsPassword())) {
@@ -809,7 +816,7 @@ public final class Main {
                 System.out.println("  no Innovation Studio content found - nothing to document.");
                 return null;
             }
-            arinside.output.NavigationPage.NavItem isNav = arinside.doc.is.IsPages.render(appConfig, repo);
+            arinside.output.NavigationPage.NavItem isNav = arinside.doc.is.IsPages.render(appConfig, repo, formHref);
             // regenerate nav.js with the Innovation Studio section appended
             arinside.output.NavigationPage.write(appConfig, java.util.List.of(isNav));
             System.out.println("  " + repo.bundles().size() + " bundles, "

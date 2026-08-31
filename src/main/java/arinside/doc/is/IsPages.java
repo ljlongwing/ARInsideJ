@@ -20,6 +20,7 @@ import arinside.util.JsonReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Renders the Innovation Studio documentation: {@code is/index.htm} (bundles + per-type counts),
@@ -33,8 +34,14 @@ public final class IsPages {
 
     private static final String DIR = "is";
 
-    /** Renders everything and returns the nav section to hand to {@code NavigationPage.write}. */
-    public static NavItem render(AppConfig cfg, IsRepository repo) {
+    /**
+     * Renders everything and returns the nav section to hand to {@code NavigationPage.write}.
+     * {@code formHref} resolves an AR form name to a page-relative link (for the level-2 IS detail
+     * pages) when that form is documented in this run, else null - used to cross-link rules and
+     * associations back to the classic form pages.
+     */
+    public static NavItem render(AppConfig cfg, IsRepository repo, Function<String, String> formHref) {
+        Function<String, String> href = formHref != null ? formHref : n -> null;
         writeOverview(cfg, repo);
         List<NavItem> typeNav = new ArrayList<>();
         for (IsDefType type : IsDefType.values()) {
@@ -42,7 +49,7 @@ public final class IsPages {
             if (defs.isEmpty()) continue;
             writeTypeList(cfg, type, defs);
             for (IsDefinition d : defs) {
-                writeDetail(cfg, type, d);
+                writeDetail(cfg, type, d, href);
                 SearchIndex.add(d.name() + "  (IS " + type.label + ")", isIcon(type),
                     new PagePath(DIR + "/" + type.name().toLowerCase(), sanitize(d.name()), 2));
                 if (cfg.jsonOutput) JsonExport.addIsDefinition(d);
@@ -131,7 +138,7 @@ public final class IsPages {
 
     /* ---------- per-definition detail ---------- */
 
-    private static void writeDetail(AppConfig cfg, IsDefType type, IsDefinition d) {
+    private static void writeDetail(AppConfig cfg, IsDefType type, IsDefinition d, Function<String, String> formHref) {
         PagePath page = new PagePath(DIR + "/" + type.name().toLowerCase(), sanitize(d.name()), 2);
         WebPage web = new WebPage(page.fileName(), d.name(), page.rootLevel(), cfg);
         web.addContentHead(WebUtil.validate(d.name()) + " <span class=\"additionalInfo\">(" + type.label + ")</span>");
@@ -152,8 +159,8 @@ public final class IsPages {
         web.addContent(g.toXHtml());
 
         String specific = switch (type) {
-            case RULE -> ruleDetail(d);
-            case ASSOCIATION -> associationDetail(d);
+            case RULE -> ruleDetail(d, formHref);
+            case ASSOCIATION -> associationDetail(d, formHref);
             case EVENT -> eventDetail(d);
             case WEB_API -> webApiDetail(d);
             default -> "";
@@ -167,7 +174,15 @@ public final class IsPages {
 
     /* ---------- type-specific renderers ---------- */
 
-    private static String ruleDetail(IsDefinition d) {
+    /** Link an AR record/form name back to its documented page when we have one, else plain text. */
+    private static String recordLink(String name, Function<String, String> formHref) {
+        String href = formHref.apply(name);
+        return href != null
+            ? "<a href=\"" + href + "\">" + WebUtil.validate(name) + "</a>"
+            : WebUtil.validate(name);
+    }
+
+    private static String ruleDetail(IsDefinition d, Function<String, String> formHref) {
         StringBuilder sb = new StringBuilder("<h2>Rule</h2>\n");
         Object trg = JsonReader.at(d.raw(), "triggerEvent");
         Table t = new Table("isRuleTrigger", "TblObjectList");
@@ -180,8 +195,8 @@ public final class IsPages {
                 + JsonReader.lng(tc, "minutes") + "m " + JsonReader.lng(tc, "seconds") + "s");
         }
         List<Object> recs = JsonReader.asList(JsonReader.at(d.raw(), "recordDefinitionNames"));
-        if (!recs.isEmpty()) row(t, "On records", recs.stream().map(String::valueOf).map(WebUtil::validate)
-            .reduce((a, b) -> a + "<br/>" + b).orElse(""));
+        if (!recs.isEmpty()) row(t, "On records", recs.stream().map(String::valueOf)
+            .map(n -> recordLink(n, formHref)).reduce((a, b) -> a + "<br/>" + b).orElse(""));
         String qual = JsonReader.str(d.raw(), "qualification", "expression");
         row(t, "Run If", qual == null || qual.isEmpty() ? "(none)" : "<code>" + WebUtil.validate(qual) + "</code>");
         sb.append(t.toXHtml());
@@ -216,13 +231,13 @@ public final class IsPages {
         return sb.toString();
     }
 
-    private static String associationDetail(IsDefinition d) {
+    private static String associationDetail(IsDefinition d, Function<String, String> formHref) {
         Table t = new Table("isAssoc", "TblObjectList");
         t.addColumn(25, "Property");
         t.addColumn(75, "Value");
-        row(t, "Node A", WebUtil.validate(nz(JsonReader.str(d.raw(), "nodeAName")))
+        row(t, "Node A", recordLink(nz(JsonReader.str(d.raw(), "nodeAName")), formHref)
             + " <span class=\"additionalInfo\">keys " + JsonReader.asList(JsonReader.at(d.raw(), "nodeAKeys")) + "</span>");
-        row(t, "Node B", WebUtil.validate(nz(JsonReader.str(d.raw(), "nodeBName")))
+        row(t, "Node B", recordLink(nz(JsonReader.str(d.raw(), "nodeBName")), formHref)
             + " <span class=\"additionalInfo\">keys " + JsonReader.asList(JsonReader.at(d.raw(), "nodeBKeys")) + "</span>");
         row(t, "Cardinality", WebUtil.validate(nz(JsonReader.str(d.raw(), "cardinality"))));
         row(t, "Cascade delete", JsonReader.bool(d.raw(), "shouldCascadeDelete") ? "Yes" : "No");

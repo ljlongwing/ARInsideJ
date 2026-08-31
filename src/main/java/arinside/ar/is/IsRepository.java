@@ -33,6 +33,14 @@ public final class IsRepository {
         return repo;
     }
 
+    /** Build a repository from already-materialised data (tests / offline fixtures). */
+    public static IsRepository of(List<IsBundle> bundles, Map<IsDefType, List<IsDefinition>> byType) {
+        IsRepository repo = new IsRepository(null);
+        if (bundles != null) repo.bundles.addAll(bundles);
+        if (byType != null) repo.byType.putAll(byType);
+        return repo;
+    }
+
     private void loadBundles() {
         for (Object o : client.dataPage("com.bmc.arsys.rx.application.bundle.datapage.BundleDescriptorDataPageQuery")) {
             bundles.add(new IsBundle(
