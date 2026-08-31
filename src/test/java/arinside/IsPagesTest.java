@@ -76,8 +76,15 @@ class IsPagesTest {
               "shouldCascadeDelete": false }
             """);
 
+        IsDefinition namedList = def(IsDefType.NAMED_LIST, "com.acme.helpdesk:Open Incidents", null, """
+            { "recordDefinitionName": "HPD:Help Desk", "labelFieldId": 8, "valueFieldId": 1,
+              "queryCriteria": "'Status' < \\"Resolved\\"", "shouldSortOnLabel": true,
+              "searchBehavior": "CONTAINS" }
+            """);
+
         IsRepository repo = IsRepository.of(List.of(bundle),
-            Map.of(IsDefType.RULE, List.of(rule), IsDefType.ASSOCIATION, List.of(assoc)));
+            Map.of(IsDefType.RULE, List.of(rule), IsDefType.ASSOCIATION, List.of(assoc),
+                IsDefType.NAMED_LIST, List.of(namedList)));
 
         nav = IsPages.render(cfg, repo, name ->
             "HPD:Help Desk".equals(name) ? "../../schema/HPD_Help_Desk/index.htm" : null);
@@ -99,7 +106,7 @@ class IsPagesTest {
         assertTrue(idx.contains("Acme Help Desk"), "bundle friendly name missing");
         assertTrue(idx.contains("com.acme.helpdesk"), "bundle id missing");
         assertTrue(idx.contains(">Rules</a>") || idx.contains("Rules</a>"), "Rules link missing");
-        assertTrue(idx.contains("2 definitions across 1 bundles"), "count line wrong: " + snippet(idx));
+        assertTrue(idx.contains("3 definitions across 1 bundles"), "count line wrong: " + snippet(idx));
     }
 
     @Test
@@ -124,6 +131,18 @@ class IsPagesTest {
         assertTrue(a.contains("MANY_TO_ONE"), "cardinality missing");
         assertTrue(a.contains("<a href=\"../../schema/HPD_Help_Desk/index.htm\">HPD:Help Desk</a>"), "node A link missing");
         assertTrue(a.contains("CTM:People"), "node B name missing");
+    }
+
+    @Test
+    void namedListDetailAndListFilter() {
+        String nl = read("is/named_list/com.acme.helpdesk_Open Incidents.htm");
+        assertTrue(nl.contains("<a href=\"../../schema/HPD_Help_Desk/index.htm\">HPD:Help Desk</a>"), "record link missing");
+        assertTrue(nl.contains("'Status' &lt; &quot;Resolved&quot;"), "query criteria missing");
+        assertTrue(nl.contains("CONTAINS"), "search behavior missing");
+        // the per-type list page carries the generic client filter hook
+        String list = read("is/named_list/index.htm");
+        assertTrue(list.contains("data-filter-table=\"isList\""), "list page has no filter input");
+        assertTrue(list.contains("class=\"list-page\""), "list page missing list-page body class");
     }
 
     @Test

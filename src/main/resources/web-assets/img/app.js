@@ -477,6 +477,33 @@
     });
   }
 
+  /* ---------- generic client-side row filter (any <input data-filter-table="tableId">) ---------- */
+  function initSimpleTableFilter() {
+    document.querySelectorAll("input[data-filter-table]").forEach(function (inp) {
+      var table = document.getElementById(inp.getAttribute("data-filter-table"));
+      if (!table) return;
+      var statusId = inp.getAttribute("data-filter-status");
+      var status = statusId ? document.getElementById(statusId) : null;
+      if (status) { status.setAttribute("role", "status"); status.setAttribute("aria-live", "polite"); }
+      function run() {
+        var q = inp.value.trim().toLowerCase();
+        var body = table.tBodies[0];
+        if (!body) return;
+        var shown = 0, total = body.rows.length;
+        Array.prototype.forEach.call(body.rows, function (r) {
+          var hit = !q || r.textContent.toLowerCase().indexOf(q) >= 0;
+          r.hidden = !hit;
+          if (hit) shown++;
+        });
+        if (status) status.textContent = q ? shown + " of " + total + " shown" : total + "";
+      }
+      var t;
+      inp.addEventListener("input", function () { clearTimeout(t); t = setTimeout(run, 120); });
+      inp.addEventListener("keydown", function (e) { if (e.key === "Escape") { inp.value = ""; run(); } });
+      run();
+    });
+  }
+
   /* ---------- remember which <details> sections are open (per page) ---------- */
   function initDetailsMemory() {
     var accs = document.querySelectorAll("details.ari-acc");
@@ -513,6 +540,7 @@
     initSort();
     initTabs();
     initDetailsMemory();
+    initSimpleTableFilter();
     initHeadingAnchors();
     initLetterFilter();
     initClearable();

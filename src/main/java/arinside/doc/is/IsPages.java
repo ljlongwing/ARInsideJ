@@ -111,7 +111,13 @@ public final class IsPages {
     private static void writeTypeList(AppConfig cfg, IsDefType type, List<IsDefinition> defs) {
         PagePath page = new PagePath(DIR + "/" + type.name().toLowerCase(), "index", 2);
         WebPage web = new WebPage(page.fileName(), "IS " + type.pluralLabel, page.rootLevel(), cfg);
+        web.bodyClass("list-page");
         web.addContentHead(type.pluralLabel + " <span class=\"additionalInfo\">(Innovation Studio)</span>");
+        web.addContent("<div class=\"ari-listcontrols\"><span class=\"clearable\">"
+            + "<label for=\"isListFilter\">Filter: </label>"
+            + "<input id=\"isListFilter\" class=\"data_field\" type=\"text\" placeholder=\"by any column\""
+            + " data-filter-table=\"isList\" data-filter-status=\"isListCount\"/></span> "
+            + "<span id=\"isListCount\" class=\"ari-liststatus\"></span> of " + defs.size() + "</div>");
 
         Table t = new Table("isList", "TblObjectList");
         t.addColumn(40, "Name");
@@ -162,7 +168,11 @@ public final class IsPages {
             case RULE -> ruleDetail(d, formHref);
             case ASSOCIATION -> associationDetail(d, formHref);
             case EVENT -> eventDetail(d);
+            case EVENT_STATS -> eventStatsDetail(d);
             case WEB_API -> webApiDetail(d);
+            case NAMED_LIST -> namedListDetail(d, formHref);
+            case VIEW -> viewDetail(d);
+            case DOCUMENT -> documentDetail(d);
             default -> "";
         };
         if (!specific.isEmpty()) web.addContent(specific);
@@ -257,6 +267,93 @@ public final class IsPages {
         }
         t.removeEmptyMessageRow();
         return "<h2>Event attributes</h2>\n" + t.toXHtml();
+    }
+
+    private static String namedListDetail(IsDefinition d, Function<String, String> formHref) {
+        Table t = new Table("isNamedList", "TblObjectList");
+        t.addColumn(25, "Property");
+        t.addColumn(75, "Value");
+        row(t, "Record", recordLink(nz(JsonReader.str(d.raw(), "recordDefinitionName")), formHref));
+        row(t, "Label field", Long.toString(JsonReader.lng(d.raw(), "labelFieldId")));
+        row(t, "Value field", Long.toString(JsonReader.lng(d.raw(), "valueFieldId")));
+        String qc = JsonReader.str(d.raw(), "queryCriteria");
+        row(t, "Query criteria", qc == null || qc.isEmpty() ? "(none)" : "<code>" + WebUtil.validate(qc) + "</code>");
+        row(t, "Sort on label", JsonReader.bool(d.raw(), "shouldSortOnLabel") ? "Yes" : "No");
+        row(t, "Search behavior", WebUtil.validate(nz(JsonReader.str(d.raw(), "searchBehavior"))));
+        return "<h2>Named list</h2>\n" + t.toXHtml();
+    }
+
+    private static String eventStatsDetail(IsDefinition d) {
+        Table t = new Table("isEventStats", "TblObjectList");
+        t.addColumn(25, "Property");
+        t.addColumn(75, "Value");
+        String ev = JsonReader.str(d.raw(), "eventName");
+        row(t, "Event", ev == null || ev.isEmpty() ? WebUtil.EMPTY_VALUE
+            : "<a href=\"../event/" + WebUtil.docName(sanitize(ev)) + "\">" + WebUtil.validate(ev) + "</a>");
+        row(t, "Group by", listText(JsonReader.asList(JsonReader.at(d.raw(), "groupByKeys"))));
+        row(t, "Frequencies", listText(JsonReader.asList(JsonReader.at(d.raw(), "frequencies"))));
+        row(t, "Count", JsonReader.bool(d.raw(), "shouldGetCount") ? "Yes" : "No");
+        StringBuilder sb = new StringBuilder("<h2>Event statistics</h2>\n").append(t.toXHtml());
+
+        List<Object> ops = JsonReader.asList(JsonReader.at(d.raw(), "eventStatisticsOperations"));
+        if (!ops.isEmpty()) {
+            Table ot = new Table("isEventStatsOps", "TblObjectList");
+            ot.addColumn(30, "Name");
+            ot.addColumn(30, "Operations");
+            ot.addColumn(40, "Operand");
+            for (Object o : ops) {
+                ot.addRow(new TableRow().addCellList(
+                    WebUtil.validate(nz(JsonReader.str(o, "name"))),
+                    WebUtil.validate(listText(JsonReader.asList(JsonReader.at(o, "operations")))),
+                    "<code>" + WebUtil.validate(nz(JsonReader.str(o, "operandExpression"))) + "</code>"));
+            }
+            ot.removeEmptyMessageRow();
+            sb.append("<h3>Operations</h3>\n").append(ot.toXHtml());
+        }
+        return sb.toString();
+    }
+
+    private static String viewDetail(IsDefinition d) {
+        Table t = new Table("isView", "TblObjectList");
+        t.addColumn(25, "Property");
+        t.addColumn(75, "Value");
+        row(t, "View type", WebUtil.validate(nz(JsonReader.str(d.raw(), "type"))));
+        String target = JsonReader.str(d.raw(), "targetViewDefinitionName");
+        if (target != null && !target.isEmpty()) row(t, "Extends", WebUtil.validate(target));
+        row(t, "Input params", paramList(JsonReader.asList(JsonReader.at(d.raw(), "inputParams"))));
+        row(t, "Output params", paramList(JsonReader.asList(JsonReader.at(d.raw(), "outputParams"))));
+        int comps = JsonReader.asList(JsonReader.at(d.raw(), "componentDefinitions")).size();
+        row(t, "Components", Integer.toString(comps));
+        return "<h2>View</h2>\n" + t.toXHtml();
+    }
+
+    private static String documentDetail(IsDefinition d) {
+        String schema = JsonReader.str(d.raw(), "documentSchema");
+        if (schema == null || schema.isEmpty()) return "";
+        // documentSchema is itself a JSON string - pretty it a touch by re-serialising if it parses
+        String shown = schema;
+        try {
+            shown = Json.write(JsonReader.parse(schema));
+        } catch (RuntimeException ignored) { /* keep raw */ }
+        return "<h2>Document schema</h2>\n<pre>" + WebUtil.validate(shown) + "</pre>";
+    }
+
+    private static String paramList(List<Object> params) {
+        if (params.isEmpty()) return "(none)";
+        StringBuilder sb = new StringBuilder();
+        for (Object p : params) {
+            if (sb.length() > 0) sb.append("<br/>");
+            sb.append(WebUtil.validate(nz(JsonReader.str(p, "name"))));
+            String ty = JsonReader.str(p, "type");
+            if (ty != null && !ty.isEmpty()) sb.append(" <span class=\"additionalInfo\">").append(WebUtil.validate(shortType(ty))).append("</span>");
+        }
+        return sb.toString();
+    }
+
+    private static String listText(List<Object> items) {
+        if (items.isEmpty()) return "(none)";
+        return items.stream().map(String::valueOf).map(WebUtil::validate)
+            .reduce((a, b) -> a + ", " + b).orElse("");
     }
 
     private static String webApiDetail(IsDefinition d) {
