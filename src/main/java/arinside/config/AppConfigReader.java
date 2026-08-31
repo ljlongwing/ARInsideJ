@@ -63,6 +63,9 @@ public class AppConfigReader {
         cfg.searchIndex = readBool(props, "SearchIndex", true);
         cfg.jsonOutput = readBool(props, "JsonOutput", false);
         cfg.incrementalRuns = readBool(props, "IncrementalRuns", false);
+        cfg.isServerUrl = readString(props, "IsServerUrl", "");
+        cfg.isUsername = readString(props, "IsUsername", "");
+        cfg.isPassword = readString(props, "IsPassword", "");
         cfg.diffBaseline = readString(props, "DiffBaseline", "");
         cfg.diffCurrent = readString(props, "DiffCurrent", "");
         if (!cfg.diffBaseline.isEmpty() && !cfg.diffCurrent.isEmpty()) cfg.diffMode = true;

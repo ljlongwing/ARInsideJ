@@ -720,6 +720,15 @@ public final class Main {
                     System.out.println("JSON export written to data/.");
                 }
 
+                if (appConfig.documentInnovationStudio) {
+                    try {
+                        documentInnovationStudio(appConfig);
+                    } catch (RuntimeException e) {
+                        System.out.println("EXCEPTION documenting Innovation Studio: " + e.getMessage());
+                        if (AppConfig.verboseMode) e.printStackTrace(System.out);
+                    }
+                }
+
                 if (appConfig.incrementalRuns && !appConfig.diffMode) {
                     RunState state = new RunState();
                     state.generated = java.time.Instant.now().toString();
@@ -779,6 +788,26 @@ public final class Main {
             if (AppConfig.verboseMode) System.out.println("--open: " + e);
         }
         System.out.println("Open: " + uri);
+    }
+
+    /**
+     * Innovation Studio documentation pass (see {@code arinside.ar.is}). Additive to a normal run:
+     * pulls the IS bundle inventory + the rule/process/web-API/association/event/... definitions
+     * over the rx REST API and renders them. Record definitions are skipped (they are the classic
+     * AR forms). For now this reports counts; the doc/ pages land in a follow-up increment.
+     */
+    private static void documentInnovationStudio(AppConfig appConfig) {
+        System.out.println("Documenting Innovation Studio at " + appConfig.isServerUrl + " ...");
+        try (arinside.ar.is.IsClient client = new arinside.ar.is.IsClient(
+                appConfig.isServerUrl, appConfig.effectiveIsUsername(), appConfig.effectiveIsPassword())) {
+            arinside.ar.is.IsRepository repo = arinside.ar.is.IsRepository.load(client);
+            System.out.println("  " + repo.bundles().size() + " bundles");
+            for (arinside.ar.is.IsDefType type : arinside.ar.is.IsDefType.values()) {
+                int n = repo.of(type).size();
+                if (n > 0) System.out.println("  " + n + " " + type.pluralLabel);
+            }
+            System.out.println("  " + repo.totalDefinitions() + " IS definitions total");
+        }
     }
 
     /** Java port of CARInside::WriteHTAccess - lets an Apache server serve the .htm.gz files with the right Content-Encoding. */

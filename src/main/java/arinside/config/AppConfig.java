@@ -117,6 +117,21 @@ public class AppConfig {
     /** {@code --open}: launch the generated index page in the default browser when the run finishes. CLI only (a no-op on a headless/CI host). */
     public boolean openWhenDone = false;
 
+    /**
+     * Innovation Studio documentation: {@code IsServerUrl=} / {@code --is-url <url>} points at the
+     * Helix rx REST API (e.g. {@code http://host:8008}). When set, a normal run ALSO documents the
+     * IS bundles and their rules / processes / web APIs / associations / events / ... (record
+     * definitions are skipped - they are the classic AR forms). {@code IsUsername}/{@code IsPassword}
+     * default to the AR login when blank.
+     */
+    public String isServerUrl = "";
+    public String isUsername = "";
+    public String isPassword = "";
+    public boolean documentInnovationStudio = false;
+
+    public String effectiveIsUsername() { return isUsername.isEmpty() ? userName : isUsername; }
+    public String effectiveIsPassword() { return isPassword.isEmpty() ? password : isPassword; }
+
     /** A diff-mode input of the literal {@code server} means "the live server from -s/-l/-p", not a file. */
     public static boolean isServerToken(String s) { return s != null && s.trim().equalsIgnoreCase("server"); }
     public boolean diffBaselineIsServer() { return isServerToken(diffBaseline); }
@@ -215,6 +230,8 @@ public class AppConfig {
         }
         if (cmdLine.isIncrementalSet()) incrementalRuns = true;
         if (cmdLine.isOpenSet()) openWhenDone = true;
+        if (cmdLine.isIsUrlSet()) isServerUrl = cmdLine.getIsUrl();
+        documentInnovationStudio = !isServerUrl.isEmpty();
         slowObjectLoading = cmdLine.isSlowObjectLoading();
     }
 

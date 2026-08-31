@@ -23,7 +23,8 @@ public class CommandLineArgs {
     private String diffBaseline = "";
     private String diffCurrent = "";
 
-    private boolean serverSet, outputFolderSet, usernameSet, passwordSet, tcpPortSet, rpcPortSet, scopeSet, diffSet, incrementalSet, openSet;
+    private String isUrl = "";
+    private boolean serverSet, outputFolderSet, usernameSet, passwordSet, tcpPortSet, rpcPortSet, scopeSet, diffSet, incrementalSet, openSet, isUrlSet;
     private boolean helpRequested;
 
     public static CommandLineArgs parse(String[] args) {
@@ -50,6 +51,7 @@ public class CommandLineArgs {
                 }
                 case "--incremental" -> result.incrementalSet = true;
                 case "--open" -> result.openSet = true;
+                case "--is-url" -> { result.isUrl = requireValue(arg, queue); result.isUrlSet = true; }
                 case "-v", "--verbose" -> AppConfig.verboseMode = true;
                 case "-h", "--help" -> result.helpRequested = true;
                 default -> throw new IllegalArgumentException("error: unknown argument '" + arg + "'");
@@ -88,6 +90,8 @@ public class CommandLineArgs {
                                        (writes/reads .arinside-state in the output folder)
                   --open               Open the generated index page in the default browser
                                        when the run finishes
+                  --is-url <string>    Also document Innovation Studio at this rx REST base URL
+                                       (e.g. http://host:8008); uses the -l/-p login
               -v, --verbose            Verbose output
               -h, --help                Show this help
             """);
@@ -114,6 +118,8 @@ public class CommandLineArgs {
     public boolean isDiffSet() { return diffSet; }
     public boolean isIncrementalSet() { return incrementalSet; }
     public boolean isOpenSet() { return openSet; }
+    public boolean isIsUrlSet() { return isUrlSet; }
+    public String getIsUrl() { return isUrl; }
     public String getDiffBaseline() { return diffBaseline; }
     public String getDiffCurrent() { return diffCurrent; }
 }
