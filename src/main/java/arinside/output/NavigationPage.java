@@ -27,7 +27,16 @@ public final class NavigationPage {
         Node(String label, String href, String icon) { this(label, href, icon, List.of()); }
     }
 
+    /** A caller-supplied nav entry appended after the built-in tree (e.g. an "Innovation Studio" section). {@code href} may be empty for a label-only group. */
+    public record NavItem(String label, String href, String icon, List<NavItem> children) {
+        public NavItem(String label, String href, String icon) { this(label, href, icon, List.of()); }
+    }
+
     public static void write(AppConfig appConfig) {
+        write(appConfig, List.of());
+    }
+
+    public static void write(AppConfig appConfig, List<NavItem> extraSections) {
         List<Node> tree = new ArrayList<>();
 
         tree.add(new Node("Forms", href(Naming.schemaOverview()), "schema"));
@@ -60,6 +69,8 @@ public final class NavigationPage {
             new Node("Validator", href(Naming.validatorMain()), "document"),
             new Node("Analyzer", href(Naming.analyzerMain()), "document"))));
 
+        for (NavItem s : extraSections) tree.add(toNode(s));
+
         StringBuilder sb = new StringBuilder("window.ARI_NAV=");
         writeArray(sb, tree);
         sb.append(";\n");
@@ -74,6 +85,12 @@ public final class NavigationPage {
     }
 
     private static String href(PagePath page) { return page.fullFileName(); }
+
+    private static Node toNode(NavItem s) {
+        List<Node> kids = new ArrayList<>();
+        for (NavItem c : s.children()) kids.add(toNode(c));
+        return new Node(s.label(), s.href() == null ? "" : s.href(), s.icon(), kids);
+    }
 
     private static void writeArray(StringBuilder sb, List<Node> nodes) {
         sb.append('[');

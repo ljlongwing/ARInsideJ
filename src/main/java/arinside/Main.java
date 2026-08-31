@@ -801,12 +801,15 @@ public final class Main {
         try (arinside.ar.is.IsClient client = new arinside.ar.is.IsClient(
                 appConfig.isServerUrl, appConfig.effectiveIsUsername(), appConfig.effectiveIsPassword())) {
             arinside.ar.is.IsRepository repo = arinside.ar.is.IsRepository.load(client);
-            System.out.println("  " + repo.bundles().size() + " bundles");
-            for (arinside.ar.is.IsDefType type : arinside.ar.is.IsDefType.values()) {
-                int n = repo.of(type).size();
-                if (n > 0) System.out.println("  " + n + " " + type.pluralLabel);
+            if (repo.isEmpty()) {
+                System.out.println("  no Innovation Studio content found - nothing to document.");
+                return;
             }
-            System.out.println("  " + repo.totalDefinitions() + " IS definitions total");
+            arinside.output.NavigationPage.NavItem isNav = arinside.doc.is.IsPages.render(appConfig, repo);
+            // regenerate nav.js with the Innovation Studio section appended
+            arinside.output.NavigationPage.write(appConfig, java.util.List.of(isNav));
+            System.out.println("  " + repo.bundles().size() + " bundles, "
+                + repo.totalDefinitions() + " definitions documented under is/.");
         }
     }
 
