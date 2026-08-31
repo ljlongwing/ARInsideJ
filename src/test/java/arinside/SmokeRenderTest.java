@@ -120,6 +120,21 @@ class SmokeRenderTest {
     }
 
     @Test
+    void fieldDetailIsOneSidecarNotAPagePerField() throws IOException {
+        // field detail moved from one HTML file per field into schema/<form>/fields.js
+        String sidecar = read("schema/User__o/fields.js");
+        assertTrue(sidecar.startsWith("window.ARI_FIELDDETAIL="), "fields.js sidecar missing/!ARI_FIELDDETAIL");
+        assertTrue(sidecar.contains("Field ID"), "fields.js has no field detail HTML");
+        try (Stream<Path> tree = Files.walk(out)) {
+            long fldPages = tree.filter(p -> p.getFileName().toString().matches("fld_-?\\d+\\.htm")).count();
+            assertTrue(fldPages == 0, "per-field HTML pages should be gone, found " + fldPages);
+        }
+        // links to field detail are now anchors on the form page
+        assertTrue(read("schema/User__o/index.htm").contains("index.htm#field-"),
+            "field links should point at index.htm#field-<id>");
+    }
+
+    @Test
     void searchIndexPopulated() {
         String idx = read("img/search-index.js");
         assertTrue(idx.contains("window.ARI_SEARCH"), "search index global missing");

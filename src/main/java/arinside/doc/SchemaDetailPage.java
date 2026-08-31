@@ -253,23 +253,46 @@ public final class SchemaDetailPage {
         new CsvPage(Naming.schemaFieldsCsv(formName, isOverlaid).fileName(), appConfig)
             .saveInFolder(page.path(), fieldsTable.toCsv());
 
-        FieldDetailPage fieldDetail = new FieldDetailPage(appConfig, fieldRefs, globalFields, joinFields);
-        for (Field field : fields) {
-            try {
-                fieldDetail.render(formName, isOverlaid, form, field, fields, data.vuis());
-            } catch (RuntimeException e) {
-                // One field with an odd property shouldn't cost the form its other 70+ field pages.
-                System.out.println("EXCEPTION field detail write of '" + formName + "' field "
-                    + field.getFieldID() + " ('" + field.getName() + "'): " + e);
-                if (AppConfig.verboseMode) e.printStackTrace(System.out);
-            }
-        }
+        writeFieldsSidecar(formName, isOverlaid, form, fields, data.vuis(), page);
 
         try {
             renderVuis(formName, isOverlaid, fields, data.vuis());
         } catch (RuntimeException e) {
             System.out.println("EXCEPTION VUI detail write of '" + formName + "': " + e);
             if (AppConfig.verboseMode) e.printStackTrace(System.out);
+        }
+    }
+
+    /**
+     * One {@code schema/<form>/fields.js} per form ({@code window.ARI_FIELDDETAIL = {"<id>": "<html>"}})
+     * instead of one HTML file per field - which was ~90% of the whole output tree on a large
+     * server. {@code schema.js} lazy-loads this when the Fields tab is opened (or a {@code #field-<id>}
+     * deep link lands) and renders the fragment into a panel. One bad field is logged and skipped,
+     * same fault-isolation as the old per-file loop.
+     */
+    private void writeFieldsSidecar(String formName, boolean isOverlaid, Form form, java.util.List<Field> fields,
+                                    java.util.List<com.bmc.arsys.api.View> vuis, PagePath page) {
+        FieldDetailPage fieldDetail = new FieldDetailPage(appConfig, fieldRefs, globalFields, joinFields);
+        StringBuilder js = new StringBuilder("window.ARI_FIELDDETAIL={\n");
+        int n = 0;
+        for (Field field : fields) {
+            try {
+                String frag = fieldDetail.renderFragment(formName, isOverlaid, form, field, fields, vuis, page.rootLevel());
+                if (n++ > 0) js.append(",\n");
+                js.append('"').append(field.getFieldID()).append("\":\"").append(WebUtil.jsString(frag)).append('"');
+            } catch (RuntimeException e) {
+                System.out.println("EXCEPTION field detail for '" + formName + "' field "
+                    + field.getFieldID() + " ('" + field.getName() + "'): " + e);
+                if (AppConfig.verboseMode) e.printStackTrace(System.out);
+            }
+        }
+        js.append("\n};\n");
+        try {
+            java.nio.file.Path file = java.nio.file.Path.of(appConfig.targetFolder, page.path(), "fields.js");
+            java.nio.file.Files.createDirectories(file.getParent());
+            java.nio.file.Files.writeString(file, js.toString(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException e) {
+            System.out.println("EXCEPTION writing fields.js for '" + formName + "': " + e);
         }
     }
 

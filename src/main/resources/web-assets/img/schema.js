@@ -1,10 +1,13 @@
 /*
  * ARInsideJ schema-detail-page script. Plain ES (runs from file://). Replaces schema_page.js.
- * Tab switching + <details> accordions are handled generically by app.js; this file owns only
- * the two schema-specific pieces:
+ * Tab switching + <details> accordions are handled generically by app.js; this file owns the
+ * schema-specific pieces:
  *   - the Fields tab instant name/id filter (#fieldNameFilter -> #fieldListAll)
  *   - the Workflow tab reference list, built lazily the first time that tab is shown
  *     (var referenceList = [...], emitted inline by SchemaDetailPage.workflowJson)
+ *   - the field detail panel: a #field-<id> anchor (from anywhere in the site) opens the Fields
+ *     tab and renders that field's detail, lazy-loaded from schema/<form>/fields.js
+ *     (window.ARI_FIELDDETAIL = { "<id>": "<html>" }, emitted by SchemaDetailPage.writeFieldsSidecar)
  *
  * Join/View/Vendor "Real Field" rendering in the *filtered* Fields view is reconstructed from the
  * slots SchemaDetailPage.realFieldJsonItems packs after index 7:
@@ -189,6 +192,65 @@
     render();
   }
 
+  /* ---------- field detail panel (lazy, from schema/<form>/fields.js) ---------- */
+  var fdLoad = null;
+  function loadFieldDetail() {
+    if (fdLoad) return fdLoad;
+    fdLoad = new Promise(function (resolve) {
+      if (window.ARI_FIELDDETAIL) { resolve(window.ARI_FIELDDETAIL); return; }
+      var s = document.createElement("script");
+      s.src = "fields.js"; // sibling of this schema page
+      s.onload = function () { resolve(window.ARI_FIELDDETAIL || {}); };
+      s.onerror = function () { resolve({}); };
+      document.head.appendChild(s);
+    });
+    return fdLoad;
+  }
+  function fieldName(id) {
+    var list = window.schemaFieldList || [];
+    for (var i = 0; i < list.length; i++) if (("" + list[i][0]) === ("" + id)) return list[i][1];
+    return "Field " + id;
+  }
+  function fieldPanel() {
+    var p = document.getElementById("fieldDetailPanel");
+    if (p) return p;
+    var host = document.getElementById("tab-2");
+    if (!host) return null;
+    p = document.createElement("section");
+    p.id = "fieldDetailPanel";
+    p.className = "ari-fielddetail";
+    p.hidden = true;
+    p.innerHTML = '<div class="fd-head"><h3 class="fd-name"></h3>'
+      + '<button type="button" class="fd-close" aria-label="Close field detail">×</button></div>'
+      + '<div class="fd-body"></div>';
+    host.insertBefore(p, host.firstChild);
+    p.querySelector(".fd-close").addEventListener("click", function () {
+      p.hidden = true;
+      if (/^#field-/.test(location.hash)) history.replaceState(null, "", location.pathname + location.search);
+    });
+    return p;
+  }
+  function activateFieldsTab() {
+    var btn = document.querySelector('.ari-tablist [data-panel="tab-2"]');
+    if (btn && btn.getAttribute("aria-selected") !== "true") btn.click();
+  }
+  function showField(id) {
+    loadFieldDetail().then(function (map) {
+      var p = fieldPanel();
+      if (!p) return;
+      activateFieldsTab();
+      p.querySelector(".fd-name").textContent = fieldName(id);
+      p.querySelector(".fd-body").innerHTML = (map && map[id]) || "<p>No detail recorded for field " + id + ".</p>";
+      p.hidden = false;
+      if (location.hash !== "#field-" + id) history.replaceState(null, "", "#field-" + id);
+      p.scrollIntoView({ block: "start" });
+    });
+  }
+  function fieldHashCheck() {
+    var m = location.hash.match(/^#field-(-?\d+)$/);
+    if (m) showField(m[1]);
+  }
+
   function boot() {
     initFieldFilter();
     document.addEventListener("ari:tabshown", function (e) {
@@ -196,8 +258,10 @@
       if (id === "tab-4") initWorkflowList();
       if (id === "tab-2") { var f = document.getElementById("fieldNameFilter"); if (f) f.focus(); }
     });
-    // if the page loaded already on #tab-4
-    if (location.hash === "#tab-4") initWorkflowList();
+    window.addEventListener("hashchange", function () { initWorkflowListIfHash(); fieldHashCheck(); });
+    function initWorkflowListIfHash() { if (location.hash === "#tab-4") initWorkflowList(); }
+    initWorkflowListIfHash();
+    fieldHashCheck();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();

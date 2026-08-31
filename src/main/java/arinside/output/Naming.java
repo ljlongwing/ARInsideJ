@@ -115,14 +115,14 @@ public final class Naming {
     }
 
     /**
-     * Matches ObjectNameSchemaFieldDetail's "fld_" + FileID() pattern, but FileID() is the C++'s
-     * internal load-order insideId (no Java equivalent - see ArClient's javadoc). Uses the field's
-     * real, stable AR System field ID instead - more meaningful than insideId ever was, though the
-     * exact filename won't byte-match the C++'s (same tradeoff already accepted for
-     * validatorFieldGroupDetails).
+     * Field detail is no longer its own file (one HTML per field was ~90% of the whole output tree
+     * on a large server). It's now an anchored panel on the form's own page, rendered client-side
+     * from a per-form {@code fields.js} sidecar - so this points at {@code schema/<form>/index.htm}
+     * with a {@code #field-<id>} fragment. Every existing caller goes through here, so the ~20 link
+     * sites need no change. See {@code FieldDetailPage} / {@code schema.js}.
      */
     public static PagePath schemaFieldDetail(String schemaName, boolean isOverlaid, int fieldId) {
-        return new PagePath(DIR_SCHEMA + "/" + directoryNameOfObjectName(schemaName, isOverlaid), "fld_" + fieldId, 2);
+        return schemaDetail(schemaName, isOverlaid).withFragment("field-" + fieldId);
     }
 
     /** Matches ObjectNameSchemaVUIDetail - same insideId-vs-real-ID tradeoff as schemaFieldDetail, using the VUI's real VUIId. */

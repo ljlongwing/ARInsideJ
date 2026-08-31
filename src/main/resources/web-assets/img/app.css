@@ -595,6 +595,31 @@ tr.overlayRemoved, div.overlayRemoved { background: var(--bad-bg); color: var(--
 .tokdel { background: var(--bad-bg); color: var(--bad-fg); text-decoration: line-through; border-radius: 2px; padding: 0 2px; }
 .tokins { background: var(--ok-bg); color: var(--ok-fg); border-radius: 2px; padding: 0 2px; }
 
+/* Field detail panel on the schema page (schema.js, from schema/<form>/fields.js) */
+.ari-fielddetail {
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  margin: 0 0 var(--sp-4);
+  overflow: hidden;
+}
+.ari-fielddetail .fd-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--border);
+}
+.ari-fielddetail .fd-name { margin: 0; font-size: 1rem; }
+.ari-fielddetail .fd-close {
+  border: 0; background: transparent; cursor: pointer;
+  font-size: 1.3rem; line-height: 1; color: var(--fg-muted); padding: 0 4px;
+}
+.ari-fielddetail .fd-close:hover { color: var(--fg); }
+.ari-fielddetail .fd-body { padding: var(--sp-3); }
+.ari-fielddetail .fd-body > table { margin-bottom: var(--sp-3); }
+.ari-fielddetail .fd-body > h2 { font-size: .95rem; margin-top: var(--sp-3); }
+
 /* Provenance card on the home page (DocSummaryInfo.metaBlock) */
 .ari-meta {
   display: grid;

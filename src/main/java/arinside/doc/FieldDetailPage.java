@@ -23,6 +23,11 @@ import java.util.Set;
  * mistaken for this section) + Attached Workflow (Control Field/Focus Field active-link
  * attachments, Order/Enabled/Execute On) + Referenced By (every other kind of field reference,
  * sourced from the field-level FieldReferenceIndex).
+ *
+ * Since 4.5 this is no longer one HTML file per field (that was ~90% of the whole output tree on a
+ * large server). {@link #renderFragment} returns just the section HTML; {@code SchemaDetailPage}
+ * collects one fragment per field into a single {@code schema/<form>/fields.js} sidecar that
+ * {@code schema.js} renders into an anchored panel on the form's own page.
  */
 public final class FieldDetailPage {
     private final AppConfig appConfig;
@@ -37,13 +42,13 @@ public final class FieldDetailPage {
         this.joinFields = joinFields;
     }
 
-    public void render(String schemaName, boolean schemaOverlaid, Form form, Field field, List<Field> allFields, List<View> vuis) {
-        PagePath page = Naming.schemaFieldDetail(schemaName, schemaOverlaid, field.getFieldID());
-        WebPage webPage = new WebPage(page.fileName(), field.getName(), page.rootLevel(), appConfig);
-
-        String head = URLLink.to(schemaName, Naming.schemaDetail(schemaName, schemaOverlaid), ImageTag.Id.Schema, page.rootLevel()).toHtml()
-            + " &gt; " + WebUtil.objName(field.getName());
-        webPage.addContentHead(head);
+    /**
+     * The field's detail sections as one HTML fragment (no page shell), for embedding in the form
+     * page's {@code fields.js} sidecar. {@code rootLevel} is the form page's own level (2), so every
+     * link inside resolves the same as it did on the old standalone field page.
+     */
+    public String renderFragment(String schemaName, boolean schemaOverlaid, Form form, Field field, List<Field> allFields, List<View> vuis, int rootLevel) {
+        StringBuilder sb = new StringBuilder();
 
         Table tbl = new Table("fieldGeneral", "TblObjectList");
         tbl.addColumn(30, "Property");
@@ -54,18 +59,17 @@ public final class FieldDetailPage {
         tbl.addRow(new TableRow().addCellList("Option", AREnumLabels.fieldOption(field.getFieldOption())));
         tbl.addRow(new TableRow().addCellList("Core Field", field.isCoreField() ? "Yes" : "No"));
         tbl.addRow(new TableRow().addCellList("Default Value", field.getDefaultValue() == null
-            ? WebUtil.EMPTY_VALUE : defaultValueOf(field.getDefaultValue(), schemaName, page.rootLevel())));
-        webPage.addContent(tbl.toXHtml());
+            ? WebUtil.EMPTY_VALUE : defaultValueOf(field.getDefaultValue(), schemaName, rootLevel)));
+        sb.append(tbl.toXHtml());
 
-        webPage.addContent(limits(field, schemaName, page.rootLevel(), form, allFields, vuis));
-        webPage.addContent(fieldMapping(form, field, page.rootLevel()));
-        webPage.addContent(joinFormReferences(schemaName, field.getFieldID(), page.rootLevel()));
-        webPage.addContent(permissions(field, page.rootLevel()));
-        webPage.addContent(displayPropertiesPerVui(schemaName, schemaOverlaid, field, vuis, page.rootLevel()));
-        webPage.addContent(attachedWorkflow(schemaName, field.getFieldID(), page.rootLevel()));
-        webPage.addContent(referencedBy(schemaName, field.getFieldID(), page.rootLevel()));
-
-        webPage.saveInFolder(page.path());
+        sb.append(limits(field, schemaName, rootLevel, form, allFields, vuis));
+        sb.append(fieldMapping(form, field, rootLevel));
+        sb.append(joinFormReferences(schemaName, field.getFieldID(), rootLevel));
+        sb.append(permissions(field, rootLevel));
+        sb.append(displayPropertiesPerVui(schemaName, schemaOverlaid, field, vuis, rootLevel));
+        sb.append(attachedWorkflow(schemaName, field.getFieldID(), rootLevel));
+        sb.append(referencedBy(schemaName, field.getFieldID(), rootLevel));
+        return sb.toString();
     }
 
     /**
