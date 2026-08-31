@@ -12,10 +12,14 @@ D - Defect fixed
 
 
 [Unreleased]
-E - field detail is no longer one HTML file per field (which was ~90% of the whole output on a
-    large server). It's now an anchored panel on the form's own page: a "#field-<id>" link from
-    anywhere in the site opens the Fields tab and renders that field's detail, lazy-loaded from a
-    single schema/<form>/fields.js per form. Existing bookmarks to fld_<id>.htm no longer resolve.
+E - field detail is no longer one HTML file per field. On a large server this cut the output from
+    ~490,000 files to ~139,000 (the per-form pages, per-field pages were most of the rest). It's
+    now an anchored panel on the form's own page: a "#field-<id>" link from anywhere in the site
+    opens the Fields tab and renders that field's detail, lazy-loaded from a single
+    schema/<form>/fields.js per form (the bulky per-view display-property dumps are split again
+    into fields-vui.js, fetched only when that section is expanded). On the few densest forms
+    fields.js is several MB, but it only loads when the Fields tab is opened and compresses well.
+    Existing bookmarks to fld_<id>.htm no longer resolve.
 
 
 2026-08-30
