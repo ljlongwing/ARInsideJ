@@ -216,7 +216,12 @@ public final class SchemaDetailPage {
         Table fieldsTable = isSpecialForm
             ? allFieldsSpecialTable(formName, isOverlaid, form, fields, page.rootLevel())
             : allFieldsTable(formName, isOverlaid, fields, page.rootLevel(), data.overlay());
-        String fieldsTab = fieldsFilterHeader(formName, isOverlaid, form, fields, isSpecialForm, page.rootLevel()) + fieldsTable.toXHtml();
+        // The Fields tab ships header-only; schema.js fills every row from the embedded
+        // schemaFieldList array (same client-render pattern the 4.2 reskin used for the overview
+        // lists). Dense forms - HPD:Help Desk has ~2000 fields - were producing a ~15 MB index.htm.
+        // toCsv() still emits every row.
+        fieldsTable.maxRenderedRows(0);
+        String fieldsTab = fieldsFilterHeader(formName, isOverlaid, form, fields, isSpecialForm, data.overlay(), page.rootLevel()) + fieldsTable.toXHtml();
 
         Map<Integer, String> fieldNames = new HashMap<>();
         for (Field f : fields) fieldNames.put(f.getFieldID(), f.getName());
@@ -1476,9 +1481,22 @@ public final class SchemaDetailPage {
      * filter input/button/result-count markup, and the CSV download link (also previously missing -
      * the CSV file itself was already being generated and saved, just never linked to).
      */
-    private String fieldsFilterHeader(String formName, boolean isOverlaid, Form form, List<Field> fields, boolean isSpecialForm, int rootLevel) {
+    private String fieldsFilterHeader(String formName, boolean isOverlaid, Form form, List<Field> fields, boolean isSpecialForm, Overlay overlay, int rootLevel) {
         StringBuilder json = new StringBuilder("\nvar schemaFieldList = [");
         JoinForm join = form instanceof JoinForm jf ? jf : null;
+
+        // Overlay field-change annotations - the table used to carry these server-side; now the
+        // client renders the rows, so the status rides along (regular forms only: slot 8+ on a
+        // special form is real-field data). 1=added 2=changed 3=removed.
+        Map<Integer, Integer> statusByFieldId = new HashMap<>();
+        List<Field> removedFields = new ArrayList<>();
+        if (overlay != null && !isSpecialForm) {
+            for (OverlayDiff.Item<Field> item : overlay.fieldDiff()) {
+                if (item.status() == OverlayDiff.Status.REMOVED) removedFields.add(item.base());
+                else statusByFieldId.put(item.overlay().getFieldID(),
+                    item.status() == OverlayDiff.Status.ADDED ? 1 : 2);
+            }
+        }
 
         int count = 0;
         for (Field field : fields) {
@@ -1498,8 +1516,21 @@ public final class SchemaDetailPage {
                 .append(WebUtil.jsString(AREnumLabels.fieldOption(field.getFieldOption()))).append('"');
             if (isSpecialForm) {
                 for (String item : realFieldJsonItems(join, field, rootLevel)) json.append(',').append(item);
+            } else {
+                json.append(',').append(statusByFieldId.getOrDefault(field.getFieldID(), 0)); // slot 8: overlay status
             }
             json.append(']');
+            count++;
+        }
+        for (Field field : removedFields) {
+            String modified = field.getLastUpdateTime() == null ? "" : DateTimeFormat.toPlainString(field.getLastUpdateTime().getValue());
+            if (count > 0) json.append(',');
+            json.append('[').append(field.getFieldID()).append(",\"")
+                .append(WebUtil.jsString(field.getName())).append("\",")
+                .append(field.getDataType()).append(",0,\"")
+                .append(WebUtil.jsString(modified)).append("\",\"")
+                .append(WebUtil.jsString(field.getLastChangedBy() == null ? "" : field.getLastChangedBy())).append("\",\"\",\"")
+                .append(WebUtil.jsString(AREnumLabels.fieldOption(field.getFieldOption()))).append("\",3]"); // no link, status 3
             count++;
         }
         json.append("];\n");

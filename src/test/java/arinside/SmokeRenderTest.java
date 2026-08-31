@@ -131,8 +131,22 @@ class SmokeRenderTest {
             assertTrue(fldPages == 0, "per-field HTML pages should be gone, found " + fldPages);
         }
         // links to field detail are now anchors on the form page
-        assertTrue(read("schema/User__o/index.htm").contains("index.htm#field-"),
+        String schemaPage = read("schema/User__o/index.htm");
+        assertTrue(schemaPage.contains("index.htm#field-"),
             "field links should point at index.htm#field-<id>");
+        // the Fields tab table ships header-only; schema.js fills it from schemaFieldList
+        assertTrue(schemaPage.contains("var schemaFieldList = ["), "schemaFieldList array missing");
+        int fieldListAll = schemaPage.indexOf("id=\"fieldListAll\"");
+        int tbodyClose = schemaPage.indexOf("</table>", fieldListAll);
+        String tableHtml = schemaPage.substring(fieldListAll, tbodyClose);
+        assertTrue(countOccurrences(tableHtml, "<tr") <= 1,
+            "Fields tab table should be header-only, found " + countOccurrences(tableHtml, "<tr") + " <tr>");
+    }
+
+    private static int countOccurrences(String hay, String needle) {
+        int n = 0, i = 0;
+        while ((i = hay.indexOf(needle, i)) >= 0) { n++; i += needle.length(); }
+        return n;
     }
 
     @Test

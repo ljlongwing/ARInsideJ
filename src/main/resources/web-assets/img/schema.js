@@ -57,6 +57,13 @@
   }
 
   /* ---------- Fields tab filter ---------- */
+  var fieldFilterRun = null;    // set by initFieldFilter, invoked lazily when the Fields tab first shows
+  var fieldFilterFilled = false;
+  function fillFieldsTab() {
+    if (fieldFilterFilled || !fieldFilterRun) return;
+    fieldFilterFilled = true;
+    fieldFilterRun();
+  }
   function initFieldFilter() {
     var list = window.schemaFieldList;
     var table = document.getElementById("fieldListAll");
@@ -68,6 +75,8 @@
 
     var headCells = table.tHead ? table.tHead.rows[0].cells : [];
     var hasRealField = headCells[4] && /^Real Field/.test(headCells[4].textContent.trim());
+    var OVL_CLASS = { 1: "overlayAdded", 2: "overlayChanged", 3: "overlayRemoved" };
+    var OVL_BADGE = { 1: " (Added by Overlay)", 2: " (Changed by Overlay)", 3: " (Removed by Overlay)" };
 
     function run() {
       var raw = input.value.replace(/ +/g, " ").replace(/ /g, ".*");
@@ -75,25 +84,31 @@
       var numeric = /^\d+$/.test(raw);
       var body = tbodyOf(table);
       body.innerHTML = "";
+      var frag = document.createDocumentFragment();
       var matches = 0;
       list.forEach(function (f) {
         if (!(rx.test("" + f[1]) || (numeric && ("" + f[0]) === input.value.trim()))) return;
         matches++;
+        var ovl = hasRealField ? 0 : (f[8] || 0);
         var tr = document.createElement("tr");
+        if (OVL_CLASS[ovl]) tr.className = OVL_CLASS[ovl];
         var nameTd = el("td");
-        var a = el("a", f[1]); a.href = f[6]; nameTd.appendChild(a);
+        if (f[6]) { var a = el("a", f[1]); a.href = f[6]; nameTd.appendChild(a); }
+        else { nameTd.appendChild(el("span", f[1])); }
+        if (OVL_BADGE[ovl]) nameTd.appendChild(document.createTextNode(OVL_BADGE[ovl]));
         tr.appendChild(nameTd);
         tr.appendChild(el("td", f[0]));
         tr.appendChild(el("td", dataType(f[2])));
         tr.appendChild(el("td", f[7] || ""));
         if (hasRealField) tr.appendChild(realFieldCell(f));
         var vc = el("td", f[3]);
-        if (f[3] === 0) vc.className = "fieldInNoView";
+        if (f[3] === 0 && f[0] !== 15) vc.className = "fieldInNoView";
         tr.appendChild(vc);
         tr.appendChild(el("td", f[4]));
         tr.appendChild(el("td", f[5]));
-        body.appendChild(tr);
+        frag.appendChild(tr);
       });
+      body.appendChild(frag);
       if (count) count.textContent = (input.value.length > 0 ? "showing " + matches + " out of " : "");
     }
 
@@ -104,7 +119,7 @@
       if (e.key === "Escape") { input.value = ""; run(); }
       if (e.key === "Enter") { e.preventDefault(); run(); }
     });
-    if (input.value !== "") run();
+    fieldFilterRun = run; // the server table ships header-only; filled on first Fields-tab show
   }
 
   /* ---------- Workflow tab reference list (lazy) ---------- */
@@ -279,11 +294,15 @@
     document.addEventListener("ari:tabshown", function (e) {
       var id = e.detail && e.detail.id;
       if (id === "tab-4") initWorkflowList();
-      if (id === "tab-2") { var f = document.getElementById("fieldNameFilter"); if (f) f.focus(); }
+      if (id === "tab-2") { fillFieldsTab(); var f = document.getElementById("fieldNameFilter"); if (f) f.focus(); }
     });
     window.addEventListener("hashchange", function () { initWorkflowListIfHash(); fieldHashCheck(); });
     function initWorkflowListIfHash() { if (location.hash === "#tab-4") initWorkflowList(); }
     initWorkflowListIfHash();
+    // the initial tab is decided by app.js (hash / remembered / first); if it's the Fields tab we
+    // won't get an ari:tabshown for it, so fill now when it's already active.
+    var t2 = document.getElementById("tab-2");
+    if (t2 && !t2.hidden) fillFieldsTab();
     fieldHashCheck();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
