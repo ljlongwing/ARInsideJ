@@ -11,15 +11,19 @@ E - Enhancement
 D - Defect fixed
 
 
-[Unreleased]
-E - field detail is no longer one HTML file per field. On a large server this cut the output from
-    ~490,000 files to ~139,000 (the per-form pages, per-field pages were most of the rest). It's
-    now an anchored panel on the form's own page: a "#field-<id>" link from anywhere in the site
-    opens the Fields tab and renders that field's detail, lazy-loaded from a single
-    schema/<form>/fields.js per form (the bulky per-view display-property dumps are split again
-    into fields-vui.js, fetched only when that section is expanded). On the few densest forms
-    fields.js is several MB, but it only loads when the Fields tab is opened and compresses well.
-    Existing bookmarks to fld_<id>.htm no longer resolve.
+2026-08-31
+[4.5.0]
+E - far fewer output files. On a large server the run went from ~490,000 files to ~139,000:
+    - field detail is no longer one HTML file per field. It's an anchored panel on the form's own
+      page - a "#field-<id>" link from anywhere in the site opens the Fields tab and renders that
+      field's detail, lazy-loaded from a single schema/<form>/fields.js per form. The bulky
+      per-view display-property dumps are split again into fields-vui.js, fetched only when that
+      section is expanded. Existing bookmarks to fld_<id>.htm no longer resolve.
+    - the schema Fields tab no longer server-renders every row (it also embedded the same data
+      twice). It ships header-only and the client fills it from the embedded field list the first
+      time the tab is opened. This took HPD:Help Desk's page from ~15 MB to ~2.6 MB.
+    On the few densest forms fields.js / index.htm are still a few MB, but they only load on
+    demand and compress well.
 
 
 2026-08-30
