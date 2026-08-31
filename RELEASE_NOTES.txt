@@ -11,6 +11,13 @@ E - Enhancement
 D - Defect fixed
 
 
+[Unreleased]
+E - field detail is no longer one HTML file per field (which was ~90% of the whole output on a
+    large server). It's now an anchored panel on the form's own page: a "#field-<id>" link from
+    anywhere in the site opens the Fields tab and renders that field's detail, lazy-loaded from a
+    single schema/<form>/fields.js per form. Existing bookmarks to fld_<id>.htm no longer resolve.
+
+
 2026-08-30
 [4.4.0]
 E - command palette: when opened with an empty box it now lists your recently opened objects
