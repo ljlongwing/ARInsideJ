@@ -125,6 +125,7 @@ class SmokeRenderTest {
         String sidecar = read("schema/User__o/fields.js");
         assertTrue(sidecar.startsWith("window.ARI_FIELDDETAIL="), "fields.js sidecar missing/!ARI_FIELDDETAIL");
         assertTrue(sidecar.contains("Field ID"), "fields.js has no field detail HTML");
+        assertTrue(sidecar.contains("window.ARI_FIELDVUI_IDS="), "fields.js missing the per-view id list");
         try (Stream<Path> tree = Files.walk(out)) {
             long fldPages = tree.filter(p -> p.getFileName().toString().matches("fld_-?\\d+\\.htm")).count();
             assertTrue(fldPages == 0, "per-field HTML pages should be gone, found " + fldPages);

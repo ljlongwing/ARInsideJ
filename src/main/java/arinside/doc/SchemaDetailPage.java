@@ -274,25 +274,40 @@ public final class SchemaDetailPage {
                                     java.util.List<com.bmc.arsys.api.View> vuis, PagePath page) {
         FieldDetailPage fieldDetail = new FieldDetailPage(appConfig, fieldRefs, globalFields, joinFields);
         StringBuilder js = new StringBuilder("window.ARI_FIELDDETAIL={\n");
-        int n = 0;
+        StringBuilder vuiJs = new StringBuilder("window.ARI_FIELDVUI={\n");
+        StringBuilder vuiIds = new StringBuilder();
+        int n = 0, vn = 0;
         for (Field field : fields) {
             try {
                 String frag = fieldDetail.renderFragment(formName, isOverlaid, form, field, fields, vuis, page.rootLevel());
                 if (n++ > 0) js.append(",\n");
                 js.append('"').append(field.getFieldID()).append("\":\"").append(WebUtil.jsString(frag)).append('"');
+
+                String vuiProps = fieldDetail.renderVuiProps(formName, isOverlaid, field, vuis, page.rootLevel());
+                if (!vuiProps.isEmpty()) {
+                    if (vn++ > 0) { vuiJs.append(",\n"); vuiIds.append(','); }
+                    vuiJs.append('"').append(field.getFieldID()).append("\":\"").append(WebUtil.jsString(vuiProps)).append('"');
+                    vuiIds.append(field.getFieldID());
+                }
             } catch (RuntimeException e) {
                 System.out.println("EXCEPTION field detail for '" + formName + "' field "
                     + field.getFieldID() + " ('" + field.getName() + "'): " + e);
                 if (AppConfig.verboseMode) e.printStackTrace(System.out);
             }
         }
-        js.append("\n};\n");
+        js.append("\n};\nwindow.ARI_FIELDVUI_IDS=[").append(vuiIds).append("];\n");
+        vuiJs.append("\n};\n");
+        writeSidecar(page.path(), "fields.js", js.toString(), formName);
+        if (vn > 0) writeSidecar(page.path(), "fields-vui.js", vuiJs.toString(), formName);
+    }
+
+    private void writeSidecar(String dir, String name, String content, String formName) {
         try {
-            java.nio.file.Path file = java.nio.file.Path.of(appConfig.targetFolder, page.path(), "fields.js");
+            java.nio.file.Path file = java.nio.file.Path.of(appConfig.targetFolder, dir, name);
             java.nio.file.Files.createDirectories(file.getParent());
-            java.nio.file.Files.writeString(file, js.toString(), java.nio.charset.StandardCharsets.UTF_8);
+            java.nio.file.Files.writeString(file, content, java.nio.charset.StandardCharsets.UTF_8);
         } catch (java.io.IOException e) {
-            System.out.println("EXCEPTION writing fields.js for '" + formName + "': " + e);
+            System.out.println("EXCEPTION writing " + name + " for '" + formName + "': " + e);
         }
     }
 

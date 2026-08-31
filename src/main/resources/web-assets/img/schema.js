@@ -7,7 +7,9 @@
  *     (var referenceList = [...], emitted inline by SchemaDetailPage.workflowJson)
  *   - the field detail panel: a #field-<id> anchor (from anywhere in the site) opens the Fields
  *     tab and renders that field's detail, lazy-loaded from schema/<form>/fields.js
- *     (window.ARI_FIELDDETAIL = { "<id>": "<html>" }, emitted by SchemaDetailPage.writeFieldsSidecar)
+ *     (window.ARI_FIELDDETAIL = { "<id>": "<html>" }). The bulky per-view display-property dumps
+ *     are split into schema/<form>/fields-vui.js (window.ARI_FIELDVUI), fetched only when a reader
+ *     expands "Display properties per view" inside an open panel.
  *
  * Join/View/Vendor "Real Field" rendering in the *filtered* Fields view is reconstructed from the
  * slots SchemaDetailPage.realFieldJsonItems packs after index 7:
@@ -193,18 +195,37 @@
   }
 
   /* ---------- field detail panel (lazy, from schema/<form>/fields.js) ---------- */
-  var fdLoad = null;
-  function loadFieldDetail() {
-    if (fdLoad) return fdLoad;
-    fdLoad = new Promise(function (resolve) {
-      if (window.ARI_FIELDDETAIL) { resolve(window.ARI_FIELDDETAIL); return; }
-      var s = document.createElement("script");
-      s.src = "fields.js"; // sibling of this schema page
-      s.onload = function () { resolve(window.ARI_FIELDDETAIL || {}); };
-      s.onerror = function () { resolve({}); };
-      document.head.appendChild(s);
+  function lazyScript(src, globalName) {
+    var p = null;
+    return function () {
+      if (p) return p;
+      p = new Promise(function (resolve) {
+        if (window[globalName]) { resolve(window[globalName]); return; }
+        var s = document.createElement("script");
+        s.src = src; // sibling of this schema page
+        s.onload = function () { resolve(window[globalName] || {}); };
+        s.onerror = function () { resolve({}); };
+        document.head.appendChild(s);
+      });
+      return p;
+    };
+  }
+  var loadFieldDetail = lazyScript("fields.js", "ARI_FIELDDETAIL");
+  var loadFieldVui = lazyScript("fields-vui.js", "ARI_FIELDVUI"); // the bulky per-view property dumps
+
+  function addVuiToggle(body, id) {
+    var d = document.createElement("details");
+    d.className = "ari-acc fd-vui";
+    d.innerHTML = '<summary>Display properties per view</summary><div class="acc-body">Loading&hellip;</div>';
+    body.appendChild(d);
+    d.addEventListener("toggle", function onToggle() {
+      if (!d.open) return;
+      d.removeEventListener("toggle", onToggle);
+      loadFieldVui().then(function (map) {
+        var html = map && map[id];
+        d.querySelector(".acc-body").innerHTML = html || "<p>This field has no per-view display properties.</p>";
+      });
     });
-    return fdLoad;
   }
   function fieldName(id) {
     var list = window.schemaFieldList || [];
@@ -240,7 +261,9 @@
       if (!p) return;
       activateFieldsTab();
       p.querySelector(".fd-name").textContent = fieldName(id);
-      p.querySelector(".fd-body").innerHTML = (map && map[id]) || "<p>No detail recorded for field " + id + ".</p>";
+      var body = p.querySelector(".fd-body");
+      body.innerHTML = (map && map[id]) || "<p>No detail recorded for field " + id + ".</p>";
+      if (map && map[id] && (window.ARI_FIELDVUI_IDS || []).indexOf(+id) >= 0) addVuiToggle(body, id);
       p.hidden = false;
       if (location.hash !== "#field-" + id) history.replaceState(null, "", "#field-" + id);
       p.scrollIntoView({ block: "start" });

@@ -66,10 +66,17 @@ public final class FieldDetailPage {
         sb.append(fieldMapping(form, field, rootLevel));
         sb.append(joinFormReferences(schemaName, field.getFieldID(), rootLevel));
         sb.append(permissions(field, rootLevel));
-        sb.append(displayPropertiesPerVui(schemaName, schemaOverlaid, field, vuis, rootLevel));
         sb.append(attachedWorkflow(schemaName, field.getFieldID(), rootLevel));
         sb.append(referencedBy(schemaName, field.getFieldID(), rootLevel));
+        // displayPropertiesPerVui is deliberately NOT here - the raw per-VUI property dump is huge
+        // on dense forms (23 MB fields.js for HPD:Help Desk). SchemaDetailPage puts it in a separate
+        // fields-vui.js that schema.js only fetches when a reader expands that section.
         return sb.toString();
+    }
+
+    /** The per-VUI raw display-property tables for one field - split into its own sidecar, see {@link #renderFragment}. Empty string when the field has no display instances. */
+    public String renderVuiProps(String schemaName, boolean schemaOverlaid, Field field, List<View> vuis, int rootLevel) {
+        return displayPropertiesPerVui(schemaName, schemaOverlaid, field, vuis, rootLevel);
     }
 
     /**
