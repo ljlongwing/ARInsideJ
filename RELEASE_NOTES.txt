@@ -12,6 +12,18 @@ D - Defect fixed
 
 
 2026-08-31
+[4.6.1]
+E - Innovation Studio polish:
+    - the per-type list pages (Rules, Views, ...) gain a client-side filter box; the 290-row Views
+      list now filters and sorts in place
+    - Named List, Event Statistics, View and Document definitions get a proper summary instead of
+      just the raw JSON (query criteria, group-by / operations, view params, document schema);
+      Event Statistics links to its Event, Named Lists link to their record
+E - new generic table filter: any generated table can get a client-side row filter by adding
+    `data-filter-table` to an input (used by the IS list pages)
+
+
+2026-08-31
 [4.6.0]
 E - Innovation Studio documentation. Point --is-url http://host:8008 (or IsServerUrl= in the ini)
     at a Helix rx REST API and a normal run also documents the IS workflow layer the classic API
