@@ -32,6 +32,10 @@ public final class DocSummaryInfo {
         int users, int images, int associations, int totalFields, long loadSeconds, long documentationSeconds, int filesCreated) {}
 
     public static void render(AppConfig appConfig, Counts c) {
+        render(appConfig, c, null);
+    }
+
+    public static void render(AppConfig appConfig, Counts c, arinside.ar.is.IsRepository isRepo) {
         PagePath page = Naming.mainHome();
         WebPage webPage = new WebPage(page.fileName(), "Documentation Index", page.rootLevel(), appConfig);
         webPage.addContentHead("Documentation index:");
@@ -58,6 +62,12 @@ public final class DocSummaryInfo {
         row(tbl, c.users(), "Users", Naming.overviewUsers());
         row(tbl, c.images(), "Images", Naming.overviewImages());
         if (c.associations() > 0) row(tbl, c.associations(), "Associations", Naming.associationOverview());
+        if (isRepo != null && !isRepo.isEmpty()) {
+            tbl.addRow(new TableRow().addCellList(
+                Integer.toString(isRepo.totalDefinitions()),
+                URLLink.to("Innovation Studio", new PagePath("is", "index", 1), 0).toHtml()
+                    + " <span class=\"additionalInfo\">(" + isRepo.bundles().size() + " bundles)</span>"));
+        }
 
         webPage.addContent(tbl.toXHtml());
 

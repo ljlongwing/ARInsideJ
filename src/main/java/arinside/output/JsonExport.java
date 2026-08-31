@@ -44,10 +44,39 @@ public final class JsonExport {
     private static final Queue<Map<String, Object>> users = new ConcurrentLinkedQueue<>();
     private static final Queue<Map<String, Object>> images = new ConcurrentLinkedQueue<>();
     private static final Queue<Map<String, Object>> associations = new ConcurrentLinkedQueue<>();
+    private static final Queue<Map<String, Object>> isBundles = new ConcurrentLinkedQueue<>();
+    private static final Queue<Map<String, Object>> isDefinitions = new ConcurrentLinkedQueue<>();
 
     public static void clear() {
         for (Queue<?> q : List.of(forms, formDetails, activeLinks, filters, escalations, menus, containers,
-                groups, roles, users, images, associations)) q.clear();
+                groups, roles, users, images, associations, isBundles, isDefinitions)) q.clear();
+    }
+
+    /* ---------- Innovation Studio ---------- */
+
+    public static void addIsBundle(arinside.ar.is.IsBundle b) {
+        Map<String, Object> r = rec();
+        r.put("id", b.id());
+        r.put("name", b.friendlyName());
+        r.put("version", b.version());
+        r.put("developer", b.developerId());
+        r.put("isApplication", b.isApplication());
+        r.put("lastDeployed", b.lastDeployedTime());
+        isBundles.add(r);
+    }
+
+    public static void addIsDefinition(arinside.ar.is.IsDefinition d) {
+        Map<String, Object> r = rec();
+        r.put("type", d.type().label);
+        r.put("name", d.name());
+        r.put("description", d.description());
+        r.put("enabled", d.enabled());
+        r.put("scope", d.scope());
+        r.put("overlay", d.isOverlay());
+        r.put("modified", d.modifiedEpoch());
+        r.put("modifiedBy", d.modifiedBy());
+        r.put("guid", d.guid());
+        isDefinitions.add(r);
     }
 
     /* ---------- builders ---------- */
@@ -279,6 +308,12 @@ public final class JsonExport {
             writeArray(dir.resolve("users.json"), users);
             writeArray(dir.resolve("images.json"), images);
             writeArray(dir.resolve("associations.json"), associations);
+            if (!isBundles.isEmpty() || !isDefinitions.isEmpty()) {
+                Path isDir = dir.resolve("is");
+                Files.createDirectories(isDir);
+                writeArray(isDir.resolve("bundles.json"), isBundles);
+                writeArray(isDir.resolve("definitions.json"), isDefinitions);
+            }
 
             // Per-object form detail (fields / permissions / indexes / sort / views).
             int detailFiles = 0;

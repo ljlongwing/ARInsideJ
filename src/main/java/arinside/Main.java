@@ -701,12 +701,25 @@ public final class Main {
                     images::getImage,
                     (name, base) -> imagePage.render(name, images.getImage(name), base));
 
+                // Innovation Studio pass runs before the index page / search index / JSON export so
+                // its definitions feed all three.
+                arinside.ar.is.IsRepository isRepo = null;
+                if (appConfig.documentInnovationStudio) {
+                    try {
+                        isRepo = documentInnovationStudio(appConfig);
+                    } catch (RuntimeException e) {
+                        System.out.println("EXCEPTION documenting Innovation Studio: " + e.getMessage());
+                        if (AppConfig.verboseMode) e.printStackTrace(System.out);
+                    }
+                }
+
                 System.out.println("Writing index page...");
                 long documentationSeconds = java.time.Duration.ofNanos(System.nanoTime() - pipelineStart).toSeconds() - loadSeconds;
                 DocSummaryInfo.render(appConfig, new DocSummaryInfo.Counts(
                     alCount, webServiceCount, alGuideCount, filterGuideCount, packListCount, applicationCount,
                     escalCount, filterCount, groupCount, menuCount, roleCount, formCount, userCount, imageCount, associationCount,
-                    globalFields.totalFieldCount(), loadSeconds, documentationSeconds, WebPage.filesCreated.get()));
+                    globalFields.totalFieldCount(), loadSeconds, documentationSeconds, WebPage.filesCreated.get()),
+                    isRepo);
 
                 if (appConfig.searchIndex) {
                     arinside.output.SearchIndex.writeTo(appConfig.targetFolder);
@@ -718,15 +731,6 @@ public final class Main {
                 if (appConfig.jsonOutput) {
                     arinside.output.JsonExport.writeTo(appConfig);
                     System.out.println("JSON export written to data/.");
-                }
-
-                if (appConfig.documentInnovationStudio) {
-                    try {
-                        documentInnovationStudio(appConfig);
-                    } catch (RuntimeException e) {
-                        System.out.println("EXCEPTION documenting Innovation Studio: " + e.getMessage());
-                        if (AppConfig.verboseMode) e.printStackTrace(System.out);
-                    }
                 }
 
                 if (appConfig.incrementalRuns && !appConfig.diffMode) {
@@ -796,20 +800,21 @@ public final class Main {
      * over the rx REST API and renders them. Record definitions are skipped (they are the classic
      * AR forms). For now this reports counts; the doc/ pages land in a follow-up increment.
      */
-    private static void documentInnovationStudio(AppConfig appConfig) {
+    private static arinside.ar.is.IsRepository documentInnovationStudio(AppConfig appConfig) {
         System.out.println("Documenting Innovation Studio at " + appConfig.isServerUrl + " ...");
         try (arinside.ar.is.IsClient client = new arinside.ar.is.IsClient(
                 appConfig.isServerUrl, appConfig.effectiveIsUsername(), appConfig.effectiveIsPassword())) {
             arinside.ar.is.IsRepository repo = arinside.ar.is.IsRepository.load(client);
             if (repo.isEmpty()) {
                 System.out.println("  no Innovation Studio content found - nothing to document.");
-                return;
+                return null;
             }
             arinside.output.NavigationPage.NavItem isNav = arinside.doc.is.IsPages.render(appConfig, repo);
             // regenerate nav.js with the Innovation Studio section appended
             arinside.output.NavigationPage.write(appConfig, java.util.List.of(isNav));
             System.out.println("  " + repo.bundles().size() + " bundles, "
                 + repo.totalDefinitions() + " definitions documented under is/.");
+            return repo;
         }
     }
 

@@ -6,7 +6,9 @@ import arinside.ar.is.IsDefinition;
 import arinside.ar.is.IsRepository;
 import arinside.config.AppConfig;
 import arinside.output.NavigationPage.NavItem;
+import arinside.output.JsonExport;
 import arinside.output.PagePath;
+import arinside.output.SearchIndex;
 import arinside.output.Table;
 import arinside.output.TableRow;
 import arinside.output.WebPage;
@@ -39,7 +41,12 @@ public final class IsPages {
             List<IsDefinition> defs = repo.of(type);
             if (defs.isEmpty()) continue;
             writeTypeList(cfg, type, defs);
-            for (IsDefinition d : defs) writeDetail(cfg, type, d);
+            for (IsDefinition d : defs) {
+                writeDetail(cfg, type, d);
+                SearchIndex.add(d.name() + "  (IS " + type.label + ")", isIcon(type),
+                    new PagePath(DIR + "/" + type.name().toLowerCase(), sanitize(d.name()), 2));
+                if (cfg.jsonOutput) JsonExport.addIsDefinition(d);
+            }
             typeNav.add(new NavItem(type.pluralLabel + " (" + defs.size() + ")",
                 DIR + "/" + type.name().toLowerCase() + "/index.htm", isIcon(type)));
         }
@@ -87,6 +94,9 @@ public final class IsPages {
         bt.removeEmptyMessageRow();
         web.addContent("<h2>Bundles</h2>\n" + bt.toXHtml());
         web.saveInFolder(page.path());
+
+        SearchIndex.add("Innovation Studio", "application", new PagePath(DIR, "index", 1));
+        if (cfg.jsonOutput) for (IsBundle b : repo.bundles()) JsonExport.addIsBundle(b);
     }
 
     /* ---------- per-type list ---------- */

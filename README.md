@@ -160,6 +160,7 @@ object by name, and a light/dark theme toggle that follows your OS setting by de
 | --scope \<string\> | optional | Only document this one form plus its directly-related workflow tree, instead of the whole server - see [Scoped Export](#scoped-export---scope) below. |
 | --diff \<baseline\> \<current\> | optional | Compare two offline `.xml`/`.def` exports and write a standalone change report to the output folder instead of the normal documentation - see [Snapshot Diff](#snapshot-diff---diff) below. No server needed. |
 | --incremental | optional | Skip the entire run if nothing has changed since the last one - see [Incremental Runs](#incremental-runs---incremental) below. |
+| --is-url \<string\> | optional | Also document Innovation Studio at this rx REST base URL - see [Innovation Studio](#innovation-studio---is-url) below. |
 | -v, --verbose | optional | Verbose output. |
 | -h, --help | optional | Show command line usage. |
 
@@ -196,6 +197,8 @@ command-line values take precedence over the ini file.
 | SearchIndex | Boolean | `TRUE` | Emit `img/search-index.js` so the header search box can jump to any object by name. Set `FALSE` on very large servers where the multi-MB index isn't wanted. |
 | JsonOutput | Boolean | `FALSE` | Also write `data/*.json` - a machine-readable object inventory (one array file per type + `data/manifest.json`), plus a per-form detail file `data/forms/<name>.json` (full field list with per-field permissions, form permissions, indexes, sort list, views). For CI checks, external analysis, or snapshot diffing. |
 | IncrementalRuns | Boolean | `FALSE` | Skip the whole run when nothing has changed since the last one - see [Incremental Runs](#incremental-runs---incremental) below. |
+| IsServerUrl | String | (blank) | Also document Innovation Studio at this rx REST base URL - see [Innovation Studio](#innovation-studio---is-url) below. |
+| IsUsername / IsPassword | String | (blank) | IS login; defaults to the AR login when blank. |
 | ReadConcurrency | Integer | `8` | Max concurrent AR System connections used to fetch objects. `1` reproduces old fully-sequential behavior. |
 | WriteConcurrency | Integer | `16` | Max concurrent worker threads rendering/writing local HTML pages. |
 
@@ -317,6 +320,23 @@ it runs completely normally and rewrites `.arinside-state` at the end.
 It is strictly all-or-nothing - it never re-documents only part of the server, so a stale page is
 not possible. `--scope` is not supported with it (the recorded state is always whole-server).
 Not supported for diff mode. Users / groups / roles are not part of the change check.
+
+## Innovation Studio (`--is-url`)
+
+Modern Helix / AR servers carry a layer of workflow the classic API can't see - Innovation Studio
+rules, processes, web APIs, associations, events, views. Point at the rx REST API and a normal run
+documents that layer too:
+
+```
+java -jar arinsidej.jar -i settings.ini -s myserver -l Demo -p pass --is-url http://myserver:8008
+```
+
+(or `IsServerUrl=` / `IsUsername=` / `IsPassword=` in the ini; the IS login defaults to `-l`/`-p`).
+Auth is the standard `POST /api/jwt/login`. Output lands under `is/` - a bundle inventory plus one
+page per rule / process / web API / association / event / document / named list / view, each with a
+type-specific summary and the raw definition JSON. IS **record definitions are skipped** - every
+classic AR form is an IS record definition, and those are already under Forms. IS definitions also
+show up in the header search and, with `JsonOutput=TRUE`, in `data/is/*.json`.
 
 ## File Mode / Offline `.xml` and `.def` Export
 
