@@ -12,6 +12,23 @@ D - Defect fixed
 
 
 2026-08-31
+[4.6.0]
+E - Innovation Studio documentation. Point --is-url http://host:8008 (or IsServerUrl= in the ini)
+    at a Helix rx REST API and a normal run also documents the IS workflow layer the classic API
+    can't see:
+    - is/index.htm: a bundle inventory (version, developer, deployment) + a per-type count table
+    - one page per rule / process / web API / association / event / event-statistics / document /
+      named list / view, with a type-specific summary (rules show the trigger, the Run If
+      expression and the action input/output maps; associations show the two record nodes,
+      cardinality and cascade) plus the raw definition JSON
+    - rules and associations cross-link to the classic form page when that form is documented
+    - IS definitions appear in the header search, and in data/is/*.json with JsonOutput=TRUE
+    - IS record definitions are NOT re-documented - every classic AR form is one, and those are
+      already under Forms
+    - auth is the standard POST /api/jwt/login; the IS login defaults to the -l/-p AR login
+
+
+2026-08-31
 [4.5.0]
 E - far fewer output files. On a large server the run went from ~490,000 files to ~139,000:
     - field detail is no longer one HTML file per field. It's an anchored panel on the form's own
