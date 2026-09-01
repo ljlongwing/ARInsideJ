@@ -12,6 +12,13 @@ D - Defect fixed
 
 
 2026-09-01
+[4.7.1]
+N - Housekeeping only, no behaviour change: tidied development-process wording out of code
+    comments for the now-public repository, and corrected a stale javadoc line that still said
+    Innovation Studio record definitions were skipped (they are documented as of 4.7.0).
+
+
+2026-09-01
 [4.7.0]
 E - Forms and Innovation Studio Record Definitions are now cleanly split. A classic Dev Studio
     form stays under Forms; a record definition authored in Innovation Studio (the AR form layer
