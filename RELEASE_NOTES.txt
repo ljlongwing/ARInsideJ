@@ -11,6 +11,17 @@ E - Enhancement
 D - Defect fixed
 
 
+2026-09-01
+[4.7.0]
+E - Forms and Innovation Studio Record Definitions are now cleanly split. A classic Dev Studio
+    form stays under Forms; a record definition authored in Innovation Studio (the AR form layer
+    marks these with object property 90025) is dropped from the Forms list and documented under
+    Innovation Studio -> Record Definitions instead, one page each with its rx field list (id,
+    name, type, option), fetched by name from the rx REST API. Needs --is-url; a FileMode run has
+    no IS connection so those forms still appear under Forms there. On the test server this moved
+    223 forms out of Forms (4,684 -> 4,461).
+
+
 2026-08-31
 [4.6.1]
 E - Innovation Studio polish:

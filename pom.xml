@@ -5,7 +5,7 @@
 
   <groupId>arinsidej</groupId>
   <artifactId>arinsidej</artifactId>
-  <version>4.6.1</version>
+  <version>4.7.0</version>
   <packaging>jar</packaging>
   <name>ARInsideJ</name>
   <description>Java port of ARInside (BMC AR System documentation generator) using the AR System Java API.</description>
