@@ -7,8 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Java port of {@code com.bmc.arsys.server.domain.util.decode.AssignDecoder} (ported from the
- * real AR Server), targeting
+ * Java port of {@code com.bmc.arsys.server.domain.util.decode.AssignDecoder}, targeting
  * {@code com.bmc.arsys.api.AssignInfo} directly (the exact shape {@code
  * arinside.ar.xmlfile.AssignInfoXmlBuilder} already builds for XML mode - used directly as the
  * client-API reference). Used for {@code set-field}/{@code push-field} action tags on Active

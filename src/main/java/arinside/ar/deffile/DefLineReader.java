@@ -6,12 +6,11 @@ import java.io.Reader;
 
 /**
  * Java port of {@code com.bmc.arsys.server.domain.imports.def.impl.DefParserImpl}'s outer
- * tokenizer,
- * ported almost line-for-line rather than "simplified" - this is the one genuinely non-trivial
+ * tokenizer, ported closely rather than "simplified" - this is the one genuinely non-trivial
  * piece of the {@code .def} format and subtle to get wrong. Produces a stream of (tag, value)
  * pairs; per-object-type meaning is layered on top by {@link DefFileParser}.
  *
- * <p>Two independent continuation layers, confirmed by reading the real source directly:
+ * <p>Two independent continuation layers:
  * <ol>
  * <li><b>Raw physical-line joining</b> ({@link #nextJoinedLine()}) - a real export can hard-wrap a
  * single logical line's bytes across multiple physical lines. A continuation physical line is

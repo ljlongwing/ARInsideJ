@@ -702,9 +702,9 @@ public final class ActionSummaryTable {
     /**
      * Java port of CARInside::LinkToServerInfo - an empty name or the "@" (current server/current
      * screen) literal both link to this run's actual connected server (AppConfig.serverName) with
-     * that real name/address as link text, not the literal "@". Confirmed via a live C++-vs-Java
-     * comparison: the real tool showed "the test server" as link text for a raw serverName of "@";
-     * this port previously showed the literal "@" unconditionally.
+     * that real name/address as link text, not the literal "@". Matches the C++ tool, which shows
+     * the connected server's name as link text for a raw serverName of "@"; this port previously
+     * showed the literal "@" unconditionally.
      */
     private static String serverInfoLink(String serverName, String currentServerName, int rootLevel) {
         if (serverName == null || serverName.isEmpty() || serverName.equals("@")) {
@@ -936,7 +936,7 @@ public final class ActionSummaryTable {
      * <p>These indices were originally taken from the C++'s own source comments ("populate operation
      * string from input #6" / "0 = Unknown, 1 = Unknown, ..., 4 = WSDL Location, ..."), which read
      * as a reverse-engineered layout rather than a documented one even in the original tool -
-     * cross-checked since against AR System Developer Studio 23.3's real
+     * cross-checked since against AR System Developer Studio 23.3's
      * WSDLWebService$WS_INPUTFIELDS enum (com.bmc.arsys.studio.model), whose plain
      * ordinal()-returning getAssignmentPosition() matches these indices exactly (WS_URL=4, WS_NAME=5,
      * WS_OPERATION_DOC=6, WS_ENDPOINT_URI=7, WS_TARGETNS=8, WS_INPUT_MAP=9, WS_OUTPUT_MAP=10,
@@ -966,12 +966,12 @@ public final class ActionSummaryTable {
     /**
      * SetFieldsFromRESTWebService has no C++ equivalent at all (REST Web Service was added to the
      * AR Java API after the C++ was last maintained), so unlike every other data source in this
-     * file there's no DocActionSetFieldsHelper.cpp case to port from. Ground truth instead comes
-     * from AR System Developer Studio 23.3's real REST action editor -
+     * file there's no DocActionSetFieldsHelper.cpp case to port from. The layout instead comes
+     * from AR System Developer Studio 23.3's REST action editor -
      * com.bmc.arsys.studio.ui's SetFieldsFromRestWebserviceController - which reads/writes the
      * exact same positional getInputAssignList() every FilterAPI subtype uses. Its nested
      * FilterAPIPartTransformer.Type enum gives the real index layout (plain ordinal-style
-     * getAssignmentPosition(), same pattern already confirmed correct for
+     * getAssignmentPosition(), the same pattern as
      * WSDLWebService$WS_INPUTFIELDS): 0=Base URI, 1=Static Body, 2=Http Method, 3=Auth Type,
      * 4=Auth Param, 5=Custom Headers, 6=Content Type, 7=Query Param, 8=Path Param,
      * 9=Request Mapping, 10=Response Mapping, 11=Multipart Info - all plain CHAR values (unlike
@@ -1112,10 +1112,10 @@ public final class ActionSummaryTable {
      * The C++ read this from the &lt;inputMapping&gt; child's own "name" attribute (a separate,
      * per-parameter-mapping name - WSDLOperation.setInputMapName() in BMC's own Dev Studio source),
      * not the operation's own name. AR System Developer Studio's WSDLOperation.processXML()
-     * (com.bmc.arsys.studio.model, the code that actually reads this XML format back for the AR
-     * System Web Service Wizard) shows the true operation name lives on the root &lt;operation&gt;
-     * element's own "name" attribute instead - confirmed as the more accurate source per explicit
-     * user guidance, so read from there, falling back to the old inputMapping-based read only if
+     * (com.bmc.arsys.studio.model, the code that reads this XML format back for the AR
+     * System Web Service Wizard) puts the true operation name on the root &lt;operation&gt;
+     * element's own "name" attribute instead - the more accurate source, so read from there,
+     * falling back to the old inputMapping-based read only if
      * the root element somehow has none (defensive; the modern writer always sets it).
      */
     private static String webServiceOperationName(List<AssignInfo> inputs) {

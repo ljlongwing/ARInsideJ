@@ -7,8 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Java port of {@code com.bmc.arsys.server.domain.imports.def.impl.FormParseEventHandler} + {@code VuiParseEventHandler}
- * (small) - targeting {@code com.bmc.arsys.api.Form}/{@code Field}/{@code View}
+ * Java port of {@code com.bmc.arsys.server.domain.imports.def.impl.FormParseEventHandler}
+ * + {@code VuiParseEventHandler} - targeting {@code com.bmc.arsys.api.Form}/{@code Field}/{@code View}
  * directly rather than the server-internal domain model, matching {@code arinside.ar.xmlfile.
  * FormXmlBuilder}'s existing target shape (used directly as the reference for what client-API
  * setters exist).
@@ -23,7 +23,7 @@ import java.util.List;
  * <p><b>Deliberately not ported</b> (disclosed, not silently dropped): granular-overlay extend/inherit-mask bookkeeping
  * (the real handler's separate {@code addedPermissions}/{@code addedIndexInfos}/{@code
  * addedSubAdminGrpIds} tracking, merged conditionally in {@code ensureDefinitionIsComplete()} based
- * on {@code GranularOverlayType}) - confirmed via the architecture memory that none of this is
+ * on {@code GranularOverlayType}) - none of this is
  * rendered anywhere in this port's {@code Doc*Page} classes; {@code ADD_*} tags are treated
  * identically to their non-ADD counterparts (append to the same list) rather than tracked
  * separately, a deliberate simplification.

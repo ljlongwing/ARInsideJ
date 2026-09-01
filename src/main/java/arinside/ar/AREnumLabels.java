@@ -552,7 +552,7 @@ public final class AREnumLabels {
      * display-property enum-value decode table {@link arinside.doc.ObjectPropertiesTable} previously
      * left almost entirely unported (only {@code AR_SMOPROP_OVERLAY_PROPERTY} was done, handled
      * separately there - deliberately NOT duplicated here, see that class's own javadoc). Every
-     * {@code AR_DPROP_*}/{@code AR_DVAL_*} constant referenced was cross-checked against the real
+     * {@code AR_DPROP_*}/{@code AR_DVAL_*} constant referenced was cross-checked against the API
      * jar (`javap -constants com.bmc.arsys.api.Constants`) before use; 253 of 257
      * distinct names matched by direct name lookup. Version-gated blocks in the C++ (`#if
      * AR_CURRENT_API_VERSION &gt;= ...`) are all included unconditionally, matching this port's

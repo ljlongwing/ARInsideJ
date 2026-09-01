@@ -18,7 +18,7 @@ import java.util.function.Function;
 
 /**
  * Java port of CARSchema::GetInternalSchemaType's Audit(100)/Archive(101) synthetic type override,
- * from the real core/ARSchema.cpp source:
+ * from core/ARSchema.cpp:
  * - IsAuditTarget(): true if some OTHER form's enabled AuditInfo.auditForm names this form - a
  *   genuine cross-form back-reference (scan/ScanSchema.cpp builds it as a REFM_SCHEMA_AUDIT_SOURCE
  *   reference during its own pass), so this needs the full-form scan below.

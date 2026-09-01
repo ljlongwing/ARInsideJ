@@ -46,11 +46,11 @@ final class FieldLimitXmlBuilder {
                 case "lengthUnit" -> { c.elementText(); limit.setLengthUnits(0); }
                 case "fullTextOption" -> limit.setFullTextOption(XmlEnums.fullTextOption(c.elementText()));
                 case "queryByExample" -> limit.setQBEMatch(XmlEnums.qbeMatch(c.elementText()));
-                // Confirmed real values (same string-scan): append/overwrite - "replace" was a guess and never actually appears.
+                // Real values (from the export): append/overwrite - "replace" never actually appears.
                 case "menuStyle" -> limit.setMenuStyle("overwrite".equals(c.elementText()) ? 1 : 0);
                 case "clobStorageOption" -> limit.setStorageOptionForCLOB(clobStorageOption(c.elementText()));
-                // Confirmed against the real full.xml export (byte search): the tag is
-                // <menuNameReference>, not <charMenu> - the earlier guess never actually matched
+                // Verified against a real full.xml export: the tag is
+                // <menuNameReference>, not <charMenu> - an earlier <charMenu> read never matched
                 // anything, so every character field's menu attachment silently parsed as absent
                 // until this was caught by MenuOverviewPage's new "used in workflow" marker showing
                 // 100% of menus as unused on a real dataset where that's implausible.

@@ -20,7 +20,9 @@ import java.util.List;
  * live copy since nothing here is emitted incrementally to a listener.
  *
  * <p>{@code type: 5} in real data ("Roles", carrying {@code &lt;portProperties&gt;}/operation-mapping
- * reference blobs) confirmed {@link ContainerType#WEBSERVICE} per the domain enum ordering (ACTIVELINK_GUIDE=1/APPLICATION=2/PACKINGLIST=3/FILTER_GUIDE=4/WEBSERVICE=5); the constant names alone don't reveal the raw int ordering.
+ * reference blobs) is {@link ContainerType#WEBSERVICE}, per the domain enum's ordering
+ * (ACTIVELINK_GUIDE=1/APPLICATION=2/PACKINGLIST=3/FILTER_GUIDE=4/WEBSERVICE=5) - the constant names
+ * alone don't reveal the raw int ordering.
  */
 final class DefContainerBuilder {
     private int type = 2; // ApplicationContainer - matches beginContainerParsing's default before a type: tag arrives

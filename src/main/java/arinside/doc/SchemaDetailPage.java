@@ -607,8 +607,8 @@ public final class SchemaDetailPage {
      * CARContainer, ...) - row shape [objType, name, enabled-or-containerType, order, executeOn,
      * ifCount, elseCount, modified, changedBy, link, shared], objType = the real C++'s
      * GetServerObjectTypeXML()-AR_STRUCT_XML_OFFSET values (6=Active Link/5=Filter/9=Escalation/
-     * 12=Container - confirmed against both schema_page.js's own hardcoded checks and the real C++
-     * output's actual JSON). Escalation's Order slot is the empty string "" (it has no
+     * 12=Container - cross-checked against both schema_page.js's own hardcoded checks and the real
+     * C++ output's JSON). Escalation's Order slot is the empty string "" (it has no
      * Order concept), matching the C++ exactly.
      */
     private String workflowJson(String formName, int rootLevel) {
@@ -817,8 +817,8 @@ public final class SchemaDetailPage {
      * accessors, or a raw property directly via intProp/PropertyHelper), so the same result is
      * reached the same way {@link ObjectPropertiesTable} already does for Menu/AL/Filter/VUI pages -
      * an explicit exclude-set naming every property id one of THIS page's own typed sections already
-     * shows (enumerated by reading every GetAndUseValue(AR_OPROP_...) call between ShowBasicProperties
-     * and ShowFTSMTSProperties in the real source - confirmed complete). One extra id
+     * shows (enumerated from every GetAndUseValue(AR_OPROP_...) call between ShowBasicProperties
+     * and ShowFTSMTSProperties in the real source). One extra id
      * beyond the C++'s own exclude set: AR_OPROP_DRILL_DOWN_IN_WEB_REPORTS - the real C++ never
      * claims it due to a confirmed copy-paste bug (basicPropertiesInfo's javadoc has the full story),
      * so the real tool actually shows it twice; this port shows it once, correctly, and excludes it

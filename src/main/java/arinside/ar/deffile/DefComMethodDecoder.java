@@ -7,15 +7,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Java port of {@code com.bmc.arsys.server.domain.util.decode.COMMethodDecoder} (ported from
- * the real AR Server for the
- * established port process), targeting {@code com.bmc.arsys.api.COMMethodInfo}/
+ * Java port of {@code com.bmc.arsys.server.domain.util.decode.COMMethodDecoder}, targeting
+ * {@code com.bmc.arsys.api.COMMethodInfo}/
  * {@code COMMethodParmInfo}/{@code COMValueInfo} directly - the exact shapes an
  * {@code OleAutomationAction}'s method list needs.
  *
  * <p>Previously left as an always-empty list here ("COM-method decoding not ported (obscure, no
- * DecodeCOMMethods port)") - the real decoder turned out to exist under a different class name
- * than expected and is a flat, non-recursive token decoder with no runtime COM/OLE dependency at
+ * DecodeCOMMethods port)") - the decoder is a flat, non-recursive token decoder with no runtime COM/OLE dependency at
  * all (it only reconstructs the already-serialized method/parameter description captured at
  * `.def`-export time; the live COM/OLE call only happens when the action actually executes on a
  * real server). Shares one {@link DefValueDecoder} cursor with plain value decoding, same

@@ -4,8 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Java port of {@code com.bmc.arsys.server.domain.export.def.DefItemLabel} (ported from the
- * real AR Server) - the fixed-width
+ * Java port of {@code com.bmc.arsys.server.domain.export.def.DefItemLabel} - the fixed-width
  * {@code "   label          : "}-style tag vocabulary used by every {@code .def} export line. A
  * tag is matched by trimming the raw line's tag portion and looking it up here by the label
  * string's own trimmed form (leading/trailing whitespace only - internal padding before the colon

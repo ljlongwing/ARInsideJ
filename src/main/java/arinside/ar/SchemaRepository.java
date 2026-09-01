@@ -41,9 +41,9 @@ public final class SchemaRepository implements SchemaSource {
      * Matches CARInside::InBlacklist filtering applied in CScanSchema/LoadForms - excluded forms
      * never appear in any listing. The live fallback path explicitly passes AR_LIST_SCHEMA_ALL |
      * AR_HIDDEN_INCREMENT, matching lists/ARSchemaList.cpp's own ARGetListSchema call exactly
-     * (confirmed by reading it) - the plain no-arg getListForm() empirically already returned every
-     * form including hidden ones on the live test server (measured: identical 4684-form count either
-     * way), but that's this server's own default behavior, not a documented guarantee of the no-arg
+     * - the plain no-arg getListForm() already returned every
+     * form including hidden ones on the test server (measured: identical form count either
+     * way), but that's that server's own default behavior, not a documented guarantee of the no-arg
      * overload across every server/config, so the explicit flag is the robust fix rather than
      * relying on an unverified default.
      */

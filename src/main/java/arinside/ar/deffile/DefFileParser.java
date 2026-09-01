@@ -16,8 +16,9 @@ import java.nio.charset.StandardCharsets;
 /**
  * Genuinely offline parser for the real AR System Administrator {@code .def} export format -
  * mirrors {@code arinside.ar.xmlfile.ArsXmlFileParser}'s role (produce a plain {@link ParsedObjects},
- * reusing the existing {@code XmlFile*Repository} classes unchanged - see the approved plan) but for
- * the packed line-oriented format instead of XML. Architecture ported from the AR Server's own .def import handlers (): {@link DefLineReader} does
+ * reusing the existing {@code XmlFile*Repository} classes unchanged) but for
+ * the packed line-oriented format instead of XML. Architecture mirrors the AR System server's own
+ * {@code .def} import handlers: {@link DefLineReader} does
  * the tag/value tokenizing (including the real continuation-line logic), this class does the
  * top-level {@code begin X ... end} struct dispatch (mirrors {@code ParseListenerImpl}) and
  * {@code field {}/vui {}} clause nesting for schemas (mirrors {@code FormParseEventHandler}'s own

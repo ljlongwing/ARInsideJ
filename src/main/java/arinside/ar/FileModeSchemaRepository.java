@@ -20,7 +20,8 @@ import java.util.Map;
  * server's own object store).
  *
  * <p><b>Superseded for real {@code .def} files</b>: {@code arinside.ar.deffile.DefFileParser} now
- * parses the real {@code .def} export format genuinely offline (no live server dependency at all), and {@code FileFormatSniffer.isDefFormat}
+ * parses the real {@code .def} export format genuinely offline (no live server dependency at all),
+ * and {@code FileFormatSniffer.isDefFormat}
  * routes any real {@code .def} file to that connectionless path before this class is ever reached.
  * This class remains reachable only if a live connection happens to be available anyway (matching
  * how live-mode server access is used elsewhere as a development-time verification oracle) - it is

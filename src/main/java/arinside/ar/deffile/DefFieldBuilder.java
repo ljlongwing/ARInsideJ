@@ -8,7 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Java port of {@code com.bmc.arsys.server.domain.imports.def.impl.FieldParseEventHandler}, targeting {@code com.bmc.arsys.api.Field} directly
+ * Java port of {@code com.bmc.arsys.server.domain.imports.def.impl.FieldParseEventHandler},
+ * targeting {@code com.bmc.arsys.api.Field} directly
  * (not the server-internal per-datatype domain subclasses the real class builds).
  *
  * <p>One instance per {@code field { ... }} clause. Mirrors the real handler's own quirk: a field
@@ -17,8 +18,7 @@ import java.util.List;
  * name/id/owner/lastChangedBy were already set - ported faithfully rather than assuming
  * {@code DATA_TYPE} always arrives first (real exports don't guarantee tag order within a field).
  *
- * <p><b>Real API-shape correction made while writing this</b> (confirmed via {@code javap}, not
- * assumed from the XML-mode template alone): {@code com.bmc.arsys.api.CharacterField}/{@code
+ * <p><b>API-shape note</b>: {@code com.bmc.arsys.api.CharacterField}/{@code
  * IntegerField}/{@code RealField}/{@code AttachmentField} etc. carry NO type-specific
  * methods of their own (no {@code setMaxLength}/{@code setCharMenu}/{@code setHighRange}/...) -
  * every limit-shaped value (max length, range, precision, menu name, pattern, attach size/type,

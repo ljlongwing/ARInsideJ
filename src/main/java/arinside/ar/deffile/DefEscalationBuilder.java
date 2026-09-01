@@ -7,15 +7,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Java port of {@code EscalationParseEventHandler}'s object-level (non-action) tag handling, targeting {@code com.bmc.arsys.api.Escalation}
+ * Java port of {@code EscalationParseEventHandler}'s object-level (non-action) tag handling,
+ * targeting {@code com.bmc.arsys.api.Escalation}
  * directly (the exact shape {@code arinside.ar.xmlfile.WorkflowXmlBuilder.buildEscalation} already
  * builds). Action-body tags are delegated to {@link DefActionBuilder}.
  *
  * <p>ESCALATION_TMTYPE (1=interval/2=calendar) picks which {@link EscalationTimeCriteria} subtype
  * to build, matching the real handler's own {@code switch(type){case 1: EscalationInterval; case 2:
  * EscalationTime}} - but the client {@link EscalationInterval#setValue(long)} accepts the DEF's raw
- * packed value directly, unlike the domain model's separate day/hour/minute decomposition (confirmed
- * via javap - a genuine simplification).
+ * packed value directly, unlike the domain model's separate day/hour/minute decomposition (a
+ * genuine simplification).
  */
 final class DefEscalationBuilder {
     private enum ClauseState { NONE, ACTION, ELSE }

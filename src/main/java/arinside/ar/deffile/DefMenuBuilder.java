@@ -9,18 +9,17 @@ import java.util.Deque;
 import java.util.List;
 
 /**
- * Java port of {@code MenuParseEventHandler} + {@code MenuPropertyDecoder} (ported from the
- * real AR Server),
+ * Java port of {@code MenuParseEventHandler} + {@code MenuPropertyDecoder},
  * targeting {@code com.bmc.arsys.api.Menu} subtypes directly - the exact shapes {@code
  * MenuDetailPage} (live server mode) already renders, used as the client-API reference for what's
- * actually read downstream (confirmed via {@code lm.getItems()} for List menus).
+ * actually read downstream ({@code lm.getItems()} for List menus).
  *
  * <p>Every {@code char-menu:} occurrence, regardless of menu type, starts with the same
  * {@code <index>\<menuType>\...} prefix (confirmed by reading both {@code createMenu} - which
  * sniffs type from this prefix on the FIRST occurrence - and each per-type decoder, which discards
  * the same two leading tokens before its own real content). {@code CHAR_MENU} is a real jar
  * built-in decoder candidate ({@code MenuItem.decode(String)}, with {@code AR_DEF_MENU_*}
- * constants) - checked, but its {@code bufferToMenuItemList} expects tab-indented
+ * constants), but its {@code bufferToMenuItemList} expects tab-indented
  * newline-separated text, a DIFFERENT serialization than this format's index-prefixed
  * backslash-token lines, so it's not reusable here - this class replicates the real depth-stack
  * algorithm from {@code MenuPropertyDecoder.decodeListMenuProperties}/{@code updateSubMenuStack}

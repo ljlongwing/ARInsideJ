@@ -285,7 +285,7 @@ public final class MenuDetailPage {
         return URLLink.to(attachedForm, Naming.schemaDetail(attachedForm, isOverlaid), ImageTag.Id.Schema, rootLevel).toHtml();
     }
 
-    /** Java port of DocCharMenuDetails.cpp's SearchMenuDetails - two-schema qualifier (attachedForm=calling form, qm.getForm()=the menu's own query source form), matching CARQualification's real schema1/schema2 resolution rule (confirmed by reading core/ARQualification.cpp). */
+    /** Java port of DocCharMenuDetails.cpp's SearchMenuDetails - two-schema qualifier (attachedForm=calling form, qm.getForm()=the menu's own query source form), matching CARQualification's schema1/schema2 resolution rule (core/ARQualification.cpp). */
     private TableRow queryMenuRow(QueryMenu qm, String attachedForm, int rootLevel, QualificationRenderer.FieldReferenceSink sink) {
         String querySchema = nullToEmpty(qm.getForm());
         QualificationRenderer qr = new QualificationRenderer(attachedForm, querySchema, rootLevel, globalFields, sink);

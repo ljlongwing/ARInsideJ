@@ -24,18 +24,12 @@ import java.util.List;
  * REGULAR_COMPLEX_QUERY), render as a generic "&lt;Type&gt;" placeholder rather than crashing - the
  * C++ has no reference behavior to match here since it predates these operand types entirely.
  *
- * <p>Actively searched for an alternate ground truth rather than assuming none exists: ported
- * BMC AR System Developer Studio 23.3's com.bmc.arsys.studio.model jar looking for a
- * "render this operand to text" helper - found {@code ARQualifierUtil} (used for the Named-Searches
- * packed-string format, a different feature), which itself only switches on the same classic
- * operand types this class already handles (FIELDID family/STATUS_HISTORY/ARITHMETIC_OP/VALUE) - it does
- * NOT handle FUNCTION/CASE/VALUE_SET/etc. either. Also checked the Documenter plugin's
- * ARWorkFlowActions.xsl (the stylesheet Dev Studio itself uses to generate readable workflow
- * documentation) - it has no qualification-rendering templates at all (only raw action-field
- * dumps). No dedicated handler class for these operand types was found anywhere searched. Given
- * neither the original C++ nor Dev Studio has behavior to match, this
- * remains a genuine, currently-unresolved gap rather than an unattempted one - inventing untested
- * rendering rules here would violate this whole port's practice of only porting verified behavior.
+ * <p>No reference implementation for these newer operand types was found: AR System Developer
+ * Studio 23.3's {@code ARQualifierUtil} (used for the Named-Searches packed-string format) only
+ * switches on the same classic operand types this class already handles (FIELDID family/
+ * STATUS_HISTORY/ARITHMETIC_OP/VALUE), and the Documenter plugin's {@code ARWorkFlowActions.xsl}
+ * has no qualification-rendering templates at all. With neither the original C++ nor Dev Studio
+ * having behavior to match, this stays a known gap rather than inventing untested rendering rules.
  */
 public final class QualificationRenderer {
 

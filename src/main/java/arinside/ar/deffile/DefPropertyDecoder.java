@@ -15,10 +15,10 @@ import java.nio.charset.Charset;
  * shared {@link DefValueDecoder} cursor reads the whole list sequentially, since each entry's
  * value consumes a variable number of tokens depending on its own type tag.
  *
- * <p>Genuinely simpler to port than the real class: the real domain model wraps each property key
+ * <p>Simpler to port than the real class: the domain model wraps each property key
  * in a {@code PropertyName} (falling back to a {@code MiscPropertyName} for unrecognized ids, via a
  * lookup table this port doesn't need), but {@code com.bmc.arsys.api.PropertyMap} is directly a
- * plain {@code Map<Integer,Value>} (confirmed via {@code javap}) - every property id, known or not,
+ * plain {@code Map<Integer,Value>} - every property id, known or not,
  * is just put into the map by its raw int id, no name-lookup table to port at all.
  */
 final class DefPropertyDecoder {

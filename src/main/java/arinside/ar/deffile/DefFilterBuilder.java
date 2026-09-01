@@ -7,7 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Java port of {@code FilterParseEventHandler}'s object-level (non-action) tag handling, targeting {@code com.bmc.arsys.api.Filter}
+ * Java port of {@code FilterParseEventHandler}'s object-level (non-action) tag handling,
+ * targeting {@code com.bmc.arsys.api.Filter}
  * directly (the exact shape {@code arinside.ar.xmlfile.WorkflowXmlBuilder.buildFilter} already
  * builds). Action-body tags are delegated to {@link DefActionBuilder}.
  *

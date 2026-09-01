@@ -76,7 +76,7 @@ final class DefActionBuilder {
             case COMMAND -> {
                 // DSO (distributed) action - matches the real server's WorkflowParseEventHandler
                 // trigger exactly ("Distributed-" prefix, Filter/Escalation only, never Active
-                // Link - confirmed). DSOAction's own constructor fully
+                // Link). DSOAction's own constructor fully
                 // self-parses the command line (Distributed-Transfer/-Return/-Delete ... syntax) -
                 // ActionSummaryTable already renders it fully (see its dsoOf()), this was
                 // previously the only action type this port silently dropped from .def mode despite

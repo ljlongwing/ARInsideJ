@@ -20,7 +20,7 @@ import java.util.List;
  * C-API-era convention already relied on throughout this port). Relational operator codes (1-9)
  * map directly onto {@code RelationalOperationInfo.AR_REL_OP_*} the same way. Operator 5 was
  * initially mis-scoped as an obscure "external cross-schema qualification" and left unsupported -
- * real data proved this wrong (375 of 539 real qualification failures in one spike run were this
+ * real data proved this wrong (375 of 539 real qualification failures in one test run were this
  * single case) - it's the ordinary field-as-boolean-qualifier feature, see {@link
  * QualifierFromFieldInfo}.
  *
@@ -40,7 +40,7 @@ import java.util.List;
  * "simplified placeholder" treatment of these same operand types, so no rendering fidelity is
  * actually lost by simplifying here too. STATUS_HISTORY (operand type 4) is NOT a placeholder -
  * decoded into a real {@link StatusHistoryValueIndicator} matching the real server's {@code
- * Decoder.decodeStatusHistory()} exactly (confirmed: enumValue first, then a type tag
+ * Decoder.decodeStatusHistory()} exactly (enumValue first, then a type tag
  * 1=USER/2=TIME - see {@link #decodeOperand}'s case 4 for the citation).
  */
 final class DefQualificationDecoder {
@@ -105,7 +105,7 @@ final class DefQualificationDecoder {
             case 2 -> new ArithmeticOrRelationalOperand(d.decodeValue());
             case 3 -> decodeArithmetic();
             // STATUS_HISTORY - matches the real server's Decoder.decodeStatusHistory() exactly
-            // (confirmed - enumValue first, then type 1=USER/2=TIME,
+            // (enumValue first, then type 1=USER/2=TIME,
             // see StatusHistoryValueIndicator.StatusHistoryValueIndicatorType): a bare two-int read,
             // NOT the space-delimited "<enumValue> <type>" single-string encoding
             // decodeStatusHistory2() uses for a Set-Fields assignment value (DefAssignDecoder) -
@@ -126,7 +126,7 @@ final class DefQualificationDecoder {
             case 56 -> new ArithmeticOrRelationalOperand(OperandType.CURRENCY_FLD_CURRENT, decodeCurrencyPart());
             case 99 -> new ArithmeticOrRelationalOperand(OperandType.FIELDID_CURRENT.toInt(), d.readInt());
             // JAVABEAN(10) - see decodeJavaBeanExpression()'s javadoc: the client API's OperandType
-            // enum (confirmed via javap -constants: FIELDID/VALUE/ARITHMETIC_OP/STATUS_HISTORY/
+            // enum (FIELDID/VALUE/ARITHMETIC_OP/STATUS_HISTORY/
             // FUNCTION/CASE/VALUE_SET/CURRENCY_FLD(+3 variants)/FIELDID_(TRANSACTION/DB/CURRENT)/
             // LOCAL_VARIABLE/QUERY_INFO/VALUE_SET_QUERY/REGULAR_COMPLEX_QUERY/FIELD_ALIAS/
             // LITERAL_ALIAS - 19 total, no 20th) has no case for this at all, unlike every other
@@ -140,8 +140,8 @@ final class DefQualificationDecoder {
             // purely for the server's own evaluation-context bookkeeping, not because the wrapped
             // operand renders any differently. Returning the inner operand directly (unwrapped,
             // since the client API has no ValueExpression OperandType either) renders correctly
-            // with zero fidelity loss - confirmed by reading QualificationDecoder.java's
-            // decodeValueExpression() in full.
+            // with zero fidelity loss - matches QualificationDecoder's own
+            // decodeValueExpression().
             case 11 -> { d.readInt(); yield decodeOperand(); }
             default -> nullOperand();
         };
@@ -174,11 +174,12 @@ final class DefQualificationDecoder {
     }
 
     /**
-     * Java port of the real server's {@code Decoder.decodeJavaBeanExpression()} - token-consumption only, no return value, since there is nowhere on the client side to
+     * Java port of the real server's {@code Decoder.decodeJavaBeanExpression()} - token-consumption
+     * only, no return value, since there is nowhere on the client side to
      * put the result (see the two call sites' javadoc). ContextType int, then a count-prefixed list
      * of one of 6 flat property subtypes (int tag 1=INTEGER/2=STRING/3=ARRAY/4=MAP/5=ASSOCIATION/
      * 6=RECORD_INSTANCE, per {@code JavaBeanProperty.PropertyType}'s own
-     * int mapping directly) - each 1-3 name/key/index string-or-int reads, no
+     * int mapping) - each 1-3 name/key/index string-or-int reads, no
      * recursion. Consuming these correctly (rather than throwing) is what lets a JavaBean-expression
      * qualifier degrade gracefully to an empty/placeholder result for just itself, instead of
      * corrupting the cursor for whatever real, useful data follows it in the same object.

@@ -8,7 +8,7 @@ import java.nio.charset.Charset;
 
 /**
  * Java port of {@code ImageObjectParseEventHandler}, targeting {@code com.bmc.arsys.api.
- * Image} directly - confirmed via {@code javap} that the client type has no {@code setHelpText}/
+ * Image} directly - the client type has no {@code setHelpText}/
  * {@code setDiary} (matching {@code arinside.ar.xmlfile.ImageXmlBuilder}'s identical scope, which
  * likewise never sets those two fields), so {@code HELP}/{@code CHANGE_DIARY} tags are recognized
  * but have nothing to attach to and are dropped, same as several other object types' documented
@@ -50,8 +50,8 @@ final class DefImageBuilder {
     }
 
     /**
-     * Java port of {@code com.bmc.arsys.domain.utils.ConversionUtil.getBytesForBinaryContentInHexFormat}
-     * (read directly): a byte is either the {@code '!'} sentinel for a
+     * Java port of {@code com.bmc.arsys.domain.utils.ConversionUtil.getBytesForBinaryContentInHexFormat}:
+     * a byte is either the {@code '!'} sentinel for a
      * literal 0x00, the {@code '~'} sentinel for a literal 0xFF, a hex-digit-adjacent pass-through
      * literal (everything in the ranges 37-47 / 58-96 / 103-125 - deliberately excludes plain digits
      * 0-9 and lowercase hex letters a-f, which only ever appear as the second half of a hex pair), or

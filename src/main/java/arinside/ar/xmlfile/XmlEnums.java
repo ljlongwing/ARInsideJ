@@ -175,7 +175,7 @@ final class XmlEnums {
     private static Map<String, Integer> buildFunctionCodes() {
         Map<String, Integer> m = new HashMap<>();
         // AR_FUNCTION_* constants, keyed by the XML export's camelCase functionType spelling -
-        // ground truth taken directly from Constants/assumed sequential.
+        // taken directly from Constants rather than assumed sequential.
         m.put("date", Constants.AR_FUNCTION_DATE);
         m.put("time", Constants.AR_FUNCTION_TIME);
         m.put("month", Constants.AR_FUNCTION_MONTH);

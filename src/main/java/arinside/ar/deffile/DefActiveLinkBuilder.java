@@ -7,12 +7,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Java port of {@code ActiveLinkParseEventHandler}'s object-level (non-action) tag handling, targeting {@code com.bmc.arsys.api.ActiveLink} directly
+ * Java port of {@code ActiveLinkParseEventHandler}'s object-level (non-action) tag handling,
+ * targeting {@code com.bmc.arsys.api.ActiveLink} directly
  * (the exact shape {@code arinside.ar.xmlfile.WorkflowXmlBuilder.buildActiveLink} already builds -
  * used as the client-API reference). Action-body tags ({@code action {}/else {}}) are delegated to
  * {@link DefActionBuilder}.
  *
- * <p><b>Real, confirmed asymmetry</b>: unlike Form/Field/Filter/Escalation, whose
+ * <p><b>Real asymmetry</b>: unlike Form/Field/Filter/Escalation, whose
  * {@code permission:} tag value is a single {@code groupId\permissionLevel} pair, an ActiveLink's
  * is a plain space-separated list of group ids with no permission-level concept at all - confirmed
  * by reading {@code DefParserImpl.parseValue()}'s own dispatch, which special-cases {@code
