@@ -120,9 +120,9 @@ public class AppConfig {
     /**
      * Innovation Studio documentation: {@code IsServerUrl=} / {@code --is-url <url>} points at the
      * Helix rx REST API (e.g. {@code http://host:8008}). When set, a normal run ALSO documents the
-     * IS bundles and their rules / processes / web APIs / associations / events / ... (record
-     * definitions are skipped - they are the classic AR forms). {@code IsUsername}/{@code IsPassword}
-     * default to the AR login when blank.
+     * IS bundles and their rules / processes / web APIs / associations / events / ... plus any
+     * record definitions authored in Innovation Studio (classic Dev Studio forms stay under Forms).
+     * {@code IsUsername}/{@code IsPassword} default to the AR login when blank.
      */
     public String isServerUrl = "";
     public String isUsername = "";
