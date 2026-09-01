@@ -6,6 +6,7 @@ import com.bmc.arsys.api.Form;
 import com.bmc.arsys.api.FormCriteria;
 
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,14 +29,37 @@ import java.util.Set;
  * this bulk fetch must include them too.
  */
 public final class SchemaBulkCache {
+    /**
+     * Object property that marks a form as an Innovation Studio record definition - its value is
+     * the rx record-type class (e.g. {@code com.bmc.arsys.rx.services.record.domain.DefaultRecordType}).
+     * Not a named constant in the arapi build this targets: the {@code AR_SMOPROP_*} series stops
+     * at 90019. Forms carrying it are authored in Innovation Studio, not classic Dev Studio; Dev
+     * Studio itself hides them from its Forms list. ARInsideJ documents them under Innovation
+     * Studio -> Record Definitions instead of Forms (see {@code arinside.doc.is.IsPages}).
+     */
+    private static final int AR_SMOPROP_RX_RECORD_TYPE = 90025;
+
     private final Map<String, Form> forms;
+    private final Set<String> recordDefinitionForms;
 
     private SchemaBulkCache(Map<String, Form> forms) {
         this.forms = forms;
+        this.recordDefinitionForms = findRecordDefinitionForms(forms);
     }
 
     public static SchemaBulkCache load(ArClient client) {
         return new SchemaBulkCache(loadForms(client));
+    }
+
+    private static Set<String> findRecordDefinitionForms(Map<String, Form> forms) {
+        Set<String> out = new LinkedHashSet<>();
+        if (forms == null) return out;
+        for (Form f : forms.values()) {
+            if (f.getProperties() != null && f.getProperties().containsKey(AR_SMOPROP_RX_RECORD_TYPE)) {
+                out.add(f.getName());
+            }
+        }
+        return out;
     }
 
     private static Map<String, Form> loadForms(ArClient client) {
@@ -58,4 +82,13 @@ public final class SchemaBulkCache {
     boolean hasForms() { return forms != null; }
     Form form(String name) { return forms == null ? null : forms.get(name); }
     Set<String> formNames() { return forms.keySet(); }
+
+    /**
+     * Forms that are really Innovation Studio record definitions (property 90025). Still present in
+     * {@link #form(String)} / {@link #formNames()}; {@link SchemaRepository#listFormNames()} filters
+     * them out of the classic Forms documentation, and Main hands the list to the IS pass.
+     */
+    public Set<String> recordDefinitionFormNames() {
+        return forms == null ? Set.of() : java.util.Collections.unmodifiableSet(recordDefinitionForms);
+    }
 }

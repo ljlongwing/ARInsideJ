@@ -712,7 +712,9 @@ public final class Main {
                             documentedForms.contains(formName)
                                 ? arinside.output.URLLink.relativeUrl(2, Naming.schemaDetail(formName, gfiForIs.isOverlaid(formName)))
                                 : null;
-                        isRepo = documentInnovationStudio(appConfig, formHref);
+                        Set<String> isRecordDefForms = schemaCache != null
+                            ? schemaCache.recordDefinitionFormNames() : Set.of();
+                        isRepo = documentInnovationStudio(appConfig, formHref, isRecordDefForms);
                     } catch (RuntimeException e) {
                         System.out.println("EXCEPTION documenting Innovation Studio: " + e.getMessage());
                         if (AppConfig.verboseMode) e.printStackTrace(System.out);
@@ -803,15 +805,17 @@ public final class Main {
     /**
      * Innovation Studio documentation pass (see {@code arinside.ar.is}). Additive to a normal run:
      * pulls the IS bundle inventory + the rule/process/web-API/association/event/... definitions
-     * over the rx REST API and renders them. Record definitions are skipped (they are the classic
-     * AR forms). For now this reports counts; the doc/ pages land in a follow-up increment.
+     * over the rx REST API and renders them under {@code is/}. {@code recordDefForms} are the AR
+     * form names that are really IS-authored record definitions (already dropped from the Forms
+     * documentation by {@code SchemaRepository}); each is fetched by name and documented under
+     * Innovation Studio -> Record Definitions.
      */
     private static arinside.ar.is.IsRepository documentInnovationStudio(AppConfig appConfig,
-            java.util.function.Function<String, String> formHref) {
+            java.util.function.Function<String, String> formHref, Set<String> recordDefForms) {
         System.out.println("Documenting Innovation Studio at " + appConfig.isServerUrl + " ...");
         try (arinside.ar.is.IsClient client = new arinside.ar.is.IsClient(
                 appConfig.isServerUrl, appConfig.effectiveIsUsername(), appConfig.effectiveIsPassword())) {
-            arinside.ar.is.IsRepository repo = arinside.ar.is.IsRepository.load(client);
+            arinside.ar.is.IsRepository repo = arinside.ar.is.IsRepository.load(client, recordDefForms);
             if (repo.isEmpty()) {
                 System.out.println("  no Innovation Studio content found - nothing to document.");
                 return null;

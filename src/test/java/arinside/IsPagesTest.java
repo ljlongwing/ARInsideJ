@@ -82,9 +82,19 @@ class IsPagesTest {
               "searchBehavior": "CONTAINS" }
             """);
 
+        IsDefinition record = def(IsDefType.RECORD, "com.acme.helpdesk:Ticket Tag", null, """
+            { "resourceType": "com.bmc.arsys.rx.services.record.domain.RegularRecordDefinition",
+              "internal": false,
+              "fieldDefinitions": [
+                { "id": 1, "name": "Request ID", "fieldOption": "SYSTEM", "isInherited": false,
+                  "resourceType": "com.bmc.arsys.rx.standardlib.record.CharacterFieldDefinition" },
+                { "id": 8, "name": "Tag Name", "fieldOption": "REQUIRED", "isInherited": true,
+                  "resourceType": "com.bmc.arsys.rx.standardlib.record.CharacterFieldDefinition" } ] }
+            """);
+
         IsRepository repo = IsRepository.of(List.of(bundle),
             Map.of(IsDefType.RULE, List.of(rule), IsDefType.ASSOCIATION, List.of(assoc),
-                IsDefType.NAMED_LIST, List.of(namedList)));
+                IsDefType.NAMED_LIST, List.of(namedList), IsDefType.RECORD, List.of(record)));
 
         nav = IsPages.render(cfg, repo, name ->
             "HPD:Help Desk".equals(name) ? "../../schema/HPD_Help_Desk/index.htm" : null);
@@ -106,7 +116,20 @@ class IsPagesTest {
         assertTrue(idx.contains("Acme Help Desk"), "bundle friendly name missing");
         assertTrue(idx.contains("com.acme.helpdesk"), "bundle id missing");
         assertTrue(idx.contains(">Rules</a>") || idx.contains("Rules</a>"), "Rules link missing");
-        assertTrue(idx.contains("3 definitions across 1 bundles"), "count line wrong: " + snippet(idx));
+        assertTrue(idx.contains("4 definitions across 1 bundles"), "count line wrong: " + snippet(idx));
+        assertTrue(idx.contains("authored in Innovation Studio"), "record-definition note missing");
+    }
+
+    @Test
+    void recordDefinitionDetailRendersFields() {
+        String r = read("is/record/com.acme.helpdesk_Ticket Tag.htm");
+        assertTrue(r.contains("Record definition"), "record heading missing");
+        assertTrue(r.contains("RegularRecordDefinition"), "record kind missing");
+        assertTrue(r.contains("Fields (2)"), "field count missing");
+        assertTrue(r.contains("Request ID") && r.contains("Tag Name"), "field names missing");
+        assertTrue(r.contains("REQUIRED"), "field option missing");
+        String list = read("is/record/index.htm");
+        assertTrue(list.contains("data-filter-table=\"isList\""), "record list has no filter input");
     }
 
     @Test

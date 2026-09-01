@@ -94,6 +94,15 @@ public final class IsClient implements AutoCloseable {
 
     public List<Object> dataPage(String dataPageType) { return dataPage(dataPageType, null); }
 
+    /**
+     * One record definition by name, with its full field list. The DataPage query for record
+     * definitions returns thousands of rows (every classic form is one), so the IS pass fetches
+     * only the handful that are actually IS-authored, one by-name GET each.
+     */
+    public Object recordDefinition(String name) {
+        return get("/api/rx/application/record/recorddefinition/" + pathSeg(name));
+    }
+
     private HttpResponse<String> send(HttpRequest req) {
         try {
             return http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
@@ -110,6 +119,8 @@ public final class IsClient implements AutoCloseable {
     }
 
     private static String enc(String s) { return URLEncoder.encode(s, StandardCharsets.UTF_8); }
+    /** URLEncoder is form encoding (space -> '+'); a path segment needs %20. */
+    private static String pathSeg(String s) { return enc(s).replace("+", "%20"); }
     private static String trim(String s) { return s == null ? "" : (s.length() > 300 ? s.substring(0, 300) + "…" : s); }
 
     /** Not a pooled resource; nothing to release, but keeps try-with-resources tidy at call sites. */

@@ -334,9 +334,15 @@ java -jar arinsidej.jar -i settings.ini -s myserver -l Demo -p pass --is-url htt
 (or `IsServerUrl=` / `IsUsername=` / `IsPassword=` in the ini; the IS login defaults to `-l`/`-p`).
 Auth is the standard `POST /api/jwt/login`. Output lands under `is/` - a bundle inventory plus one
 page per rule / process / web API / association / event / document / named list / view, each with a
-type-specific summary and the raw definition JSON. IS **record definitions are skipped** - every
-classic AR form is an IS record definition, and those are already under Forms. IS definitions also
-show up in the header search and, with `JsonOutput=TRUE`, in `data/is/*.json`.
+type-specific summary and the raw definition JSON. IS definitions also show up in the header search
+and, with `JsonOutput=TRUE`, in `data/is/*.json`.
+
+Classic AR forms and record definitions are the same object seen from two sides, so each is
+documented on one side only: a genuine Dev Studio form stays under **Forms**, while a record
+definition **authored in Innovation Studio** (the AR form layer flags these) is dropped from Forms
+and documented under **Innovation Studio -> Record Definitions** instead, with its rx field list.
+This split needs the live rx REST API (`--is-url`); a `FileMode` run has no IS connection, so a
+modern export still lists those forms under Forms.
 
 ## File Mode / Offline `.xml` and `.def` Export
 

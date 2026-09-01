@@ -67,9 +67,12 @@ public final class IsPages {
         WebPage web = new WebPage(page.fileName(), "Innovation Studio", page.rootLevel(), cfg);
         web.addContentHead("Innovation Studio");
 
+        int recs = repo.of(IsDefType.RECORD).size();
+        String recNote = recs > 0
+            ? "The " + recs + " Record Definitions here were authored in Innovation Studio; classic AR forms stay under Forms."
+            : "Classic AR forms are documented under Forms, not here.";
         web.addContent("<p>" + repo.totalDefinitions() + " definitions across " + repo.bundles().size()
-            + " bundles, from <code>" + WebUtil.validate(cfg.isServerUrl) + "</code>. "
-            + "Record definitions (the classic AR forms) are documented under Forms, not here.</p>");
+            + " bundles, from <code>" + WebUtil.validate(cfg.isServerUrl) + "</code>. " + recNote + "</p>");
 
         Table types = new Table("isTypeCounts", "TblObjectList");
         types.addColumn(40, "Definition type");
@@ -172,6 +175,7 @@ public final class IsPages {
             case WEB_API -> webApiDetail(d);
             case NAMED_LIST -> namedListDetail(d, formHref);
             case VIEW -> viewDetail(d);
+            case RECORD -> recordDetail(d);
             case DOCUMENT -> documentDetail(d);
             default -> "";
         };
@@ -338,6 +342,38 @@ public final class IsPages {
         return "<h2>Document schema</h2>\n<pre>" + WebUtil.validate(shown) + "</pre>";
     }
 
+    private static String recordDetail(IsDefinition d) {
+        Table t = new Table("isRecord", "TblObjectList");
+        t.addColumn(25, "Property");
+        t.addColumn(75, "Value");
+        row(t, "Kind", shortType(JsonReader.str(d.raw(), "resourceType")));
+        row(t, "Internal", JsonReader.bool(d.raw(), "internal") ? "Yes" : "No");
+        List<Object> tags = JsonReader.asList(JsonReader.at(d.raw(), "tags"));
+        if (!tags.isEmpty()) row(t, "Tags", listText(tags));
+        StringBuilder sb = new StringBuilder("<h2>Record definition</h2>\n").append(t.toXHtml());
+
+        List<Object> fields = JsonReader.asList(JsonReader.at(d.raw(), "fieldDefinitions"));
+        if (!fields.isEmpty()) {
+            Table ft = new Table("isRecordFields", "TblObjectList");
+            ft.addColumn(10, "ID");
+            ft.addColumn(35, "Name");
+            ft.addColumn(25, "Type");
+            ft.addColumn(15, "Option");
+            ft.addColumn(15, "Inherited");
+            for (Object f : fields) {
+                ft.addRow(new TableRow().addCellList(
+                    Long.toString(JsonReader.lng(f, "id")),
+                    WebUtil.validate(nz(JsonReader.str(f, "name"))),
+                    WebUtil.validate(shortType(JsonReader.str(f, "resourceType"))),
+                    WebUtil.validate(nz(JsonReader.str(f, "fieldOption"))),
+                    JsonReader.bool(f, "isInherited") ? "Yes" : ""));
+            }
+            ft.removeEmptyMessageRow();
+            sb.append("<h3>Fields (").append(fields.size()).append(")</h3>\n").append(ft.toXHtml());
+        }
+        return sb.toString();
+    }
+
     private static String paramList(List<Object> params) {
         if (params.isEmpty()) return "(none)";
         StringBuilder sb = new StringBuilder();
@@ -400,6 +436,7 @@ public final class IsPages {
             case WEB_API -> "webservice";
             case ASSOCIATION -> "association";
             case VIEW -> "schema-view";
+            case RECORD -> "schema";
             case DOCUMENT -> "document";
             default -> "document";
         };

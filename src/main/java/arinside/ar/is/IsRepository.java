@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Pulls the Innovation Studio definition inventory over {@link IsClient}. One list call per
@@ -22,11 +23,18 @@ public final class IsRepository {
     private final IsClient client;
     private final List<IsBundle> bundles = new ArrayList<>();
     private final Map<IsDefType, List<IsDefinition>> byType = new LinkedHashMap<>();
+    private Set<String> recordDefinitionNames = Set.of();
 
     private IsRepository(IsClient client) { this.client = client; }
 
-    public static IsRepository load(IsClient client) {
+    /**
+     * @param recordDefinitionNames the AR form names that are really IS-authored record definitions
+     *   (from {@code SchemaRepository.recordDefinitionFormNames()}). Each is fetched by name from
+     *   the rx REST API; an empty set means the {@link IsDefType#RECORD} section is skipped.
+     */
+    public static IsRepository load(IsClient client, Set<String> recordDefinitionNames) {
         IsRepository repo = new IsRepository(client);
+        if (recordDefinitionNames != null) repo.recordDefinitionNames = recordDefinitionNames;
         repo.client.login();
         repo.loadBundles();
         repo.loadDefinitions();
@@ -59,18 +67,43 @@ public final class IsRepository {
 
     private void loadDefinitions() {
         for (IsDefType type : IsDefType.values()) {
-            List<IsDefinition> list = new ArrayList<>();
-            try {
-                for (Object o : client.dataPage(type.dataPageQuery)) {
-                    list.add(toDefinition(type, o));
+            List<IsDefinition> list = type == IsDefType.RECORD ? loadRecordDefinitions() : new ArrayList<>();
+            if (type != IsDefType.RECORD) {
+                try {
+                    for (Object o : client.dataPage(type.dataPageQuery)) {
+                        list.add(toDefinition(type, o));
+                    }
+                } catch (RuntimeException e) {
+                    // one flaky type (processes 500 intermittently) shouldn't lose the whole IS pull
+                    System.out.println("IS: could not list " + type.pluralLabel + " - " + e.getMessage());
                 }
-            } catch (RuntimeException e) {
-                // one flaky type (processes 500 intermittently) shouldn't lose the whole IS pull
-                System.out.println("IS: could not list " + type.pluralLabel + " - " + e.getMessage());
             }
             list.sort((a, b) -> String.valueOf(a.name()).compareToIgnoreCase(String.valueOf(b.name())));
             byType.put(type, list);
         }
+    }
+
+    /**
+     * Record definitions are fetched one-by-name (the DataPage query returns every classic form
+     * too). Only the names Main flagged as IS-authored are pulled; a per-name failure is logged
+     * and skipped rather than losing the section.
+     */
+    private List<IsDefinition> loadRecordDefinitions() {
+        List<IsDefinition> list = new ArrayList<>();
+        if (recordDefinitionNames.isEmpty()) return list;
+        int ok = 0, failed = 0;
+        for (String name : recordDefinitionNames) {
+            try {
+                list.add(toDefinition(IsDefType.RECORD, client.recordDefinition(name)));
+                ok++;
+            } catch (RuntimeException e) {
+                failed++;
+                if (failed <= 3) System.out.println("IS: could not fetch record definition '" + name + "' - " + e.getMessage());
+            }
+        }
+        System.out.println("IS: " + ok + " record definitions fetched"
+            + (failed > 0 ? ", " + failed + " failed" : ""));
+        return list;
     }
 
     private static IsDefinition toDefinition(IsDefType type, Object o) {

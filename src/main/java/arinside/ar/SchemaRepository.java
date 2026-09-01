@@ -57,8 +57,20 @@ public final class SchemaRepository implements SchemaSource {
         }
         List<String> sorted = new ArrayList<>(names);
         sorted.removeIf(blackList::containsSchema);
+        // Innovation Studio record definitions are not classic AR forms - they are documented under
+        // Innovation Studio -> Record Definitions instead (see SchemaBulkCache.AR_SMOPROP_RX_RECORD_TYPE).
+        sorted.removeAll(recordDefinitionFormNames());
         Collections.sort(sorted, String.CASE_INSENSITIVE_ORDER);
         return sorted;
+    }
+
+    /**
+     * Names of forms that are actually Innovation Studio record definitions (excluded from
+     * {@link #listFormNames()}). Empty when there is no bulk cache (per-object fallback path, and
+     * file mode) - the marker property is only inspected on the bulk-loaded {@code Form} objects.
+     */
+    public java.util.Set<String> recordDefinitionFormNames() {
+        return cache != null && cache.hasForms() ? cache.recordDefinitionFormNames() : java.util.Set.of();
     }
 
     public Form getForm(String name) throws ARException {
