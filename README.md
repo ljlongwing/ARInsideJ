@@ -82,8 +82,10 @@ it also runs automatically as part of `mvn -o package`.
 
 ## Docker
 
-The repo ships a `Dockerfile` that wraps the pre-built fat jar (it is *not* built from source in
-the image - the proprietary BMC jars can't be redistributed). Build it after `mvn -o package`:
+The repo ships a `Dockerfile` that wraps the pre-built fat jar rather than building from source in
+the image: the build needs the BMC AR System Java API jars (`arapi` / `arlogger`), which aren't on
+any public Maven repository, so there's nothing for an image build to resolve them from. Build the
+jar first with `mvn -o package` (which uses the jars in your local `~/.m2`), then:
 
 ```
 docker build -t arinsidej .
