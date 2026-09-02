@@ -1,12 +1,20 @@
 # Builds the ARInsideJ container image and pushes it to GitHub Container Registry.
 #
 # Source can't be built in CI (the proprietary BMC arapi/arlogger jars are not public), so this
-# does NOT compile anything - it takes the self-contained `arinsidej.jar` that each GitHub Release
-# already ships as a bare asset, wraps it with the repo Dockerfile, and publishes:
+# does NOT compile anything - it takes the `arinsidej.jar` that a GitHub Release already ships
+# as a bare asset, wraps it with the repo Dockerfile, and publishes:
 #   ghcr.io/<owner>/arinsidej:<release-tag>   and   :latest
 #
-# Trigger: automatically when a Release is published, or manually (workflow_dispatch) against the
-# latest release.
+# The published image is NOT self-contained: like the jar, it has no BMC arapi/arlogger (those
+# can't be redistributed). Callers mount a folder holding those jars onto /opt/arinsidej/lib at
+# `docker run` time, or build their own private image FROM this one that COPYs them in - see the
+# Dockerfile header and lib/README.txt.
+#
+# Triggers:
+#   * automatically when a Release is published - builds :<that tag> and :latest
+#   * workflow_dispatch with no input       - rebuilds :latest from the newest release
+#   * workflow_dispatch with `tag` set      - rebuilds :<that tag> ONLY (leaves :latest alone),
+#     e.g. to re-publish an old version's image after its release asset changed
 
 name: docker-publish
 
@@ -14,6 +22,11 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to (re)build the image for (e.g. v4.5.0). Blank = newest release + update :latest."
+        required: false
+        default: ""
 
 jobs:
   publish:
@@ -28,10 +41,10 @@ jobs:
       - name: Download arinsidej.jar from the release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name }}
+          # release event -> that tag; dispatch with `tag` -> that tag; dispatch without -> newest
+          TAG: ${{ inputs.tag || github.event.release.tag_name }}
         run: |
           mkdir -p target
-          # release event -> that tag; manual run -> newest release
           gh release download ${TAG:+"$TAG"} \
             --repo "$GITHUB_REPOSITORY" \
             --pattern 'arinsidej.jar' \
@@ -50,9 +63,12 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/arinsidej
+          # :latest    -> real release, or a dispatch with no specific tag
+          # :<version> -> real release (its tag), or a dispatch that named a tag
           tags: |
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ github.event_name == 'release' || inputs.tag == '' }}
             type=raw,value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
+            type=raw,value=${{ inputs.tag }},enable=${{ inputs.tag != '' }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
