@@ -14,45 +14,81 @@ API is still actively maintained and doesn't have that problem.
 ## Download
 
 Don't want to build it yourself? Grab a build from the
-[latest release](https://github.com/ljlongwing/ARInsideJ/releases/latest) - the proprietary
-`arapi`/`arlogger` jars (see "Requirements" below) are already bundled in, so it runs standalone
-with no extra setup. Two assets:
+[latest release](https://github.com/ljlongwing/ARInsideJ/releases/latest). Two assets:
 
-* **`arinsidej-<version>.zip`** - the fat jar plus the `run-arinsidej.bat`/`run-arinsidej.sh`
-  launcher scripts and a sample `settings.ini` to edit. Unzip and run the launcher for your OS.
-* **`arinsidej.jar`** - just the fat jar, for slotting into an existing setup.
+* **`arinsidej-<version>.zip`** - the jar, the `run-arinsidej.bat` / `run-arinsidej.sh` launcher
+  scripts, a sample `settings.ini` to edit, and an (otherwise empty) `lib/` folder to drop the BMC
+  jars into. Unzip, add the two jars (see below), then run the launcher for your OS.
+* **`arinsidej.jar`** - just the jar, for slotting into an existing setup.
+
+ARInsideJ is **not** fully self-contained. BMC's AR System Java API (`arapi` / `arlogger`) is
+proprietary and can't be redistributed, so you supply your own copy - see
+[AR System Java API jars](#ar-system-java-api-jars-required) below. With the two jars in `lib/`:
 
 ```
-java -jar arinsidej.jar -i settings.ini -l Demo -p pass -s myserver
+./run-arinsidej.sh -i settings.ini -l Demo -p pass -s myserver       # or run-arinsidej.bat
+java -cp "arinsidej.jar:lib/*" arinside.Launch -i settings.ini ...      # use ";" not ":" on Windows
 ```
 
-The "Requirements" and "Building" sections below are only needed if you want to build from source
-instead.
+The "Building" section below is only needed if you want to build from source instead.
+
+## AR System Java API jars (required)
+
+ARInsideJ is built against BMC's AR System Java API but does not ship it - those jars are BMC
+proprietary and can't be redistributed. You supply your own copy from a BMC product you're
+licensed to use. **Every** run mode needs them, including the offline `.xml` / `.def` file mode.
+
+| Jar | What it is | Needed for |
+|-----|------------|------------|
+| `arapi*.jar` | the AR System Java API itself (`com.bmc.arsys.api.*`) | every mode |
+| `arlogger*.jar` | `com.bmc.arsys.logger.ARLogger`, a separate dependency of `ARServerUser` not bundled inside `arapi` | live-server and `.def` mode (harmless otherwise) |
+
+Any reasonably recent AR System version works (20.x+ recommended); the jars don't have to match
+your server's version exactly. Use both jars from the **same** install so their versions agree.
+
+**Where to get them** - any one of these BMC installations has both. If a path below doesn't
+match your version's layout, just search the install tree for `arapi*.jar` and `arlogger*.jar`:
+
+* **AR System server** - `<ARSystemInstallDir>/arserver/api/lib/`
+  (Windows default `<ARSystemInstallDir>`: `C:\Program Files\BMC Software\ARSystem`)
+* **AR System Mid Tier** (web tier) - `<MidTier>/WEB-INF/lib/`, e.g.
+  `.../Apache Tomcat/webapps/arsys/WEB-INF/lib/` or
+  `C:\Program Files\BMC Software\ARSystem\midtier\WEB-INF\lib\`
+* **AR System Developer Studio** - `<DevStudioInstallDir>/plugins/`
+  (`com.bmc.arsys.api_<ver>.jar` / `com.bmc.arsys.logger_<ver>.jar` - OSGi bundles, but ordinary
+  jars you can copy and rename; Windows default
+  `C:\Program Files\BMC Software\ARSystem\DeveloperStudio\plugins`)
+* **AR System Integration / DISERVER** (Pentaho data-integration) -
+  `<ARSystemInstallDir>/diserver/data-integration/lib/`
+* **AR System Email Engine, Atrium Integrator, Atrium CMDB**, or any other BMC product bundling
+  the AR Java API - look under its `lib/` folder
+* **BMC Electronic Product Distribution (EPD)** - <https://webapps.bmc.com/epd> - download
+  "BMC Helix ITSM: AR System" (or "AR System") and take the "AR System C/Java API" package
+* **Already in a local Maven repo?** Copy from
+  `~/.m2/repository/com/bmc/arsys/arapi/<version>/arapi-<version>.jar` (and `arlogger` alongside)
+
+**To run**, put both jars in the `lib/` folder next to `arinsidej.jar`. The launcher scripts add
+every `*.jar` there to the classpath; a bare `java -jar arinsidej.jar` also works if you name them
+exactly `lib/arapi.jar` and `lib/arlogger.jar` (that's on the jar's manifest `Class-Path`). The
+same list ships as `lib/README.txt` in the release zip.
 
 ## Requirements
 
 * **JDK 17+** to build. Verified against JDK 25.
 * **Maven** to build (`mvn`).
-* **The AR System Java API jar** (`arapi*.jar`) - proprietary, not on any public Maven repository,
-  same situation as the C++ tool's `arapi` C SDK. You need your own copy (from a BMC AR System
-  install or a BMC download) and must install it into your local Maven repo before building:
+* **The BMC `arapi` / `arlogger` jars** (see [above](#ar-system-java-api-jars-required)) installed
+  into your local Maven repo - they're `provided` scope, so they're compiled and tested against
+  but never shaded into the output jar:
 
   ```
   mvn install:install-file -Dfile="<path to arapi*.jar>" ^
     -DgroupId=com.bmc.arsys -DartifactId=arapi -Dversion=23.3.002 -Dpackaging=jar
-  ```
-
-* **`com.bmc.arsys.logger.ARLogger`** - a runtime dependency of `ARServerUser`'s static
-  initializer that is *not* bundled inside `arapi*.jar`. Source it from a local AR System install,
-  e.g. `<ARSystem install>\diserver\data-integration\lib\arlogger*.jar`, and install it the same way:
-
-  ```
   mvn install:install-file -Dfile="<path to arlogger*.jar>" ^
     -DgroupId=com.bmc.arsys -DartifactId=arlogger -Dversion=23.3.000 -Dpackaging=jar
   ```
 
-  Adjust the `-Dversion` values in both commands (and `pom.xml`'s `<dependency>` versions, if they
-  differ) to match the jars you actually have.
+  Adjust the `-Dversion` values (and `pom.xml`'s `<dependency>` versions, if they differ) to match
+  the jars you actually have.
 
 * An account with administrator rights on the target AR System server - otherwise the
   documentation will be incomplete, same requirement as the C++ tool.
@@ -65,13 +101,16 @@ mvn -o package
 
 This produces two jars under `target/`:
 
-* **`arinsidej.jar`** - a self-contained "fat" jar with every dependency (including `arapi`/
-  `arlogger`) merged in. This is the one you actually run - no classpath setup needed.
+* **`arinsidej.jar`** - the executable jar: ARInsideJ's own code and resources. The BMC
+  `arapi` / `arlogger` jars are **not** merged in (`provided` scope) - they're loaded at runtime
+  from a `lib/` folder next to the jar, see
+  [AR System Java API jars](#ar-system-java-api-jars-required).
 * `original-arinsidej.jar` - the plain, unshaded jar (an artifact of the build, not meant to be run
   directly).
 
-It also packs `target/arinsidej-<version>.zip`, the release bundle (fat jar + launcher scripts +
-sample `settings.ini` + README/LICENSE) - see "Download" above for what's in it.
+It also packs `target/arinsidej-<version>.zip`, the release bundle (jar + launcher scripts +
+sample `settings.ini` + README/LICENSE + a `lib/` folder with its `README.txt`) - see "Download"
+above for what's in it.
 
 `mvn -o compile` (without `package`) is enough if you're just iterating on source and running via
 an IDE or a manually-assembled classpath, but `package` is what you want for a distributable build.
@@ -82,19 +121,22 @@ it also runs automatically as part of `mvn -o package`.
 
 ## Docker
 
-The repo ships a `Dockerfile` that wraps the pre-built fat jar rather than building from source in
-the image: the build needs the BMC AR System Java API jars (`arapi` / `arlogger`), which aren't on
-any public Maven repository, so there's nothing for an image build to resolve them from. Build the
-jar first with `mvn -o package` (which uses the jars in your local `~/.m2`), then:
+The repo ships a `Dockerfile` that wraps the pre-built jar rather than building from source in the
+image: the build needs the BMC AR System Java API jars (`arapi` / `arlogger`), which aren't on any
+public Maven repository, so there's nothing for an image build to resolve them from. Build the jar
+first with `mvn -o package` (which uses the jars in your local `~/.m2`), then:
 
 ```
 docker build -t arinsidej .
 ```
 
-Then run it like the jar, mounting a work directory. Live server:
+The image does **not** contain the BMC jars (they can't be redistributed). Mount a folder holding
+`arapi*.jar` / `arlogger*.jar` onto `/opt/arinsidej/lib` at run time - see
+[AR System Java API jars](#ar-system-java-api-jars-required) for where to get them. Live server:
 
 ```
 docker run --rm \
+  -v "$PWD/lib:/opt/arinsidej/lib:ro" \
   -v "$PWD/out:/data/out" \
   -v "$PWD/settings.ini:/data/settings.ini:ro" \
   arinsidej -i /data/settings.ini -s myserver -l Demo -p secret -o /data/out
@@ -103,12 +145,25 @@ docker run --rm \
 Fully offline against an `.xml`/`.def` export (put the export and ini in the mounted dir):
 
 ```
-docker run --rm -v "$PWD:/data" arinsidej -i /data/settings.ini
+docker run --rm \
+  -v "$PWD/lib:/opt/arinsidej/lib:ro" \
+  -v "$PWD:/data" \
+  arinsidej -i /data/settings.ini
+```
+
+To avoid mounting `lib/` every time, bake your own **private** image (it will contain BMC's
+proprietary jars, so don't push it anywhere public):
+
+```
+# Dockerfile
+FROM ghcr.io/ljlongwing/arinsidej:latest
+COPY arapi.jar arlogger.jar /opt/arinsidej/lib/
 ```
 
 Each GitHub Release also publishes `ghcr.io/ljlongwing/arinsidej:<version>` and `:latest`
 (`.github/workflows/docker-publish.yml`), so downstream repos can document their server on a
-schedule or on every release without building anything:
+schedule or on every release. They still need to supply the BMC jars - keep them as a private
+build artifact / registry blob and restore them into `lib/` before the run:
 
 ```yaml
 # .github/workflows/document-ar-server.yml in your own repo
@@ -120,8 +175,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4          # provides settings.ini
+      - name: Restore BMC jars into ./lib   # from private storage - never commit these
+        run: |
+          mkdir -p lib
+          # e.g. aws s3 cp, gh release download from a private repo, a self-hosted runner cache, ...
+          cp /opt/bmc-jars/arapi*.jar /opt/bmc-jars/arlogger*.jar lib/
       - run: |
-          docker run --rm -v "$PWD:/data" ghcr.io/ljlongwing/arinsidej:latest \
+          docker run --rm \
+            -v "$PWD/lib:/opt/arinsidej/lib:ro" -v "$PWD:/data" \
+            ghcr.io/ljlongwing/arinsidej:latest \
             -i /data/settings.ini -s "$AR_SERVER" -l "$AR_USER" -p "$AR_PASS" -o /data/site
         env:
           AR_SERVER: ${{ secrets.AR_SERVER }}
@@ -134,8 +196,12 @@ jobs:
 ## Getting Started
 
 ```
-java -jar arinsidej.jar -i settings.ini -l Demo -p pass -s localhost
+./run-arinsidej.sh -i settings.ini -l Demo -p pass -s localhost         # or run-arinsidej.bat
 ```
+
+(equivalently `java -cp "arinsidej.jar:lib/*" arinside.Launch ...`, or `java -jar arinsidej.jar ...`
+when the BMC jars are at `lib/arapi.jar` / `lib/arlogger.jar`; see
+[AR System Java API jars](#ar-system-java-api-jars-required).)
 
 This connects to `localhost` as `Demo`, and documents every form/field/workflow object it finds.
 `-i` points at your configuration file (see below); `-l`/`-p`/`-s` are the login, password, and

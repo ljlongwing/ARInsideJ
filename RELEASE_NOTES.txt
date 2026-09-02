@@ -12,6 +12,25 @@ D - Defect fixed
 
 
 2026-09-01
+[4.8.0]
+N - The distributed jar no longer bundles BMC's proprietary AR System Java API (arapi and
+    arlogger). Those libraries are not redistributable, so ARInsideJ now ships without them
+    and loads them at runtime from a lib/ folder next to arinsidej.jar. Copy arapi*.jar and
+    arlogger*.jar into that folder from your own AR System server, Mid Tier, Developer Studio,
+    DISERVER, or other BMC install - the bundled lib/README.txt and the README list every
+    place they can be found, including the BMC EPD download.
+E - run-arinsidej.bat / run-arinsidej.sh now build the classpath from every jar in lib/ and
+    stop with a "where to get them" message if arapi*.jar is missing. A bare
+    `java -jar arinsidej.jar` still works when the jars are named lib/arapi.jar and
+    lib/arlogger.jar (manifest Class-Path). If the API is missing, the tool now exits
+    immediately with guidance instead of failing partway through the run.
+E - the release zip carries an empty lib/ folder with that README.txt; the Docker image
+    expects the jars mounted at /opt/arinsidej/lib (or baked into a private child image).
+E - build: arapi / arlogger are now <scope>provided</scope> - compiled and tested against,
+    never shaded into the output jar.
+
+
+2026-09-01
 [4.7.1]
 N - Housekeeping only, no behaviour change: tidied development-process wording out of code
     comments for the now-public repository, and corrected a stale javadoc line that still said

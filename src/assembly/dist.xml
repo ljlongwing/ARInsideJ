@@ -2,9 +2,11 @@
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.1.0 http://maven.apache.org/xsd/assembly-2.1.0.xsd">
   <!--
-    "Batteries included" release bundle: the fat jar plus the launcher scripts, a sample
-    settings.ini to edit, and the docs/licence. Produced as target/arinsidej-<version>.zip
-    by `mvn package` (runs after the shade plugin, which builds the jar it packs).
+    Release bundle: the jar plus the launcher scripts, a sample settings.ini to edit, the
+    docs/licence, and a lib/ folder (empty but for its README.txt) where the user drops the
+    BMC arapi/arlogger jars - those are proprietary and are NOT part of this bundle. Produced
+    as target/arinsidej-<version>.zip by `mvn package` (runs after the shade plugin, which
+    builds the jar it packs).
   -->
   <id>dist</id>
   <formats>
@@ -30,6 +32,10 @@
     <file>
       <source>settings.ini</source>
       <outputDirectory>.</outputDirectory>
+    </file>
+    <file>
+      <source>lib/README.txt</source>
+      <outputDirectory>lib</outputDirectory>
     </file>
     <file>
       <source>README.md</source>

@@ -5,7 +5,7 @@
 
   <groupId>arinsidej</groupId>
   <artifactId>arinsidej</artifactId>
-  <version>4.7.1</version>
+  <version>4.8.0</version>
   <packaging>jar</packaging>
   <name>ARInsideJ</name>
   <description>Java port of ARInside (BMC AR System documentation generator) using the AR System Java API.</description>
@@ -18,28 +18,34 @@
 
   <dependencies>
     <!--
-      AR System Java API. Not available on any public repository (same as the C API used
-      by the existing C++ tool) - install it into your local repo first:
+      AR System Java API. BMC proprietary, not redistributable, and not on any public
+      repository (same as the C API used by the existing C++ tool). scope=provided: it is
+      compiled against but NEVER shaded into the output jar - at runtime it is loaded from a
+      lib/ folder next to arinsidej.jar (see lib/README.txt / README.md for where to get it).
 
-        mvn install:install-file -Dfile="B:\TeamSync\LJ's Files\ForJason\arapi233_build002.jar" ^
+      Install your own copy into your local repo before building:
+        mvn install:install-file -Dfile="<path to arapi*.jar>" ^
           -DgroupId=com.bmc.arsys -DartifactId=arapi -Dversion=23.3.002 -Dpackaging=jar
     -->
     <dependency>
       <groupId>com.bmc.arsys</groupId>
       <artifactId>arapi</artifactId>
       <version>23.3.002</version>
+      <scope>provided</scope>
     </dependency>
     <!--
       Runtime companion required by ARServerUser's static initializer (com.bmc.arsys.logger.ARLogger).
-      Not bundled inside arapi*.jar; sourced from a local ARSystem install:
+      Not bundled inside arapi*.jar; sourced from the same BMC install as arapi - e.g.
         C:\Program Files\BMC Software\ARSystem\diserver\data-integration\lib\arlogger233_build000.jar
+      Same story as arapi: scope=provided, loaded from lib/ at runtime, never shaded.
       Install with:
-        mvn install:install-file -Dfile="<path above>" -DgroupId=com.bmc.arsys -DartifactId=arlogger -Dversion=23.3.000 -Dpackaging=jar
+        mvn install:install-file -Dfile="<path to arlogger*.jar>" -DgroupId=com.bmc.arsys -DartifactId=arlogger -Dversion=23.3.000 -Dpackaging=jar
     -->
     <dependency>
       <groupId>com.bmc.arsys</groupId>
       <artifactId>arlogger</artifactId>
       <version>23.3.000</version>
+      <scope>provided</scope>
     </dependency>
 
     <!-- Test only. See src/test/java/arinside/SmokeRenderTest.java - renders the bundled
@@ -62,9 +68,12 @@
       </plugin>
 
       <!--
-        Produces target/arinsidej.jar as a single self-contained executable jar (all dependencies,
-        including arapi/arlogger, merged in) - run with `java -jar arinsidej.jar -i settings.ini ...`,
-        no classpath setup needed. The plain (non-shaded) jar is kept alongside as
+        Produces target/arinsidej.jar as the executable jar. It bundles ARInsideJ's own code and
+        resources; the BMC arapi/arlogger jars are scope=provided and are deliberately NOT merged
+        in (proprietary, non-redistributable). At runtime they are loaded from a lib/ folder next
+        to the jar - the run-arinsidej.bat/.sh launchers add lib/*.jar to the classpath, and the
+        manifest Class-Path below lets a bare `java -jar arinsidej.jar` work too when the jars are
+        named lib/arapi.jar and lib/arlogger.jar. The plain (non-shaded) jar is kept alongside as
         target/original-arinsidej.jar by the plugin's default behavior.
       -->
       <plugin>
@@ -80,7 +89,12 @@
             <configuration>
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <mainClass>arinside.Main</mainClass>
+                  <mainClass>arinside.Launch</mainClass>
+                  <manifestEntries>
+                    <!-- Best-effort fallback for `java -jar`: missing entries are ignored, so this
+                         is harmless when the launcher (which globs lib/*.jar) is used instead. -->
+                    <Class-Path>lib/arapi.jar lib/arlogger.jar</Class-Path>
+                  </manifestEntries>
                 </transformer>
               </transformers>
             </configuration>
@@ -89,10 +103,11 @@
       </plugin>
 
       <!--
-        Packs the release bundle target/arinsidej-${project.version}.zip (fat jar + launcher
-        scripts + sample settings.ini + README/LICENSE). Declared after the shade plugin so it
-        runs later in the same `package` phase, once target/arinsidej.jar exists. Descriptor:
-        src/assembly/dist.xml.
+        Packs the release bundle target/arinsidej-${project.version}.zip (the jar + launcher
+        scripts + sample settings.ini + README/LICENSE + an empty lib/ folder with a README.txt
+        telling the user which BMC jars to drop in and where to get them). Declared after the
+        shade plugin so it runs later in the same `package` phase, once target/arinsidej.jar
+        exists. Descriptor: src/assembly/dist.xml.
       -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

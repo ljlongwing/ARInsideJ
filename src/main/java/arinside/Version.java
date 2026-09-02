@@ -4,6 +4,6 @@ package arinside;
 public final class Version {
     private Version() {}
 
-    public static final String APP_VERSION = "4.7.1";
+    public static final String APP_VERSION = "4.8.0";
     public static final String PRODUCT_NAME = "ARInsideJ";
 }

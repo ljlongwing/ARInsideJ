@@ -1,6 +1,10 @@
 target/
 cp.txt
 *.reg
+
+# Runtime BMC AR System API jars dropped in by the user - proprietary, never committed.
+# lib/README.txt (tracked) says which jars go here and where to get them.
+lib/*.jar
 .idea/
 *.iml
 .vscode/
