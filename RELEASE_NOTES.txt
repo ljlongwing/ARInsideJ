@@ -11,6 +11,12 @@ E - Enhancement
 D - Defect fixed
 
 
+2026-10-19
+[4.8.1]
+D - Call Guide actions now link the guide name to its documentation page (Active Links to the
+    Active Link Guide, Filters and Escalations to the Filter Guide). It was previously shown as
+    plain text. Guide names taken from a field ($fieldId$) still link to that field.
+
 2026-09-01
 [4.8.0]
 N - The distributed jar no longer bundles BMC's proprietary AR System Java API (arapi and
