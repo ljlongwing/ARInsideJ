@@ -254,7 +254,7 @@ public final class QualificationRenderer {
             String formName = (type == OperandType.FIELDID) ? secondaryFormName : primaryFormName;
             char delimiter = (type == OperandType.FIELDID) ? secondaryDelimiter : primaryDelimiter;
             String prefix = (type == OperandType.FIELDID_TRANSACTION) ? "TR." : (type == OperandType.FIELDID_DB) ? "DB." : "";
-            sb.append(delimiter).append(prefix).append(fieldRef(formName, fieldId)).append(delimiter);
+            sb.append(delimiter).append(prefix).append(fieldRefInline(formName, fieldId, currentDetail)).append(delimiter);
         } else if (type == OperandType.VALUE) {
             Value value = (Value) operand.getValue();
             String enumText = enumValueText(value);
@@ -271,7 +271,7 @@ public final class QualificationRenderer {
             String formName = (type == OperandType.CURRENCY_FLD) ? secondaryFormName : primaryFormName;
             char delimiter = (type == OperandType.CURRENCY_FLD) ? secondaryDelimiter : primaryDelimiter;
             String prefix = (type == OperandType.CURRENCY_FLD_TRAN) ? "TR." : (type == OperandType.CURRENCY_FLD_DB) ? "DB." : "";
-            sb.append(delimiter).append(prefix).append(fieldRef(formName, fieldId)).append(currencyPartSuffix(raw)).append(delimiter);
+            sb.append(delimiter).append(prefix).append(fieldRefInline(formName, fieldId, currentDetail)).append(currencyPartSuffix(raw)).append(delimiter);
         } else {
             sb.append("<").append(type).append(">");
         }
@@ -394,6 +394,15 @@ public final class QualificationRenderer {
 
     /** Same as {@link #fieldRef(String, int)}, but attributes the discovery to the given label instead of {@link #currentDetail} - e.g. "Target in 'Set Fields'"/"Value in 'Push Fields'", matching REFM_SETFIELDS_TARGET/REFM_PUSHFIELD_VALUE's real distinct labels. */
     public String fieldRef(String formName, int fieldId, String detail) {
+        return fieldLink(formName, fieldId, detail, ImageTag.Id.Document);
+    }
+
+    /** {@link #fieldRef(String, int, String)} without the icon - for a reference wrapped in "$...$" or quotes, where an icon would split the delimiter from the name. */
+    public String fieldRefInline(String formName, int fieldId, String detail) {
+        return fieldLink(formName, fieldId, detail, ImageTag.Id.NoImage);
+    }
+
+    private String fieldLink(String formName, int fieldId, String detail, ImageTag.Id icon) {
         String name = fieldIndex == null ? null : fieldIndex.fieldName(formName, fieldId);
         if (sink != null) sink.reference(formName, fieldId, name != null, detail);
         if (name == null) {
@@ -404,7 +413,7 @@ public final class QualificationRenderer {
         // layer (e.g. "User" on some servers/exports) resolves to the real "__o"-suffixed directory
         // instead of a form/ path that was never written.
         boolean isOverlaid = fieldIndex != null && fieldIndex.isOverlaid(formName);
-        return URLLink.to(name, Naming.schemaFieldDetail(formName, isOverlaid, fieldId), ImageTag.Id.Document, rootLevel).toHtml();
+        return URLLink.to(name, Naming.schemaFieldDetail(formName, isOverlaid, fieldId), icon, rootLevel).toHtml();
     }
 
     /**

@@ -421,7 +421,7 @@ public final class ActionSummaryTable {
             String trimmed = raw.endsWith("$") && raw.length() > 2 ? raw.substring(0, raw.length() - 1) : raw;
             Integer fieldId = parseSampleFieldId(trimmed);
             if (fieldId != null) {
-                String inner = fieldId < 0 ? ARKeywordLabels.forFieldId(fieldId) : (qr != null ? qr.fieldRef(primaryForm, fieldId, detail) : "Field " + fieldId);
+                String inner = fieldId < 0 ? ARKeywordLabels.forFieldId(fieldId) : (qr != null ? qr.fieldRefInline(primaryForm, fieldId, detail) : "Field " + fieldId);
                 return "$" + inner + "$";
             }
         }
@@ -699,7 +699,7 @@ public final class ActionSummaryTable {
         if (raw != null && raw.length() > 1 && raw.charAt(0) == '$') {
             Integer fieldId = parseSampleFieldId(raw);
             if (fieldId != null) {
-                String inner = fieldId < 0 ? ARKeywordLabels.forFieldId(fieldId) : (qr != null ? qr.fieldRef(primaryForm, fieldId, detail) : "Field " + fieldId);
+                String inner = fieldId < 0 ? ARKeywordLabels.forFieldId(fieldId) : (qr != null ? qr.fieldRefInline(primaryForm, fieldId, detail) : "Field " + fieldId);
                 return "$" + inner + "$ (Sample Server: " + serverInfoLink(sampleServer, currentServerName, rootLevel) + ")";
             }
         }
@@ -726,7 +726,7 @@ public final class ActionSummaryTable {
         if (raw != null && raw.length() > 1 && raw.charAt(0) == '$') {
             Integer fieldId = parseSampleFieldId(raw);
             if (fieldId != null) {
-                String inner = fieldId < 0 ? ARKeywordLabels.forFieldId(fieldId) : (qr != null ? qr.fieldRef(primaryForm, fieldId, detail) : "Field " + fieldId);
+                String inner = fieldId < 0 ? ARKeywordLabels.forFieldId(fieldId) : (qr != null ? qr.fieldRefInline(primaryForm, fieldId, detail) : "Field " + fieldId);
                 return "$" + inner + "$ (Sample Schema: " + schemaLink(resolvedTargetSchema, qr) + ")";
             }
         }
@@ -1270,7 +1270,7 @@ public final class ActionSummaryTable {
         if (!isSampleRef(raw)) return serverInfoLink(raw, currentServerName, rootLevel);
         Integer fieldId = parseSampleFieldId(raw);
         if (fieldId == null) return WebUtil.validate(raw);
-        String fieldText = fieldId < 0 ? "$" + ARKeywordLabels.forFieldId(fieldId) + "$" : "$" + (qr != null ? qr.fieldRef(primaryForm, fieldId, detail) : "Field " + fieldId) + "$";
+        String fieldText = fieldId < 0 ? "$" + ARKeywordLabels.forFieldId(fieldId) + "$" : "$" + (qr != null ? qr.fieldRefInline(primaryForm, fieldId, detail) : "Field " + fieldId) + "$";
         return fieldText + " (Sample Server: " + serverInfoLink(sampleServer, currentServerName, rootLevel) + ")";
     }
 
@@ -1360,7 +1360,7 @@ public final class ActionSummaryTable {
         String targetDetail = qualDetail("Target in 'Push Fields'", qr);
         String valueDetail = qualDetail("Value in 'Push Fields'", qr);
         for (PushFieldsInfo pfi : list) {
-            String target = pfi.getField() == null ? "Field ?" : fieldRefOf(pfi.getField(), primaryForm, qr, targetDetail);
+            String target = pfi.getField() == null ? "Field ?" : fieldRefOf(pfi.getField(), primaryForm, qr, targetDetail, false);
             int targetFieldId = pfi.getField() == null ? -1 : pfi.getField().getFieldId();
             AssignInfo assign = pfi.getAssignment() != null ? pfi.getAssignment() : pfi.getAssign();
             // pushFieldValue=true: matches core/ARAssignHelper.cpp's AssignField, which for a Push
@@ -1400,8 +1400,8 @@ public final class ActionSummaryTable {
         }
         if (assignmentType == Constants.AR_ASSIGN_TYPE_FIELD && assign.getField() != null) {
             return pushFieldValue
-                ? "$" + (qr != null ? qr.fieldRef(primaryForm, assign.getField().getFieldId(), detail) : "Field " + assign.getField().getFieldId()) + "$"
-                : "$" + fieldRefOf(assign.getField(), primaryForm, qr, detail) + "$";
+                ? "$" + (qr != null ? qr.fieldRefInline(primaryForm, assign.getField().getFieldId(), detail) : "Field " + assign.getField().getFieldId()) + "$"
+                : "$" + fieldRefOf(assign.getField(), primaryForm, qr, detail, true) + "$";
         }
         if (assignmentType == Constants.AR_ASSIGN_TYPE_PROCESS && assign.getProcess() != null) {
             return "$PROCESS$ " + TextFieldSubstitution.substitute(assign.getProcess(), primaryForm, qr, detail);
@@ -1440,10 +1440,10 @@ public final class ActionSummaryTable {
      * cross-form logic is still correct for push TARGETS (this method's other caller) and for
      * plain (non-push) Set Fields/Service/OpenWindow field-to-field assignments.
      */
-    private static String fieldRefOf(AssignFieldInfo f, String primaryForm, QualificationRenderer qr, String detail) {
+    private static String fieldRefOf(AssignFieldInfo f, String primaryForm, QualificationRenderer qr, String detail, boolean inline) {
         boolean crossForm = f.getForm() != null && !f.getForm().isEmpty() && !f.getForm().equals("@");
         String targetForm = crossForm ? f.getForm() : primaryForm;
-        StringBuilder sb = new StringBuilder(qr != null ? qr.fieldRef(targetForm, f.getFieldId(), detail) : "Field " + f.getFieldId());
+        StringBuilder sb = new StringBuilder(qr == null ? "Field " + f.getFieldId() : inline ? qr.fieldRefInline(targetForm, f.getFieldId(), detail) : qr.fieldRef(targetForm, f.getFieldId(), detail));
         if (crossForm) {
             sb.insert(0, "").append(" (on ");
             if (f.getServer() != null && !f.getServer().isEmpty() && !f.getServer().equals("@")) sb.append(WebUtil.validate(f.getServer())).append(":");

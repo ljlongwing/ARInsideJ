@@ -80,7 +80,7 @@ final class TextFieldSubstitution {
             } else if (fieldId <= 0) {
                 out.append('$').append(ARKeywordLabels.forFieldId(fieldId)).append('$'); // both "$" delimiters are kept in the resolved output too, matching CDocTextReferences::replaceAllFields
             } else {
-                out.append('$').append(qr.fieldRef(primaryForm, fieldId, detail)).append('$');
+                out.append('$').append(qr.fieldRefInline(primaryForm, fieldId, detail)).append('$');
             }
             i = end + 1;
         }

@@ -22,6 +22,8 @@ D - Association pages link the Primary, Secondary and Association Form names to 
     pages (detail and overview), when the form is documented.
 D - Distributed Server (DSO) actions link the target form when it is on this server.
 D - Field references on another form ("Field (on Form)") now link the form name too.
+D - A field link inside $...$ or quotes (Set Fields values, Run If, Run Process, etc.) no longer
+    shows an icon between the delimiter and the field name ($DB_Dir$, not $ [icon] DB_Dir$).
 
 2026-09-01
 [4.8.0]
