@@ -16,6 +16,12 @@ D - Defect fixed
 D - Call Guide actions now link the guide name to its documentation page (Active Links to the
     Active Link Guide, Filters and Escalations to the Filter Guide). It was previously shown as
     plain text. Guide names taken from a field ($fieldId$) still link to that field.
+D - Keywords in qualifications and assigned values were shown with doubled dollar signs
+    ($$OS$$, $$USER$$, $$DATE$$); they now render as $OS$, $USER$, $DATE$.
+D - Association pages link the Primary, Secondary and Association Form names to their form
+    pages (detail and overview), when the form is documented.
+D - Distributed Server (DSO) actions link the target form when it is on this server.
+D - Field references on another form ("Field (on Form)") now link the form name too.
 
 2026-09-01
 [4.8.0]

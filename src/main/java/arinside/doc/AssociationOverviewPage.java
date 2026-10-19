@@ -4,6 +4,7 @@ import arinside.ar.AREnumLabels;
 import arinside.ar.AssociationSource;
 import arinside.config.AppConfig;
 import arinside.output.*;
+import arinside.scan.GlobalFieldIndex;
 import com.bmc.arsys.api.ARException;
 import com.bmc.arsys.api.Association;
 import com.bmc.arsys.api.DirectAssociation;
@@ -14,10 +15,12 @@ import java.util.List;
 public final class AssociationOverviewPage {
     private final AssociationSource repo;
     private final AppConfig appConfig;
+    private final GlobalFieldIndex fieldIndex;
 
-    public AssociationOverviewPage(AssociationSource repo, AppConfig appConfig) {
+    public AssociationOverviewPage(AssociationSource repo, AppConfig appConfig, GlobalFieldIndex fieldIndex) {
         this.repo = repo;
         this.appConfig = appConfig;
+        this.fieldIndex = fieldIndex;
     }
 
     public int render() throws ARException {
@@ -43,8 +46,8 @@ public final class AssociationOverviewPage {
                 TableRow row = new TableRow();
                 row.addCell(URLLink.to(name, detail, ImageTag.Id.Association, page.rootLevel()).toHtml());
                 row.addCell(a instanceof DirectAssociation ? "Direct" : "Indirect");
-                row.addCell(WebUtil.validate(nullToEmpty(a.getPrimaryFormName())));
-                row.addCell(WebUtil.validate(nullToEmpty(a.getSecondaryFormName())));
+                row.addCell(ActionSummaryTable.formLinkOrText(a.getPrimaryFormName(), fieldIndex, page.rootLevel()));
+                row.addCell(ActionSummaryTable.formLinkOrText(a.getSecondaryFormName(), fieldIndex, page.rootLevel()));
                 row.addCell(AREnumLabels.associationCardinality(a.getCardinality()));
                 row.addCell(AREnumLabels.associationEnforcement(a.getEnforcement()));
                 tbl.addRow(row);
@@ -64,5 +67,4 @@ public final class AssociationOverviewPage {
         return count;
     }
 
-    private static String nullToEmpty(String s) { return s == null ? "" : s; }
 }

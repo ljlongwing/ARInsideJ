@@ -74,8 +74,8 @@ public final class AssociationDetailPage {
         tbl.addRow(new TableRow().addCellList("Enabled", AREnumLabels.objectEnable(a.isEnable())));
         tbl.addRow(new TableRow().addCellList("Cardinality", AREnumLabels.associationCardinality(a.getCardinality())));
         tbl.addRow(new TableRow().addCellList("Enforcement", AREnumLabels.associationEnforcement(a.getEnforcement())));
-        tbl.addRow(new TableRow().addCellList("Primary Form", WebUtil.validate(nullToEmpty(a.getPrimaryFormName()))));
-        tbl.addRow(new TableRow().addCellList("Secondary Form", WebUtil.validate(nullToEmpty(a.getSecondaryFormName()))));
+        tbl.addRow(new TableRow().addCellList("Primary Form", ActionSummaryTable.formLinkOrText(a.getPrimaryFormName(), fieldIndex, page.rootLevel())));
+        tbl.addRow(new TableRow().addCellList("Secondary Form", ActionSummaryTable.formLinkOrText(a.getSecondaryFormName(), fieldIndex, page.rootLevel())));
         if (a.getPrimaryFormQualification() != null) {
             tbl.addRow(new TableRow().addCellList("Primary Qualification", primaryRenderer.render(a.getPrimaryFormQualification(), "Primary Qualification")));
         }
@@ -104,7 +104,7 @@ public final class AssociationDetailPage {
             Table assocFormTbl = new Table("associationForm", "TblObjectList");
             assocFormTbl.addColumn(30, "Property");
             assocFormTbl.addColumn(70, "Value");
-            assocFormTbl.addRow(new TableRow().addCellList("Association Form", WebUtil.validate(nullToEmpty(ia.getAssociationFormName()))));
+            assocFormTbl.addRow(new TableRow().addCellList("Association Form", ActionSummaryTable.formLinkOrText(ia.getAssociationFormName(), fieldIndex, page.rootLevel())));
             if (ia.getAssociationFormQualification() != null) {
                 QualificationRenderer assocFormRenderer = new QualificationRenderer(nullToEmpty(ia.getAssociationFormName()), page.rootLevel(), fieldIndex, sink);
                 assocFormTbl.addRow(new TableRow().addCellList("Qualification", assocFormRenderer.render(ia.getAssociationFormQualification(), "Association Form Qualification")));

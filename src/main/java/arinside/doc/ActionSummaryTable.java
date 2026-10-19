@@ -134,7 +134,7 @@ public final class ActionSummaryTable {
         // command-line text instead of the friendlier "Transfer/Return/Delete to Server:Form" - a
         // real, pre-existing dispatch-order bug found while wiring up .def mode's own DSO decoding,
         // not something introduced by that fix (this dispatch is shared by every input mode).
-        if (action instanceof DSOAction a) return dsoOf(a);
+        if (action instanceof DSOAction a) return dsoOf(a, qr, currentServerName);
         if (action instanceof RunProcessAction a) return "<code>" + TextFieldSubstitution.substitute(a.getCommandLine(), primaryForm, qr, qualDetail("Field in Run Process", qr)) + "</code>";
         if (action instanceof NotifyAction a) return notifyOf(a, primaryForm, qr);
         // Java port of DocFilterActionStruct.cpp's FilterActionLog - was missing the "File Name: "
@@ -365,7 +365,7 @@ public final class ActionSummaryTable {
         if (type == DataType.NULL || v == null) return "$NULL$";
         if (type == DataType.CHAR) return "\"" + WebUtil.validate(String.valueOf(v)) + "\"";
         if (type == DataType.REAL || type == DataType.ULONG) return String.valueOf(v);
-        if (type == DataType.KEYWORD) return "$" + v + "$";
+        if (type == DataType.KEYWORD) return v.toString(); // Keyword.toString() is already "$OS$"
         if ((type == DataType.INTEGER || type == DataType.ENUM) && v instanceof Integer intVal) {
             GlobalFieldIndex fieldIndex = qr == null ? null : qr.fieldIndex();
             String label = targetFieldId >= 0 && fieldIndex != null ? fieldIndex.enumLabel(enumForm, targetFieldId, intVal) : null;
@@ -495,14 +495,18 @@ public final class ActionSummaryTable {
         return tbl.toXHtml();
     }
 
-    private static String dsoOf(DSOAction a) {
+    private static String dsoOf(DSOAction a, QualificationRenderer qr, String currentServerName) {
         String type = switch (a.getType()) {
             case DSOAction.DSOACTION_TYPE_TRANSFER -> "Transfer";
             case DSOAction.DSOACTION_TYPE_RETURN -> "Return";
             case DSOAction.DSOACTION_TYPE_DELETE -> "Delete";
             default -> "DSO";
         };
-        return type + " to " + WebUtil.validate(nullToEmpty(a.getServer())) + ":" + WebUtil.validate(nullToEmpty(a.getForm()));
+        String server = nullToEmpty(a.getServer());
+        // only a form on this server has a page here; a same-named form on a remote DSO server isn't the one documented
+        boolean local = server.isEmpty() || server.equals("@") || server.equalsIgnoreCase(currentServerName);
+        String form = local && qr != null ? formLinkOrText(a.getForm(), qr.fieldIndex(), qr.rootLevel()) : WebUtil.validate(nullToEmpty(a.getForm()));
+        return type + " to " + WebUtil.validate(server) + ":" + form;
     }
 
     /**
@@ -1306,6 +1310,13 @@ public final class ActionSummaryTable {
         return suffix.isEmpty() ? label : label + " " + suffix;
     }
 
+    /** A form-page link when the form is documented on this server, else plain text (no dangling link to a remote or missing form). */
+    static String formLinkOrText(String formName, GlobalFieldIndex fieldIndex, int rootLevel) {
+        if (formName == null || formName.isEmpty()) return "";
+        if (fieldIndex == null || !fieldIndex.formExists(formName)) return WebUtil.validate(formName);
+        return URLLink.to(formName, Naming.schemaDetail(formName, fieldIndex.isOverlaid(formName)), ImageTag.Id.Schema, rootLevel).toHtml();
+    }
+
     private static String schemaLink(String formName, QualificationRenderer qr) {
         if (formName == null || formName.isEmpty()) return "";
         GlobalFieldIndex fieldIndex = qr == null ? null : qr.fieldIndex();
@@ -1436,7 +1447,7 @@ public final class ActionSummaryTable {
         if (crossForm) {
             sb.insert(0, "").append(" (on ");
             if (f.getServer() != null && !f.getServer().isEmpty() && !f.getServer().equals("@")) sb.append(WebUtil.validate(f.getServer())).append(":");
-            sb.append(WebUtil.validate(f.getForm())).append(")");
+            sb.append(qr != null ? formLinkOrText(f.getForm(), qr.fieldIndex(), qr.rootLevel()) : WebUtil.validate(f.getForm())).append(")");
         }
         if (f.getCurrencyPart() != null) {
             sb.append(" [currency field ").append(f.getCurrencyPart().getFieldId()).append("]");

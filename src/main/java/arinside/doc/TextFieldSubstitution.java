@@ -268,7 +268,7 @@ final class TextFieldSubstitution {
         return out.toString();
     }
 
-    /** Java port of processSecondParameter() - only used by PERFORM-ACTION-ACTIVE-LINK: "ACTIVE-LINK &lt;alName&gt; &lt;fieldId&gt; [rest]" -&gt; the AL name is echoed unlinked (matching the C++ exactly - no AL lookup happens here), the field id becomes a link; a trailing newline and dropped remainder both match real (if odd) C++ quirks. */
+    /** Java port of processSecondParameter() - only used by PERFORM-ACTION-ACTIVE-LINK: "ACTIVE-LINK &lt;executeOn&gt; &lt;fieldId&gt; [rest]" -&gt; the first parameter is a numeric execute-on mask, not an active link name (e.g. "1 301867800"), so it is echoed as-is; the field id becomes a link; a trailing newline and dropped remainder both match real (if odd) C++ quirks. */
     private static String processSecondParameter(String text, String command, String primaryForm, QualificationRenderer qr, String detail) {
         int length = command.length() + 1;
         int pos = text.indexOf(command);

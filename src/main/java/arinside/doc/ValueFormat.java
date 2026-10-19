@@ -20,7 +20,7 @@ public final class ValueFormat {
         DataType type = value.getDataType();
         Object v = value.getValue();
         if (type == DataType.NULL || v == null) return "$NULL$";
-        if (type == DataType.KEYWORD) return "$" + v + "$";
+        if (type == DataType.KEYWORD) return v.toString(); // Keyword.toString() is already "$OS$"
         if (type == DataType.INTEGER || type == DataType.ENUM) return v.toString();
         if (type == DataType.REAL || type == DataType.DECIMAL) return v.toString();
         if (type == DataType.CHAR || type == DataType.DIARY) return "\"" + v + "\"";

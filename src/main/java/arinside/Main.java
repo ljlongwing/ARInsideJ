@@ -524,7 +524,7 @@ public final class Main {
                 if (client != null) {
                     System.out.println("Documenting associations...");
                     AssociationRepository associations = new AssociationRepository(client);
-                    associationCount = new AssociationOverviewPage(associations, appConfig).render();
+                    associationCount = new AssociationOverviewPage(associations, appConfig, globalFields).render();
                     System.out.println(associationCount + " associations listed.");
                     AssociationDetailPage associationPage = new AssociationDetailPage(associations, appConfig, globalFields, fieldRefs, missingFieldRefs, knownUserNames);
                     if (reads != null) {
