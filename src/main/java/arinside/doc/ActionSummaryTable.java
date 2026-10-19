@@ -108,7 +108,8 @@ public final class ActionSummaryTable {
         for (A action : actions) {
             int position = count;
             count++;
-            String actionType = label.apply(typeOf.apply(action));
+            int typeCode = typeOf.apply(action);
+            String actionType = label.apply(typeCode);
             if (qr != null) {
                 qr.setCurrentDetail(actionType + " " + ifElse + "-Action " + position);
                 qr.setCurrentActionSuffix(ifElse + "-Action " + position);
@@ -116,13 +117,13 @@ public final class ActionSummaryTable {
             TableRow row = new TableRow();
             row.addCell(new arinside.output.TableCell(position));
             row.addCell(actionType);
-            row.addCell(detailOf(action, primaryForm, qr, currentServerName));
+            row.addCell(detailOf(action, typeCode, primaryForm, qr, currentServerName));
             tbl.addRow(row);
         }
         return count;
     }
 
-    private static String detailOf(Object action, String primaryForm, QualificationRenderer qr, String currentServerName) {
+    private static String detailOf(Object action, int typeCode, String primaryForm, QualificationRenderer qr, String currentServerName) {
         if (action instanceof SetFieldsAction a) return setFieldsOf(a, primaryForm, qr, currentServerName);
         if (action instanceof PushFieldsAction a) return pushFieldsOf(a, primaryForm, qr, currentServerName);
         if (action instanceof MessageAction a) return messageActionOf(a.getMessageNum(), a.getMessageType(), a.getMessageText(), true, a.isUsePromptingPane(), primaryForm, qr);
@@ -141,7 +142,7 @@ public final class ActionSummaryTable {
         // label, falling back to "(null)" when the path is empty, matching every other single-value
         // action type's label+value shape.
         if (action instanceof LogAction a) return "File Name: " + (hasText(a.getFilePath()) ? WebUtil.validate(a.getFilePath()) : "(null)");
-        if (action instanceof CallGuideAction a) return callGuideOf(a, primaryForm, qr, currentServerName);
+        if (action instanceof CallGuideAction a) return callGuideOf(a, typeCode == Constants.AR_ACTIVE_LINK_ACTION_CALLGUIDE, primaryForm, qr, currentServerName);
         if (action instanceof ChangeFieldAction a) return changeFieldOf(a, primaryForm, qr);
         if (action instanceof OpenWindowAction a) return openWindow(a, primaryForm, qr, currentServerName);
         if (action instanceof CloseWindowAction a) return checkbox(a.isCloseAll()) + "Close All Windows";
@@ -385,16 +386,18 @@ public final class ActionSummaryTable {
     /**
      * Java port of DocAlActionStruct.cpp's ActionCallGuide - Server (with "$fieldId$" runtime-
      * substitution support, same shape as resolveServerRef) plus Table Loop/Table Field when
-     * guideTableId &gt; 0. The guide name itself stays plain (unlinked) text rather than the C++'s
-     * LinkToContainer - CallGuideAction is shared by both Active Link (Guide) and Filter (Filter
-     * Guide) callers via the same generic detailOf() dispatch, and nothing at this call site says
-     * which of the two container types the name refers to, so a Naming.containerDetail(...) link
-     * would have a 50% chance of pointing at the wrong container type.
+     * guideTableId &gt; 0. A literal guide name links like the C++'s LinkToContainer: an Active Link
+     * calls an AL Guide, a Filter calls a Filter Guide (told apart by the AL-vs-filter action type code).
      */
-    private static String callGuideOf(CallGuideAction a, String primaryForm, QualificationRenderer qr, String currentServerName) {
+    private static String callGuideOf(CallGuideAction a, boolean fromActiveLink, String primaryForm, QualificationRenderer qr, String currentServerName) {
         StringBuilder sb = new StringBuilder();
         sb.append("Server: ").append(dollarFieldOrServerLink(a.getServerName(), a.getSampleServer(), currentServerName, primaryForm, qr, qualDetail("Used as CallGuide Server in", qr))).append("<br/>");
-        sb.append("Guide: ").append(dollarFieldOrText(a.getGuideName(), primaryForm, qr, qualDetail("Used as CallGuide Name in", qr))).append("<br/>");
+        String guide = a.getGuideName();
+        String guideHtml = guide != null && !guide.isEmpty() && guide.charAt(0) != '$'
+            ? URLLink.to(guide, Naming.containerDetail(fromActiveLink ? Constants.ARCON_GUIDE : Constants.ARCON_FILTER_GUIDE, guide, false),
+                fromActiveLink ? ImageTag.Id.ActiveLinkGuide : ImageTag.Id.FilterGuide, qr != null ? qr.rootLevel() : 1).toHtml()
+            : dollarFieldOrText(guide, primaryForm, qr, qualDetail("Used as CallGuide Name in", qr));
+        sb.append("Guide: ").append(guideHtml).append("<br/>");
         if (a.getGuideTableId() > 0) {
             sb.append("Table Loop: ").append(AREnumLabels.callGuideMode(a.getGuideMode())).append("<br/>");
             sb.append("Table Field: ").append(qr != null ? qr.fieldRef(primaryForm, a.getGuideTableId(), qualDetail("Guide Table Loop", qr)) : "Field " + a.getGuideTableId());
